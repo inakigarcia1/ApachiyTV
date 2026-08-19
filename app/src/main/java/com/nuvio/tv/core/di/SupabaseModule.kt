@@ -40,7 +40,7 @@ object SupabaseModule {
     fun provideSupabaseClient(
         serverConfiguration: ServerConfiguration
     ): SupabaseClient = runBlocking(Dispatchers.IO) {
-        val userAgent = "NuvioTV/${BuildConfig.VERSION_NAME.ifBlank { "dev" }}"
+        val userAgent = "ApachiyTV/${BuildConfig.VERSION_NAME.ifBlank { "dev" }}"
         createSupabaseClient(
             supabaseUrl = serverConfiguration.backendUrl,
             supabaseKey = serverConfiguration.publishableKey

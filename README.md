@@ -1,6 +1,6 @@
 <div align="center">
 
-  <img src="assets/brand/app_logo_wordmark.png" alt="NuvioTV" width="300" />
+  <img src="assets/brand/app_logo_wordmark.png" alt="Apachiy TV" width="300" />
   <br />
   <br />
 
@@ -11,7 +11,7 @@
   [![License][license-shield]][license-url]
 
   <p>
-    A modern Android TV media player powered by the Stremio addon ecosystem.
+    Apachiy TV — a self-hosted fork of NuvioTV. Your Supabase, your data, your addons.
     <br />
     Stremio Addon ecosystem • Android TV optimized • Playback-focused experience
   </p>
@@ -19,6 +19,13 @@
 </div>
 
 ## About
+
+> **Apachiy TV** is a fork of [NuvioTV](https://github.com/tapframe/NuvioTV)
+> (GPLv3) that targets self-hosted backends. The TV app installs as
+> `com.apachiy.tv` and is independent of any Nuvio official infrastructure.
+> See [`README-APACHIY.md`](README-APACHIY.md) for the operator walk-through
+> and [`docs/CHANGES_FROM_NUVIO.md`](docs/CHANGES_FROM_NUVIO.md) for what
+> changed.
 
 NuvioTV is a modern media player designed specifically for Android TV.
 

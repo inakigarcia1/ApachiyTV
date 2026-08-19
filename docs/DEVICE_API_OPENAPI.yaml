@@ -1,0 +1,231 @@
+openapi: 3.1.0
+info:
+  title: Apachiy TV — Device Registration API
+  version: 1.0.0
+  description: |
+    REST endpoints exposed by the operator's Apachiy .NET API for the
+    Apachiy TV Android client.
+
+    All endpoints require a Supabase-issued access token in the
+    `Authorization: Bearer <access_token>` header. The token's `sub` claim
+    is treated as the Supabase user UUID; the server does not trust any
+    `user_id` field sent in the request body.
+
+    JWT validation uses HS256 with the shared `JWT_SECRET` from the
+    self-hosted Supabase Auth. Issuer = `${APACHIY_SUPABASE_URL}/auth/v1`.
+    Audience = `authenticated`.
+servers:
+  - url: https://your-apachiy-api.example
+    description: Operator's Apachiy .NET API
+  - url: http://localhost:8080
+    description: Local dev
+tags:
+  - name: Devices
+    description: Per-installation device tracking for the Apachiy TV client
+security:
+  - bearerAuth: []
+paths:
+  /v1/devices/register:
+    post:
+      tags: [Devices]
+      summary: Register (or refresh) the calling Apachiy TV install
+      description: |
+        Idempotent on `(supabase_user_id, installation_id)`. Multiple calls
+        with the same pair do not create duplicates — they update the
+        `last_seen_at` / `last_login_at` / `app_version` / `device_model`
+        fields of the existing row.
+
+        The TV app calls this endpoint after every successful Supabase
+        auth (sign-in or sign-up), and again on app launch while still
+        authenticated.
+
+        **Error handling contract:**
+        - 200/201 — registered (or refreshed). Inspect `revoked: true` and sign the user out.
+        - 400 — `installation_id` is not a UUID v4. Treat as a bug; do not retry.
+        - 401/403 — token expired or invalid. Refresh the Supabase session, retry once.
+        - 410/423 — device was revoked. Sign the user out immediately.
+        - 5xx — server problem. Retry with exponential backoff (up to 3 attempts).
+      operationId: registerDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRegistrationRequest'
+            examples:
+              apachiy-tv:
+                summary: Apachiy TV Android TV install
+                value:
+                  installation_id: "550e8400-e29b-41d4-a716-446655440000"
+                  platform: "android_tv"
+                  app: "apachiy"
+                  app_version: "0.8.6-beta"
+                  os_version: "14"
+                  device_model: "Sony BRAVIA 4K"
+      responses:
+        '201':
+          description: New device row created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRegistrationResponse'
+        '200':
+          description: Existing device row updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceRegistrationResponse'
+        '400':
+          description: installation_id is not a valid UUID v4
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '410':
+          description: Device has been revoked on the server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /v1/devices:
+    get:
+      tags: [Devices]
+      summary: List all devices for the current Supabase user
+      description: Ordered by `last_seen_at DESC`. Includes both active and revoked rows.
+      operationId: listDevices
+      responses:
+        '200':
+          description: Array of devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DeviceSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /v1/devices/{id}/revoke:
+    post:
+      tags: [Devices]
+      summary: Revoke a single device
+      description: |
+        Sets `revoked_at = NOW()`. Future `/v1/devices/register` calls from
+        the same `(user, installation_id)` will respond with `revoked: true`
+        — the TV app is expected to sign the user out and stop retrying.
+      operationId: revokeDevice
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+            format: int64
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeviceRevokeRequest'
+      responses:
+        '204':
+          description: Revoked
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: Device not found for this user
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT (Supabase HS256)
+  responses:
+    Unauthorized:
+      description: Missing or invalid Supabase access token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+  schemas:
+    DeviceRegistrationRequest:
+      type: object
+      required: [installation_id, platform, app_version]
+      properties:
+        installation_id:
+          type: string
+          format: uuid
+          description: UUID v4 generated by the TV app on first launch. Never reuse across installs.
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        platform:
+          type: string
+          description: Always `android_tv` for the current Apachiy TV client.
+          example: "android_tv"
+        app:
+          type: string
+          description: Always `apachiy` for the current Apachiy TV client.
+          example: "apachiy"
+        app_version:
+          type: string
+          description: Apachiy TV versionName (e.g. "0.8.6-beta").
+          example: "0.8.6-beta"
+        os_version:
+          type: string
+          description: Android release version.
+          example: "14"
+        device_model:
+          type: string
+          description: Manufacturer + model, best-effort.
+          example: "Sony BRAVIA 4K"
+    DeviceRegistrationResponse:
+      type: object
+      required: [device_id, created, revoked]
+      properties:
+        device_id:
+          type: integer
+          format: int64
+          example: 42
+        created:
+          type: boolean
+          description: true if a new row was inserted, false if an existing row was updated.
+        revoked:
+          type: boolean
+          description: true if the device was previously revoked. TV app MUST sign out.
+        last_login_at:
+          type: string
+          format: date-time
+        last_seen_at:
+          type: string
+          format: date-time
+    DeviceSummary:
+      type: object
+      properties:
+        id: { type: integer, format: int64 }
+        installation_id: { type: string }
+        client_name: { type: string }
+        app_version: { type: string }
+        platform: { type: string }
+        device_model: { type: string }
+        os_version: { type: string }
+        created_at: { type: string, format: date-time }
+        first_seen_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+        last_login_at: { type: string, format: date-time, nullable: true }
+        revoked: { type: boolean }
+        revoked_at: { type: string, format: date-time, nullable: true }
+        revoked_reason: { type: string, nullable: true }
+    DeviceRevokeRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 64
+          example: "user requested removal"
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+        message: { type: string, nullable: true }
+        revoked: { type: boolean, description: true when the device was revoked (status 410/423) }

@@ -1,0 +1,357 @@
+# =============================================================================
+# Apachiy TV — Supabase self-hosted (Docker Compose)
+# =============================================================================
+#
+# Pinned versions (verified Aug 2026). Avoid `latest` for reproducibility.
+# Update only after smoke tests pass. See scripts/apachiy-health.sh.
+#
+# To start:   ./scripts/apachiy-infra-up.sh
+# To stop:    ./scripts/apachiy-infra-down.sh
+# To inspect: ./scripts/apachiy-infra-status.sh
+# To tail:    ./scripts/apachiy-infra-logs.sh
+# =============================================================================
+
+x-supabase-base: &supabase-base
+  restart: unless-stopped
+  env_file:
+    - .env
+  networks:
+    - apachiy_net
+
+services:
+  # ---------------------------------------------------------------------------
+  # Postgres 15
+  # ---------------------------------------------------------------------------
+  supabase-db:
+    image: postgres:15-alpine
+    container_name: apachiy-supabase-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
+      POSTGRES_USER: ${POSTGRES_USER:-supabase_admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+    volumes:
+      - supabase-db-data:/var/lib/postgresql/data
+      - ./volumes/db/init:/docker-entrypoint-initdb.d:ro
+      - ../../supabase/migrations:/docker-entrypoint-initdb.d/migrations:ro
+    networks:
+      - apachiy_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-supabase_admin} -d ${POSTGRES_DB:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    mem_limit: ${APACHIY_SUPABASE_DB_MEM:-1g}
+    cpus: ${APACHIY_SUPABASE_DB_CPUS:-1.0}
+
+  # ---------------------------------------------------------------------------
+  # Storage API (S3-like; serves the `avatars` bucket)
+  # ---------------------------------------------------------------------------
+  supabase-storage:
+    image: supabase/storage-api:v1.11.13
+    container_name: apachiy-supabase-storage
+    <<: *supabase-base
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+      supabase-rest:
+        condition: service_started
+    environment:
+      ANON_KEY: ${ANON_KEY:?required}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY:?required}
+      POSTGREST_URL: http://supabase-rest:3000
+      PGRST_JWT_SECRET: ${JWT_SECRET:?required}
+      DATABASE_URL: postgres://${POSTGRES_USER:-supabase_admin}:${POSTGRES_PASSWORD:?required}@supabase-db:5432/${POSTGRES_DB:-postgres}
+      FILE_SIZE_LIMIT: 52428800
+      STORAGE_BACKEND: file
+      FILE_STORAGE_BACKEND_PATH: /var/lib/storage
+      TENANT_ID: stub
+      REGION: stub
+      GLOBAL_S3_BUCKET: stub
+      ENABLE_IMAGE_TRANSFORMATION: "true"
+      IMGPROXY_URL: http://supabase-imgproxy:5001
+    volumes:
+      - supabase-storage-data:/var/lib/storage
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/status"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: ${APACHIY_SUPABASE_STORAGE_MEM:-512m}
+    cpus: ${APACHIY_SUPABASE_STORAGE_CPUS:-0.5}
+
+  # ---------------------------------------------------------------------------
+  # Auth (GoTrue)
+  # ---------------------------------------------------------------------------
+  supabase-auth:
+    image: supabase/gotrue:v2.152.0
+    container_name: apachiy-supabase-auth
+    <<: *supabase-base
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      GOTRUE_TRUSTED_GOOGLE_ID_TOKEN_AUDIENCES: ""
+      GOTRUE_TRUSTED_APPLE_ID_TOKEN_AUDIENCES: ""
+      GOTRUE_TRUSTED_EXTERNAL_GOOGLE_ID_TOKEN_AUDIENCES: ""
+      GOTRUE_ADMIN_EMAIL: ${GOTRUE_ADMIN_EMAIL:-admin@local}
+      GOTRUE_ADMIN_PASSWORD: ${GOTRUE_ADMIN_PASSWORD:?required}
+      GOTRUE_SITE_URL: ${SITE_URL:-http://localhost:3000}
+      GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-http://localhost:3000}
+      GOTRUE_DISABLE_SIGNUP: "false"
+      GOTRUE_JWT_SECRET: ${JWT_SECRET:?required}
+      GOTRUE_JWT_EXP: 3600
+      GOTRUE_REFRESH_TOKEN_EXP: 2592000
+      GOTRUE_ENABLE_REFRESH_TOKEN_ROTATION: "true"
+      GOTRUE_ENABLE_REFRESH_TOKEN_REUSE: "false"
+      GOTRUE_PASSWORD_MIN_LENGTH: 6
+      GOTRUE_SECURITY_CAPTCHA_ENABLED: "false"
+      GOTRUE_SMTP_HOST: ${SMTP_HOST:-}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-587}
+      GOTRUE_SMTP_USER: ${SMTP_USER:-}
+      GOTRUE_SMTP_PASS: ${SMTP_PASSWORD:-}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${SMTP_FROM_ADMIN:-admin@local}
+      GOTRUE_SMTP_SENDER_NAME: ${SMTP_SENDER_NAME:-Apachiy}
+      GOTRUE_MAILER_AUTOCONFIRM: ${ENABLE_AUTOCONFIRM:-true}
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: "true"
+      GOTRUE_EXTERNAL_PHONE_ENABLED: "false"
+      GOTRUE_RATE_LIMIT_HEADER: "X-RateLimit-Limit"
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: 1000
+      API_EXTERNAL_URL: ${API_EXTERNAL_URL:-http://localhost:8000}
+      DATABASE_URL: postgres://${POSTGRES_USER:-supabase_admin}:${POSTGRES_PASSWORD:?required}@supabase-db:5432/${POSTGRES_DB:-postgres}
+      PORT: 9999
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: ${APACHIY_SUPABASE_AUTH_MEM:-512m}
+    cpus: ${APACHIY_SUPABASE_AUTH_CPUS:-0.5}
+
+  # ---------------------------------------------------------------------------
+  # PostgREST (REST API on top of Postgres)
+  # ---------------------------------------------------------------------------
+  supabase-rest:
+    image: postgrest/postgrest:v12.2.0
+    container_name: apachiy-supabase-rest
+    <<: *supabase-base
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      PGRST_DB_URI: postgres://${POSTGRES_USER:-supabase_admin}:${POSTGRES_PASSWORD:?required}@supabase-db:5432/${POSTGRES_DB:-postgres}
+      PGRST_DB_SCHEMAS: public,storage
+      PGRST_DB_ANON_ROLE: anon
+      PGRST_JWT_SECRET: ${JWT_SECRET:?required}
+      PGRST_OPENAPI_MODE: disabled
+      PGRST_DB_USE_LEGACY_GUCS: "false"
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET:?required}
+      PGRST_APP_SETTINGS_JWT_EXP: 3600
+
+  # ---------------------------------------------------------------------------
+  # Realtime (WebSocket subscriptions)
+  # ---------------------------------------------------------------------------
+  supabase-realtime:
+    image: supabase/realtime:v2.30.0
+    container_name: apachiy-supabase-realtime
+    <<: *supabase-base
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      PORT: 4000
+      DB_HOST: supabase-db
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-postgres}
+      DB_USER: ${POSTGRES_USER:-supabase_admin}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      DB_SSL: "false"
+      API_JWT_SECRET: ${JWT_SECRET:?required}
+      FLY_IO_NAME: apachiy-realtime
+      FLY_ALLOC_ID: local
+      FLY_APP_NAME: apachiy
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE:-VerYseCRet0000000000000000000000000000000000=}
+      ERL_AFLAGS: -proto_dist inet6_tcp
+      ENABLE_TAILWIND: "false"
+
+  # ---------------------------------------------------------------------------
+  # Postgres Meta (used by Studio for introspecting tables)
+  # ---------------------------------------------------------------------------
+  supabase-meta:
+    image: supabase/postgres-meta:v0.84.0
+    container_name: apachiy-supabase-meta
+    <<: *supabase-base
+    depends_on:
+      supabase-db:
+        condition: service_healthy
+    environment:
+      PG_META_DB_HOST: supabase-db
+      PG_META_DB_PORT: 5432
+      PG_META_DB_NAME: ${POSTGRES_DB:-postgres}
+      PG_META_DB_USER: ${POSTGRES_USER:-supabase_admin}
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:?required}
+
+  # ---------------------------------------------------------------------------
+  # Studio (web UI for managing the DB)
+  # ---------------------------------------------------------------------------
+  supabase-studio:
+    image: supabase/studio:20240812-43f4c84
+    container_name: apachiy-supabase-studio
+    restart: unless-stopped
+    environment:
+      STUDIO_PG_META_URL: http://supabase-meta:5001
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      DEFAULT_PROJECT: apachiy
+      SUPABASE_URL: http://supabase-kong:8000
+      SUPABASE_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-http://localhost:3001}
+      SUPABASE_ANON_KEY: ${ANON_KEY:?required}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY:?required}
+      AUTH_ENABLED: "true"
+      AUTH_SITE_URL: ${SITE_URL:-http://localhost:3000}
+      AUTH_EXTERNAL_GITHUB_ENABLED: "false"
+      AUTH_EXTERNAL_GITLAB_ENABLED: "false"
+      AUTH_EXTERNAL_BITBUCKET_ENABLED: "false"
+      AUTH_EXTERNAL_GOOGLE_ENABLED: "false"
+      AUTH_EXTERNAL_APPLE_ENABLED: "false"
+      AUTH_EXTERNAL_AZURE_ENABLED: "false"
+      AUTH_EXTERNAL_FACEBOOK_ENABLED: "false"
+      AUTH_EXTERNAL_KEYCLOAK_ENABLED: "false"
+      AUTH_EXTERNAL_LINKEDIN_ENABLED: "false"
+      AUTH_EXTERNAL_NOTION_ENABLED: "false"
+      AUTH_EXTERNAL_SPOTIFY_ENABLED: "false"
+      AUTH_EXTERNAL_SLACK_ENABLED: "false"
+      AUTH_EXTERNAL_TWITCH_ENABLED: "false"
+      AUTH_EXTERNAL_TWITTER_ENABLED: "false"
+      AUTH_EXTERNAL_DISCORD_ENABLED: "false"
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN:-apachiy-public-token}
+      LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN:-apachiy-private-token}
+      SENTRY_ENABLED: "false"
+      NEXT_PUBLIC_ANALYTICS_BACKEND_PROVIDER: postgres
+    ports:
+      - "${APACHIY_STUDIO_PORT:-3001}:3000"
+    networks:
+      - apachiy_net
+    mem_limit: ${APACHIY_SUPABASE_STUDIO_MEM:-512m}
+    cpus: ${APACHIY_SUPABASE_STUDIO_CPUS:-0.5}
+
+  # ---------------------------------------------------------------------------
+  # Edge Functions (Deno runtime for Supabase Functions like tv-logins-exchange)
+  # ---------------------------------------------------------------------------
+  supabase-edge-functions:
+    image: supabase/edge-runtime:v1.62.4
+    container_name: apachiy-supabase-functions
+    restart: unless-stopped
+    environment:
+      JWT_SECRET: ${JWT_SECRET:?required}
+      SUPABASE_URL: http://supabase-kong:8000
+      SUPABASE_ANON_KEY: ${ANON_KEY:?required}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY:?required}
+      SUPABASE_DB_URL: postgres://${POSTGRES_USER:-supabase_admin}:${POSTGRES_PASSWORD:?required}@supabase-db:5432/${POSTGRES_DB:-postgres}
+      VERIFY_JWT: "false"
+    volumes:
+      - ./volumes/functions:/home/deno/functions:ro
+    networks:
+      - apachiy_net
+    mem_limit: ${APACHIY_SUPABASE_FUNCTIONS_MEM:-256m}
+    cpus: ${APACHIY_SUPABASE_FUNCTIONS_CPUS:-0.25}
+
+  # ---------------------------------------------------------------------------
+  # Image transformation proxy (used by Storage for resize-on-the-fly)
+  # ---------------------------------------------------------------------------
+  supabase-imgproxy:
+    image: darthsim/imgproxy:v3.16
+    container_name: apachiy-supabase-imgproxy
+    restart: unless-stopped
+    volumes:
+      - ./volumes/storage/imgproxy:/tmp
+    environment:
+      IMGPROXY_BIND: ":5001"
+      IMGPROXY_LOCAL_FILESYSTEM_ROOT: /
+      IMGPROXY_USE_ETAG: "false"
+    networks:
+      - apachiy_net
+    mem_limit: ${APACHIY_SUPABASE_IMGPROXY_MEM:-256m}
+    cpus: ${APACHIY_SUPABASE_IMGPROXY_CPUS:-0.25}
+
+  # ---------------------------------------------------------------------------
+  # Analytics / logflare (logs from Auth + Storage + Realtime)
+  # ---------------------------------------------------------------------------
+  supabase-analytics:
+    image: supabase/logflare:1.4.0
+    container_name: apachiy-supabase-analytics
+    restart: unless-stopped
+    environment:
+      LOGFLARE_NODE_HOST: supabase-db
+      LOGFLARE_LOG_LEVEL: warn
+      LOGFLARE_API_HOST: 0.0.0.0:4000
+      LOGFLARE_PUBLIC_ACCESS_TOKEN: ${LOGFLARE_PUBLIC_ACCESS_TOKEN:-apachiy-public-token}
+      LOGFLARE_PRIVATE_ACCESS_TOKEN: ${LOGFLARE_PRIVATE_ACCESS_TOKEN:-apachiy-private-token}
+      LOGFLARE_DATABASE_HOST: supabase-db
+      LOGFLARE_DATABASE_NAME: ${POSTGRES_DB:-postgres}
+      LOGFLARE_DATABASE_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      LOGFLARE_DATABASE_PORT: 5432
+      LOGFLARE_DATABASE_USERNAME: ${POSTGRES_USER:-supabase_admin}
+      LOGFLARE_FEATURE_FLAG_OVERRIDE: "true"
+    networks:
+      - apachiy_net
+    mem_limit: ${APACHIY_SUPABASE_ANALYTICS_MEM:-256m}
+    cpus: ${APACHIY_SUPABASE_ANALYTICS_CPUS:-0.25}
+
+  # ---------------------------------------------------------------------------
+  # Vector (pgvector) - optional; enabled via env SUPABASE_VECTOR=on
+  # ---------------------------------------------------------------------------
+  supabase-vector:
+    image: timberio/vector:0.30.0-alpine
+    container_name: apachiy-supabase-vector
+    restart: unless-stopped
+    volumes:
+      - ./volumes/logs/vector.yml:/etc/vector/vector.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - apachiy_net
+    profiles: ["vector"]
+
+  # ---------------------------------------------------------------------------
+  # Kong API gateway (single public-facing entrypoint)
+  # ---------------------------------------------------------------------------
+  supabase-kong:
+    image: kong:2.8.1
+    container_name: apachiy-supabase-kong
+    restart: unless-stopped
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DNS_ORDER: LAST
+      KONG_DNS_RESOLVER: 127.0.0.11
+      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
+      KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
+      KONG_LISTEN: 0.0.0.0:8000,0.0.0.0:8443 ssl
+    volumes:
+      - ./volumes/api/kong.yml:/var/lib/kong/kong.yml:ro
+    ports:
+      - "${APACHIY_SUPABASE_KONG_PORT:-8000}:8000"
+      - "${APACHIY_SUPABASE_KONG_SSL_PORT:-8443}:8443"
+    networks:
+      - apachiy_net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    mem_limit: ${APACHIY_SUPABASE_KONG_MEM:-512m}
+    cpus: ${APACHIY_SUPABASE_KONG_CPUS:-0.5}
+
+networks:
+  apachiy_net:
+    name: apachiy_net
+
+volumes:
+  supabase-db-data:
+    name: apachiy-supabase-db-data
+  supabase-storage-data:
+    name: apachiy-supabase-storage-data

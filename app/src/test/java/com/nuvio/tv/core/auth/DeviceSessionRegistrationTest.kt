@@ -7,19 +7,19 @@ import org.junit.Test
 class DeviceSessionRegistrationTest {
 
     @Test
-    fun `builds official TV client registration payload`() {
+    fun `builds Apachiy TV client registration payload`() {
         val params = buildDeviceRegistrationParams(
-            installationId = "nuvio-tv-installation",
-            clientVersion = "0.7.20-beta",
+            installationId = "550e8400-e29b-41d4-a716-446655440000",
+            clientVersion = "0.8.6-beta",
             metadata = DeviceClientMetadata(
                 deviceName = "Living Room TV",
                 platform = "Android TV 14"
             )
         )
 
-        assertEquals("nuvio-tv-installation", params.getValue("p_installation_id").jsonPrimitive.content)
-        assertEquals("Nuvio TV", params.getValue("p_client_name").jsonPrimitive.content)
-        assertEquals("0.7.20-beta", params.getValue("p_client_version").jsonPrimitive.content)
+        assertEquals("550e8400-e29b-41d4-a716-446655440000", params.getValue("p_installation_id").jsonPrimitive.content)
+        assertEquals("Apachiy TV", params.getValue("p_client_name").jsonPrimitive.content)
+        assertEquals("0.8.6-beta", params.getValue("p_client_version").jsonPrimitive.content)
         assertEquals("Android TV 14", params.getValue("p_platform").jsonPrimitive.content)
         assertEquals("Living Room TV", params.getValue("p_device_name").jsonPrimitive.content)
     }
