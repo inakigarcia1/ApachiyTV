@@ -32,8 +32,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
     volumes:
       - supabase-db-data:/var/lib/postgresql/data
+      # Bootstrap SQL only. Schema migrations live in ../../supabase/migrations/
+      # and are applied by scripts/bootstrap-apachiy.sh (docker exec psql), not
+      # via a nested bind under initdb.d (Docker cannot mount a subdir inside :ro).
       - ./volumes/db/init:/docker-entrypoint-initdb.d:ro
-      - ../../supabase/migrations:/docker-entrypoint-initdb.d/migrations:ro
     networks:
       - apachiy_net
     healthcheck:
@@ -198,7 +200,7 @@ services:
   # Studio (web UI for managing the DB)
   # ---------------------------------------------------------------------------
   supabase-studio:
-    image: supabase/studio:20240812-43f4c84
+    image: supabase/studio:2026.08.17-sha-0c1da8f
     container_name: apachiy-supabase-studio
     restart: unless-stopped
     environment:
