@@ -2,7 +2,6 @@ package com.nuvio.tv.core.installation
 
 import android.content.Context
 import android.content.SharedPreferences
-import android.os.Build
 import android.util.Log
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.UUID
@@ -19,9 +18,9 @@ private val UUID_V4_REGEX = Regex(
 /**
  * Generates, persists, and returns a stable per-installation UUID v4.
  *
- * Storage: [PREFS_NAME] SharedPreferences with [Context.MODE_PRIVATE] and an
- * explicit [SharedPreferences.disableAutoBackup] call (API 24+) so the value is
- * NEVER restored after uninstall. A re-install therefore always starts fresh.
+ * Storage: [PREFS_NAME] SharedPreferences with [Context.MODE_PRIVATE].
+ * The app manifest sets `android:allowBackup="false"`, so this value is not
+ * restored after uninstall. A re-install therefore always starts fresh.
  *
  * The first call generates a UUID v4 from [UUID.randomUUID]. A corrupted or
  * legacy non-UUID value in storage is replaced with a fresh one (the previous
@@ -34,17 +33,7 @@ class InstallationIdManager @Inject constructor(
 ) : InstallationIdProvider {
 
     private val prefs: SharedPreferences by lazy {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).also { sp ->
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-                try {
-                    sp.disableAutoBackup()
-                } catch (e: Throwable) {
-                    // Best-effort: do not fail startup if the system rejects
-                    // the call (e.g. some vendor ROMs without the API).
-                    Log.w(TAG, "disableAutoBackup failed: ${e.message}")
-                }
-            }
-        }
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
 
     @Synchronized

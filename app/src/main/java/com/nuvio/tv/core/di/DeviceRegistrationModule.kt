@@ -2,18 +2,18 @@ package com.nuvio.tv.core.di
 
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.data.remote.device.ApachiyDeviceApi
-import com.nuvio.tv.data.remote.device.DeviceRegistrar
+import com.nuvio.tv.core.installation.InstallationIdManager
+import com.nuvio.tv.core.installation.InstallationIdProvider
 import com.squareup.moshi.Moshi
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.Auth
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import javax.inject.Named
 import javax.inject.Singleton
 import java.util.concurrent.TimeUnit
 
@@ -30,6 +30,7 @@ object DeviceRegistrationModule {
 
     @Provides
     @Singleton
+    @Named("apachiy")
     fun provideApachiyOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
@@ -41,7 +42,11 @@ object DeviceRegistrationModule {
 
     @Provides
     @Singleton
-    fun provideApachiyRetrofit(client: OkHttpClient, moshi: Moshi): Retrofit {
+    @Named("apachiy")
+    fun provideApachiyRetrofit(
+        @Named("apachiy") client: OkHttpClient,
+        moshi: Moshi
+    ): Retrofit {
         val base = BuildConfig.APACHIY_API_BASE_URL.trim().trimEnd('/')
         require(base.isNotBlank()) {
             "APACHIY_API_BASE_URL is empty. Set it in local.properties before building the APK."
@@ -55,30 +60,19 @@ object DeviceRegistrationModule {
 
     @Provides
     @Singleton
-    fun provideApachiyDeviceApi(retrofit: Retrofit): ApachiyDeviceApi =
+    fun provideApachiyDeviceApi(@Named("apachiy") retrofit: Retrofit): ApachiyDeviceApi =
         retrofit.create(ApachiyDeviceApi::class.java)
 
     @Provides
     @Singleton
+    fun provideInstallationIdProvider(manager: InstallationIdManager): InstallationIdProvider = manager
+
+    @Provides
+    @Singleton
+    @Named("apachiy")
     fun provideApachiyJson(): Json = Json {
         ignoreUnknownKeys = true
         encodeDefaults = true
         explicitNulls = false
     }
-
-    @Provides
-    @Singleton
-    fun provideDeviceRegistrar(
-        authManager: com.nuvio.tv.core.auth.AuthManager,
-        supabaseAuth: Auth,
-        installationIdProvider: com.nuvio.tv.core.installation.InstallationIdProvider,
-        apachiyDeviceApi: ApachiyDeviceApi,
-        json: Json
-    ): DeviceRegistrar = DeviceRegistrar(
-        authManager = authManager,
-        supabaseAuth = supabaseAuth,
-        installationIdProvider = installationIdProvider,
-        apachiyDeviceApi = apachiyDeviceApi,
-        json = json
-    )
 }

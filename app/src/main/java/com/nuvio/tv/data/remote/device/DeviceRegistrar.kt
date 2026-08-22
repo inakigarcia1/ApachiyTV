@@ -4,7 +4,7 @@ import android.os.Build
 import android.util.Log
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.core.auth.AuthManager
-import com.nuvio.tv.core.auth.AuthState
+import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.core.installation.InstallationIdProvider
 import com.nuvio.tv.data.remote.device.dto.DeviceRegistrationError
 import com.nuvio.tv.data.remote.device.dto.DeviceRegistrationRequest
@@ -23,6 +23,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import javax.inject.Inject
+import javax.inject.Named
 import javax.inject.Singleton
 
 private const val TAG = "ApachiyDeviceRegistrar"
@@ -50,7 +51,7 @@ class DeviceRegistrar @Inject constructor(
     private val supabaseAuth: Auth,
     private val installationIdProvider: InstallationIdProvider,
     private val apachiyDeviceApi: ApachiyDeviceApi,
-    private val json: Json
+    @Named("apachiy") private val json: Json
 ) {
     @Suppress("unused")
     private val authRef: Auth = supabaseAuth  // keep an explicit dep for clarity

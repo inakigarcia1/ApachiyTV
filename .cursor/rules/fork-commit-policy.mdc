@@ -1,0 +1,17 @@
+---
+description: Commit and push policy for Inaki's fork repos; never commit secrets
+alwaysApply: true
+---
+
+# Fork repos — commit, push, and secrets
+
+When working on Inaki's forks (e.g. Apachiy-NuvioFork / ApachiyTV):
+
+1. **Always commit and push** after making intentional code changes, unless the user explicitly says not to.
+2. **Never commit or push sensitive data**, including:
+   - `local.properties`, `local.dev.properties`
+   - `*.jks`, `keystore/`, `release.keystore.properties`
+   - `infra/supabase/.env`, API keys, tokens, passwords, DSNs
+   - Any file with real credentials or machine-specific secrets
+3. Before every commit, verify with `git status` and `git diff` that only safe files are staged.
+4. If a change requires local-only config, document it in `local.example.properties` or README — not in committed secrets files.
