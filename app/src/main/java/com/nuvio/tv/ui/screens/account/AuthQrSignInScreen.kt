@@ -79,6 +79,11 @@ private val AuthPaneBorder = Color.White.copy(alpha = 0.07f)
 private val AuthSecondaryButtonBackground = Color.White.copy(alpha = 0.05f)
 private val AuthSecondaryButtonBorder = Color.White.copy(alpha = 0.09f)
 
+private enum class AuthPanelMode {
+    EMAIL,
+    QR
+}
+
 @Composable
 fun AuthQrSignInScreen(
     onBackPress: () -> Unit = {},
@@ -89,8 +94,9 @@ fun AuthQrSignInScreen(
     val fullAccount = uiState.authState as? AuthState.FullAccount
     val isSignedIn = fullAccount != null
     val isOnboardingMode = onContinue != null
-    val useEmailLogin = viewModel.usesEmailPasswordLogin
-    val useQrLogin = !useEmailLogin
+    var authPanelMode by rememberSaveable { mutableStateOf(AuthPanelMode.EMAIL) }
+    val showEmailPanel = viewModel.usesEmailPasswordLogin && authPanelMode == AuthPanelMode.EMAIL
+    val showQrPanel = viewModel.usesQrLogin && authPanelMode == AuthPanelMode.QR
     val isApproved = remember(uiState.qrLoginStatus) {
         uiState.qrLoginStatus?.contains("approved", ignoreCase = true) == true
     }
@@ -128,9 +134,9 @@ fun AuthQrSignInScreen(
         }
     }
 
-    LaunchedEffect(uiState.authState, isSignedIn, uiState.qrLoginCode, uiState.isLoading, uiState.error, exitRequested) {
+    LaunchedEffect(uiState.authState, isSignedIn, uiState.qrLoginCode, uiState.isLoading, uiState.error, exitRequested, showQrPanel) {
         if (
-            useQrLogin &&
+            showQrPanel &&
             !exitRequested &&
             uiState.authState !is AuthState.Loading &&
             !isSignedIn &&
@@ -142,14 +148,14 @@ fun AuthQrSignInScreen(
         }
     }
 
-    LaunchedEffect(isSignedIn) {
-        if (useQrLogin && isSignedIn && !uiState.qrLoginCode.isNullOrBlank()) {
+    LaunchedEffect(isSignedIn, showQrPanel) {
+        if (showQrPanel && isSignedIn && !uiState.qrLoginCode.isNullOrBlank()) {
             viewModel.clearQrLoginSession()
         }
     }
 
-    LaunchedEffect(isApproved, uiState.isLoading) {
-        if (useQrLogin && isApproved && !uiState.isLoading) {
+    LaunchedEffect(isApproved, uiState.isLoading, showQrPanel) {
+        if (showQrPanel && isApproved && !uiState.isLoading) {
             viewModel.exchangeQrLogin()
         }
     }
@@ -189,7 +195,7 @@ fun AuthQrSignInScreen(
                     .padding(start = 56.dp, end = 56.dp),
                 isSignedIn = isSignedIn,
                 fullAccount = fullAccount,
-                useEmailLogin = useEmailLogin
+                showEmailPanel = showEmailPanel
             )
 
             AuthQrLoginPane(
@@ -208,9 +214,21 @@ fun AuthQrSignInScreen(
                 uiState = uiState,
                 isSignedIn = isSignedIn,
                 isOnboardingMode = isOnboardingMode,
-                useEmailLogin = useEmailLogin,
+                showEmailPanel = showEmailPanel,
+                showQrPanel = showQrPanel,
+                canSwitchToQr = viewModel.usesQrLogin && !isSignedIn,
+                canSwitchToEmail = viewModel.usesEmailPasswordLogin && !isSignedIn,
                 remainingMillis = remainingMillis,
                 onSignIn = viewModel::signIn,
+                onSignUp = viewModel::signUp,
+                onSwitchToQr = {
+                    viewModel.clearQrLoginSession()
+                    authPanelMode = AuthPanelMode.QR
+                },
+                onSwitchToEmail = {
+                    viewModel.clearQrLoginSession()
+                    authPanelMode = AuthPanelMode.EMAIL
+                },
                 onRefreshOrSignOut = {
                     if (isSignedIn) {
                         showSignOutConfirmation = true
@@ -259,7 +277,7 @@ private fun AuthQrBrandPanel(
     modifier: Modifier,
     isSignedIn: Boolean,
     fullAccount: AuthState.FullAccount?,
-    useEmailLogin: Boolean
+    showEmailPanel: Boolean
 ) {
     Column(
         modifier = modifier,
@@ -287,8 +305,8 @@ private fun AuthQrBrandPanel(
         Text(
             text = if (isSignedIn) {
                 stringResource(R.string.auth_qr_connected)
-            } else if (useEmailLogin) {
-                stringResource(R.string.auth_email_hint)
+            } else if (showEmailPanel) {
+                stringResource(R.string.auth_email_hint_tv)
             } else {
                 stringResource(R.string.auth_qr_phone_hint)
             },
@@ -323,14 +341,20 @@ private fun AuthQrLoginPane(
     uiState: AccountUiState,
     isSignedIn: Boolean,
     isOnboardingMode: Boolean,
-    useEmailLogin: Boolean,
+    showEmailPanel: Boolean,
+    showQrPanel: Boolean,
+    canSwitchToQr: Boolean,
+    canSwitchToEmail: Boolean,
     remainingMillis: Long,
     onSignIn: (String, String) -> Unit,
+    onSignUp: (String, String) -> Unit,
+    onSwitchToQr: () -> Unit,
+    onSwitchToEmail: () -> Unit,
     onRefreshOrSignOut: () -> Unit,
     onBackOrContinue: () -> Unit,
     initialFocusRequester: FocusRequester
 ) {
-    val focusEmail = useEmailLogin && !isSignedIn
+    val focusEmail = showEmailPanel && !isSignedIn
     val focusMainAction = !focusEmail && !uiState.isLoading
     Column(
         modifier = modifier.padding(horizontal = 48.dp),
@@ -350,7 +374,7 @@ private fun AuthQrLoginPane(
         Text(
             text = if (isSignedIn) {
                 stringResource(R.string.auth_qr_synced_data)
-            } else if (useEmailLogin) {
+            } else if (showEmailPanel) {
                 stringResource(R.string.auth_email_instruction)
             } else {
                 stringResource(R.string.auth_qr_scan_instruction)
@@ -375,14 +399,46 @@ private fun AuthQrLoginPane(
                 containerColor = AuthSecondaryButtonBackground,
                 contentColor = AuthTextSecondary
             )
-        } else if (useEmailLogin) {
+        } else if (showEmailPanel) {
             AuthEmailLoginForm(
                 uiState = uiState,
                 onSignIn = onSignIn,
+                onSignUp = onSignUp,
                 initialFocusRequester = initialFocusRequester
             )
-        } else {
+        } else if (showQrPanel) {
             AuthQrCodeBlock(uiState = uiState, remainingMillis = remainingMillis)
+        }
+
+        if (!isSignedIn && showEmailPanel && canSwitchToQr) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                text = stringResource(R.string.auth_use_qr_code),
+                modifier = Modifier
+                    .clickable(onClick = onSwitchToQr)
+                    .padding(vertical = 4.dp),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = AuthTextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                textAlign = TextAlign.Center
+            )
+        }
+        if (!isSignedIn && showQrPanel && canSwitchToEmail) {
+            Spacer(modifier = Modifier.height(14.dp))
+            Text(
+                text = stringResource(R.string.auth_use_email_password),
+                modifier = Modifier
+                    .clickable(onClick = onSwitchToEmail)
+                    .padding(vertical = 4.dp),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = AuthTextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium
+                ),
+                textAlign = TextAlign.Center
+            )
         }
 
         Spacer(modifier = Modifier.height(28.dp))
@@ -390,7 +446,7 @@ private fun AuthQrLoginPane(
             horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (isSignedIn || !useEmailLogin) {
+            if (isSignedIn || showQrPanel) {
                 Button(
                     onClick = onRefreshOrSignOut,
                     enabled = !uiState.isLoading,
@@ -454,14 +510,32 @@ private fun AuthQrLoginPane(
 private fun AuthEmailLoginForm(
     uiState: AccountUiState,
     onSignIn: (String, String) -> Unit,
+    onSignUp: (String, String) -> Unit,
     initialFocusRequester: FocusRequester
 ) {
     var email by rememberSaveable { mutableStateOf("") }
     var password by rememberSaveable { mutableStateOf("") }
-    val canSignIn = email.isNotBlank() && password.isNotBlank() && !uiState.isLoading
-    val submit = {
-        if (canSignIn) {
-            onSignIn(email.trim(), password)
+    var confirmPassword by rememberSaveable { mutableStateOf("") }
+    var isRegisterMode by rememberSaveable { mutableStateOf(false) }
+  var localError by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val passwordMismatch = isRegisterMode &&
+        confirmPassword.isNotBlank() &&
+        password != confirmPassword
+    val passwordTooShort = isRegisterMode && password.isNotBlank() && password.length < 8
+    val canSubmit = email.isNotBlank() &&
+        password.isNotBlank() &&
+        !uiState.isLoading &&
+        (!isRegisterMode || (confirmPassword.isNotBlank() && !passwordMismatch && !passwordTooShort))
+
+    val submit: () -> Unit = {
+        if (canSubmit) {
+            localError = null
+            if (isRegisterMode) {
+                onSignUp(email.trim(), password)
+            } else {
+                onSignIn(email.trim(), password)
+            }
         }
     }
 
@@ -469,6 +543,20 @@ private fun AuthEmailLoginForm(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
     ) {
+        Text(
+            text = if (isRegisterMode) {
+                stringResource(R.string.auth_email_register_instruction)
+            } else {
+                stringResource(R.string.auth_email_instruction)
+            },
+            style = MaterialTheme.typography.bodySmall.copy(
+                color = AuthTextSecondary,
+                fontSize = 14.sp,
+                lineHeight = 20.sp
+            ),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth()
+        )
         InputField(
             value = email,
             onValueChange = { email = it },
@@ -483,12 +571,23 @@ private fun AuthEmailLoginForm(
             placeholder = stringResource(R.string.auth_password_placeholder),
             keyboardType = KeyboardType.Password,
             isPassword = true,
-            imeAction = ImeAction.Done,
-            onImeAction = submit
+            imeAction = if (isRegisterMode) ImeAction.Next else ImeAction.Done,
+            onImeAction = { if (!isRegisterMode) submit() }
         )
+        if (isRegisterMode) {
+            InputField(
+                value = confirmPassword,
+                onValueChange = { confirmPassword = it },
+                placeholder = stringResource(R.string.auth_password_confirm_placeholder),
+                keyboardType = KeyboardType.Password,
+                isPassword = true,
+                imeAction = ImeAction.Done,
+                onImeAction = submit
+            )
+        }
         Button(
             onClick = submit,
-            enabled = canSignIn,
+            enabled = canSubmit,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.colors(
                 containerColor = Color.White,
@@ -507,23 +606,68 @@ private fun AuthEmailLoginForm(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = if (uiState.isLoading) {
-                        stringResource(R.string.auth_email_signing_in)
-                    } else {
-                        stringResource(R.string.auth_email_sign_in)
+                    text = when {
+                        uiState.isLoading && isRegisterMode -> stringResource(R.string.auth_email_signing_up)
+                        uiState.isLoading -> stringResource(R.string.auth_email_signing_in)
+                        isRegisterMode -> stringResource(R.string.auth_email_create_account)
+                        else -> stringResource(R.string.auth_email_sign_in)
                     },
                     fontWeight = FontWeight.SemiBold,
                     textAlign = TextAlign.Center
                 )
             }
         }
+        Text(
+            text = if (isRegisterMode) {
+                stringResource(R.string.auth_switch_to_sign_in)
+            } else {
+                stringResource(R.string.auth_switch_to_register)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !uiState.isLoading) {
+                    isRegisterMode = !isRegisterMode
+                    confirmPassword = ""
+                    localError = null
+                }
+                .padding(vertical = 4.dp),
+            style = MaterialTheme.typography.bodyMedium.copy(
+                color = AuthTextPrimary,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Medium
+            ),
+            textAlign = TextAlign.Center
+        )
         AuthTermsAcknowledgement()
-        uiState.error?.takeIf { it.isNotBlank() }?.let { error ->
-            StatusPill(
-                text = error,
-                containerColor = Color(0x33C62828),
-                contentColor = Color(0xFFFF6E6E)
-            )
+        when {
+            passwordMismatch -> {
+                StatusPill(
+                    text = stringResource(R.string.auth_password_mismatch),
+                    containerColor = Color(0x33C62828),
+                    contentColor = Color(0xFFFF6E6E)
+                )
+            }
+            passwordTooShort -> {
+                StatusPill(
+                    text = stringResource(R.string.account_error_password_too_short),
+                    containerColor = Color(0x33C62828),
+                    contentColor = Color(0xFFFF6E6E)
+                )
+            }
+            localError != null -> {
+                StatusPill(
+                    text = localError!!,
+                    containerColor = Color(0x33C62828),
+                    contentColor = Color(0xFFFF6E6E)
+                )
+            }
+            uiState.error?.takeIf { it.isNotBlank() } != null -> {
+                StatusPill(
+                    text = uiState.error!!,
+                    containerColor = Color(0x33C62828),
+                    contentColor = Color(0xFFFF6E6E)
+                )
+            }
         }
     }
 }

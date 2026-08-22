@@ -1891,6 +1891,17 @@
     <string name="auth_password_placeholder">Password</string>
     <string name="auth_email_sign_in">Sign In</string>
     <string name="auth_email_signing_in">Signing in\u2026</string>
+    <string name="auth_email_create_account">Create account</string>
+    <string name="auth_email_signing_up">Creating account\u2026</string>
+    <string name="auth_email_register_instruction">Enter your email and password to create your Apachiy account.</string>
+    <string name="auth_password_confirm_placeholder">Confirm password</string>
+    <string name="auth_password_mismatch">Passwords do not match.</string>
+    <string name="auth_switch_to_register">Create an account</string>
+    <string name="auth_switch_to_sign_in">Already have an account? Sign in</string>
+    <string name="auth_use_qr_code">Use QR code instead</string>
+    <string name="auth_use_email_password">Use email and password</string>
+    <string name="auth_email_hint_tv">Sign in or create your account with email and password on this TV.</string>
+    <string name="account_error_api_provision_failed">Signed in, but linking your Apachiy account failed. Try signing in again.</string>
     <string name="server_options_content_description">Server options</string>
     <string name="server_options_connect_custom">Connect to custom server</string>
     <string name="server_options_change_custom">Connect to another server</string>

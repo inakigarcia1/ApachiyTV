@@ -33,7 +33,7 @@ psql "postgres://supabase_admin:$POSTGRES_PASSWORD@localhost:5432/postgres" \
 | `supabase-storage` | 5000 (internal) | S3-like storage (avatars bucket) |
 | `supabase-realtime` | 4000 (internal) | WebSocket subscriptions |
 | `supabase-edge-functions` | 9000 (internal) | Deno functions (tv-logins-exchange) |
-| `supabase-meta` | 5001 (internal) | Postgres metadata for Studio |
+| `supabase-meta` | 8080 (internal) | Postgres metadata for Studio |
 | `supabase-imgproxy` | 5001 (internal) | On-the-fly image resizer |
 | `supabase-analytics` | 4000 (internal) | Logflare for log shipping |
 | `supabase-db` | 5432 (internal) | Postgres 15 |

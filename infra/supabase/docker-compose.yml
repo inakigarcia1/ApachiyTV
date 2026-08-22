@@ -37,7 +37,10 @@ services:
       # via a nested bind under initdb.d (Docker cannot mount a subdir inside :ro).
       - ./volumes/db/init:/docker-entrypoint-initdb.d:ro
     networks:
-      - apachiy_net
+      apachiy_net:
+        aliases:
+          - db
+          - supabase-db
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-supabase_admin} -d ${POSTGRES_DB:-postgres}"]
       interval: 10s
@@ -109,6 +112,8 @@ services:
       GOTRUE_DISABLE_SIGNUP: "false"
       GOTRUE_JWT_SECRET: ${JWT_SECRET:?required}
       GOTRUE_JWT_AUD: authenticated
+      # Access tokens must include `iss` so the Apachiy .NET API can validate them.
+      GOTRUE_JWT_ISSUER: ${GOTRUE_JWT_ISSUER:-${API_EXTERNAL_URL:-http://localhost:8000}/auth/v1}
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_EXP: 3600
       GOTRUE_REFRESH_TOKEN_EXP: 2592000
@@ -209,8 +214,9 @@ services:
       supabase-db:
         condition: service_healthy
     environment:
-      PG_META_DB_HOST: supabase-db
-      PG_META_DB_PORT: 5432
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: ${POSTGRES_HOST:-db}
+      PG_META_DB_PORT: ${POSTGRES_PORT:-5432}
       PG_META_DB_NAME: ${POSTGRES_DB:-postgres}
       PG_META_DB_USER: ${POSTGRES_USER:-supabase_admin}
       PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:?required}
@@ -234,7 +240,10 @@ services:
       start_period: 30s
     environment:
       HOSTNAME: "0.0.0.0"
-      STUDIO_PG_META_URL: http://supabase-meta:5001
+      STUDIO_PG_META_URL: http://supabase-meta:8080
+      POSTGRES_HOST: ${POSTGRES_HOST:-db}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
       DEFAULT_PROJECT: apachiy
       SUPABASE_URL: http://supabase-kong:8000

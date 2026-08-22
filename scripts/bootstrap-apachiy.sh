@@ -81,6 +81,24 @@ if compgen -G "$MIG_DIR/*.sql" >/dev/null; then
            psql -U supabase_admin -d postgres -c \
            "INSERT INTO public._apachiy_migrations(name) VALUES ('$(basename "$m")') ON CONFLICT DO NOTHING;" >/dev/null
   done
+  docker exec apachiy-supabase-db \
+    psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
+    -c "INSERT INTO auth.schema_migrations (version) SELECT version FROM public.schema_migrations WHERE version NOT IN (SELECT version FROM auth.schema_migrations);" >/dev/null
+  docker exec apachiy-supabase-db \
+    psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
+    -c "ALTER ROLE supabase_admin SET search_path TO auth, public, extensions;" >/dev/null
+  if [ -f "$ROOT_DIR/../Apachiy/.env" ]; then
+    JWT_SECRET=$(grep -E '^JWT_SECRET=' "$ENV_FILE" | cut -d= -f2- | tr -d '\r')
+    if [ -n "$JWT_SECRET" ]; then
+      APACHIY_ENV="$ROOT_DIR/../Apachiy/.env"
+      if grep -q '^APACHIY_SUPABASE_JWT_SECRET=' "$APACHIY_ENV"; then
+        sed -i "s|^APACHIY_SUPABASE_JWT_SECRET=.*|APACHIY_SUPABASE_JWT_SECRET=$JWT_SECRET|" "$APACHIY_ENV"
+      else
+        echo "APACHIY_SUPABASE_JWT_SECRET=$JWT_SECRET" >> "$APACHIY_ENV"
+      fi
+      ok "synced APACHIY_SUPABASE_JWT_SECRET into Apachiy/.env"
+    fi
+  fi
   ok "migrations applied"
 else
   echo "  [SKIP] no migration files in $MIG_DIR"

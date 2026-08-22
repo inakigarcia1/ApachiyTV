@@ -1861,6 +1861,17 @@
     <string name="auth_password_placeholder">Contraseña</string>
     <string name="auth_email_sign_in">Iniciar sesión</string>
     <string name="auth_email_signing_in">Iniciando sesión…</string>
+    <string name="auth_email_create_account">Crear cuenta</string>
+    <string name="auth_email_signing_up">Creando cuenta…</string>
+    <string name="auth_email_register_instruction">Ingresa tu correo electrónico y contraseña para crear tu cuenta Apachiy.</string>
+    <string name="auth_password_confirm_placeholder">Confirmar contraseña</string>
+    <string name="auth_password_mismatch">Las contraseñas no coinciden.</string>
+    <string name="auth_switch_to_register">Crear una cuenta</string>
+    <string name="auth_switch_to_sign_in">¿Ya tienes cuenta? Inicia sesión</string>
+    <string name="auth_use_qr_code">Usar código QR</string>
+    <string name="auth_use_email_password">Usar correo y contraseña</string>
+    <string name="auth_email_hint_tv">Inicia sesión o crea tu cuenta con correo y contraseña en este TV.</string>
+    <string name="account_error_api_provision_failed">Sesión iniciada, pero no se pudo vincular tu cuenta Apachiy. Intenta iniciar sesión de nuevo.</string>
     
     <string name="auth_qr_title">Iniciar Sesión con QR</string>
     <string name="auth_qr_tagline">Disfruta tu biblioteca en cualquier lugar</string>

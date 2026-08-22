@@ -760,6 +760,23 @@
     <string name="auth_signin_title">Iniciar sesión</string>
     <string name="auth_signin_tv_disabled">La entrada de correo electrónico/contraseña en TV está deshabilitada. Continúa con el inicio de sesión QR.</string>
     <string name="auth_signin_qr_btn">Continuar con QR</string>
+    <string name="auth_email_hint">Inicia sesión o crea tu cuenta con correo y contraseña en esta TV.</string>
+    <string name="auth_email_instruction">Ingresa tu correo y contraseña para continuar.</string>
+    <string name="auth_email_placeholder">Correo electrónico</string>
+    <string name="auth_password_placeholder">Contraseña</string>
+    <string name="auth_email_sign_in">Iniciar sesión</string>
+    <string name="auth_email_signing_in">Iniciando sesión\u2026</string>
+    <string name="auth_email_create_account">Crear cuenta</string>
+    <string name="auth_email_signing_up">Creando cuenta\u2026</string>
+    <string name="auth_email_register_instruction">Ingresa tu correo y contraseña para crear tu cuenta Apachiy.</string>
+    <string name="auth_password_confirm_placeholder">Confirmar contraseña</string>
+    <string name="auth_password_mismatch">Las contraseñas no coinciden.</string>
+    <string name="auth_switch_to_register">Crear una cuenta</string>
+    <string name="auth_switch_to_sign_in">¿Ya tienes cuenta? Inicia sesión</string>
+    <string name="auth_use_qr_code">Usar código QR</string>
+    <string name="auth_use_email_password">Usar correo y contraseña</string>
+    <string name="auth_email_hint_tv">Inicia sesión o crea tu cuenta con correo y contraseña en esta TV.</string>
+    <string name="account_error_api_provision_failed">Sesión iniciada, pero no se pudo vincular tu cuenta Apachiy. Intenta iniciar sesión de nuevo.</string>
 
     <!-- AuthQrSignInScreen -->
     <string name="auth_qr_title">Iniciar sesión con QR</string>

@@ -43,6 +43,25 @@ GRANT USAGE ON SCHEMA extensions                TO anon, authenticated, service_
 GRANT USAGE ON SCHEMA storage                   TO anon, authenticated, service_role;
 GRANT USAGE ON SCHEMA auth                      TO anon, authenticated, service_role;
 
+-- GoTrue queries auth.users / auth.identities without schema qualifiers; the DB
+-- role must include auth in search_path (see gotrue error "relation identities does not exist").
+-- Migration versions must live in auth.schema_migrations when search_path starts with auth.
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_name = 'schema_migrations'
+  ) THEN
+    INSERT INTO auth.schema_migrations (version)
+    SELECT version
+    FROM public.schema_migrations
+    WHERE version NOT IN (SELECT version FROM auth.schema_migrations);
+  END IF;
+END $$;
+
+ALTER ROLE supabase_admin SET search_path TO auth, public, extensions;
+
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
