@@ -12,9 +12,10 @@ CREATE TABLE IF NOT EXISTS public.watched_items (
     season          INTEGER,
     episode         INTEGER,
     watched_at      BIGINT NOT NULL,
-    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    UNIQUE (user_id, profile_id, content_id, content_type, COALESCE(season, -1), COALESCE(episode, -1))
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE UNIQUE INDEX IF NOT EXISTS idx_watched_items_unique
+    ON public.watched_items (user_id, profile_id, content_id, content_type, COALESCE(season, -1), COALESCE(episode, -1));
 CREATE INDEX IF NOT EXISTS idx_watched_items_user_profile ON public.watched_items(user_id, profile_id);
 
 CREATE TABLE IF NOT EXISTS public.watched_items_events (

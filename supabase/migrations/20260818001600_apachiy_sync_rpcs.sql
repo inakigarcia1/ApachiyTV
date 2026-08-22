@@ -85,11 +85,15 @@ GRANT EXECUTE ON FUNCTION public.sync_push_watch_progress(BIGINT, JSONB) TO auth
 
 CREATE OR REPLACE FUNCTION public.sync_delete_watch_progress(p_progress_key TEXT)
 RETURNS BOOLEAN
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-    DELETE FROM public.watch_progress WHERE user_id = auth.uid() AND progress_key = p_progress_key;
+BEGIN
+    DELETE FROM public.watch_progress
+        WHERE user_id = auth.uid() AND progress_key = p_progress_key;
+    RETURN FOUND;
+END;
 $$;
 GRANT EXECUTE ON FUNCTION public.sync_delete_watch_progress(TEXT) TO authenticated;
 
@@ -177,16 +181,19 @@ CREATE OR REPLACE FUNCTION public.sync_delete_watched_items(
     p_season       INTEGER DEFAULT NULL,
     p_episode      INTEGER DEFAULT NULL
 ) RETURNS BOOLEAN
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+BEGIN
     DELETE FROM public.watched_items
         WHERE user_id = auth.uid()
           AND content_id = p_content_id
           AND content_type = p_content_type
           AND COALESCE(season, -1) = COALESCE(p_season, -1)
           AND COALESCE(episode, -1) = COALESCE(p_episode, -1);
+    RETURN FOUND;
+END;
 $$;
 GRANT EXECUTE ON FUNCTION public.sync_delete_watched_items(TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
 
@@ -260,16 +267,19 @@ CREATE OR REPLACE FUNCTION public.sync_delete_library_items(
     p_content_type TEXT,
     p_kind         TEXT
 ) RETURNS BOOLEAN
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+BEGIN
     DELETE FROM public.library
         WHERE user_id = auth.uid()
           AND profile_id = p_profile_id
           AND content_id = p_content_id
           AND content_type = p_content_type
           AND kind = p_kind;
+    RETURN FOUND;
+END;
 $$;
 GRANT EXECUTE ON FUNCTION public.sync_delete_library_items(BIGINT, TEXT, TEXT, TEXT) TO authenticated;
 
@@ -336,6 +346,7 @@ AS $$
         VALUES (auth.uid(), p_profile_id, p_collections, NOW())
         ON CONFLICT (user_id, profile_id) DO UPDATE
             SET collections_json = EXCLUDED.collections_json, updated_at = NOW();
+    SELECT true;
 $$;
 GRANT EXECUTE ON FUNCTION public.sync_push_collections(BIGINT, JSONB) TO authenticated;
 
@@ -362,6 +373,7 @@ AS $$
         VALUES (auth.uid(), p_profile_id, p_blob, NOW())
         ON CONFLICT (user_id, profile_id) DO UPDATE
             SET settings_json = EXCLUDED.settings_json, updated_at = NOW();
+    SELECT true;
 $$;
 GRANT EXECUTE ON FUNCTION public.sync_push_profile_settings_blob(BIGINT, JSONB) TO authenticated;
 
@@ -387,6 +399,7 @@ AS $$
         VALUES (auth.uid(), p_profile_id, p_blob, NOW())
         ON CONFLICT (user_id, profile_id) DO UPDATE
             SET settings_json = EXCLUDED.settings_json, updated_at = NOW();
+    SELECT true;
 $$;
 GRANT EXECUTE ON FUNCTION public.sync_push_home_catalog_settings(BIGINT, JSONB) TO authenticated;
 
@@ -441,11 +454,14 @@ GRANT EXECUTE ON FUNCTION public.sync_pull_profiles() TO authenticated;
 
 CREATE OR REPLACE FUNCTION public.sync_delete_profile_data(p_profile_id BIGINT)
 RETURNS BOOLEAN
-LANGUAGE sql
+LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = public
 AS $$
+BEGIN
     DELETE FROM public.profiles WHERE user_id = auth.uid() AND id = p_profile_id;
+    RETURN FOUND;
+END;
 $$;
 GRANT EXECUTE ON FUNCTION public.sync_delete_profile_data(BIGINT) TO authenticated;
 
@@ -485,6 +501,7 @@ AS $$
         VALUES (auth.uid(), p_provider, p_credential, NOW())
         ON CONFLICT (user_id, provider) DO UPDATE
             SET credential_json = EXCLUDED.credential_json, updated_at = NOW();
+    SELECT true;
 $$;
 GRANT EXECUTE ON FUNCTION public.sync_push_provider_credentials(TEXT, JSONB) TO authenticated;
 

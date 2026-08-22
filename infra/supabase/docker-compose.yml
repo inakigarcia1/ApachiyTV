@@ -76,7 +76,7 @@ services:
     volumes:
       - supabase-storage-data:/var/lib/storage
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:5000/status"]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://127.0.0.1:5000/status',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))\""]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -95,6 +95,10 @@ services:
       supabase-db:
         condition: service_healthy
     environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: 9999
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://${POSTGRES_USER:-supabase_admin}:${POSTGRES_PASSWORD:?required}@supabase-db:5432/${POSTGRES_DB:-postgres}
       GOTRUE_TRUSTED_GOOGLE_ID_TOKEN_AUDIENCES: ""
       GOTRUE_TRUSTED_APPLE_ID_TOKEN_AUDIENCES: ""
       GOTRUE_TRUSTED_EXTERNAL_GOOGLE_ID_TOKEN_AUDIENCES: ""
@@ -104,6 +108,8 @@ services:
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-http://localhost:3000}
       GOTRUE_DISABLE_SIGNUP: "false"
       GOTRUE_JWT_SECRET: ${JWT_SECRET:?required}
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_EXP: 3600
       GOTRUE_REFRESH_TOKEN_EXP: 2592000
       GOTRUE_ENABLE_REFRESH_TOKEN_ROTATION: "true"
@@ -163,6 +169,10 @@ services:
     depends_on:
       supabase-db:
         condition: service_healthy
+    networks:
+      apachiy_net:
+        aliases:
+          - realtime-dev.supabase-realtime
     environment:
       PORT: 4000
       DB_HOST: supabase-db
@@ -171,13 +181,22 @@ services:
       DB_USER: ${POSTGRES_USER:-supabase_admin}
       DB_PASSWORD: ${POSTGRES_PASSWORD:?required}
       DB_SSL: "false"
+      DB_AFTER_CONNECT_QUERY: "SET search_path TO _realtime"
+      DB_ENC_KEY: ${REALTIME_DB_ENC_KEY:-supabaserealtime}
       API_JWT_SECRET: ${JWT_SECRET:?required}
-      FLY_IO_NAME: apachiy-realtime
-      FLY_ALLOC_ID: local
-      FLY_APP_NAME: apachiy
+      APP_NAME: realtime
+      SEED_SELF_HOST: "true"
+      RLIMIT_NOFILE: "10000"
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-VerYseCRet0000000000000000000000000000000000=}
-      ERL_AFLAGS: -proto_dist inet6_tcp
-      ENABLE_TAILWIND: "false"
+      METRICS_JWT_SECRET: ${JWT_SECRET:?required}
+      DNS_NODES: "''"
+      DISABLE_HEALTHCHECK_LOGGING: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/127.0.0.1/4000' || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # ---------------------------------------------------------------------------
   # Postgres Meta (used by Studio for introspecting tables)
@@ -203,7 +222,18 @@ services:
     image: supabase/studio:2026.08.17-sha-0c1da8f
     container_name: apachiy-supabase-studio
     restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "node -e \"fetch('http://127.0.0.1:3000/api/platform/profile').then((r) => {if (r.status !== 200) throw new Error(r.status)}).catch(() => process.exit(1))\"",
+        ]
+      timeout: 10s
+      interval: 10s
+      retries: 5
+      start_period: 30s
     environment:
+      HOSTNAME: "0.0.0.0"
       STUDIO_PG_META_URL: http://supabase-meta:5001
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
       DEFAULT_PROJECT: apachiy
@@ -246,6 +276,15 @@ services:
     image: supabase/edge-runtime:v1.62.4
     container_name: apachiy-supabase-functions
     restart: unless-stopped
+    command:
+      [
+        "start",
+        "--main-service",
+        "/home/deno/functions/main",
+      ]
+    depends_on:
+      supabase-kong:
+        condition: service_started
     environment:
       JWT_SECRET: ${JWT_SECRET:?required}
       SUPABASE_URL: http://supabase-kong:8000
@@ -326,12 +365,11 @@ services:
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
-      KONG_DNS_ORDER: LAST
-      KONG_DNS_RESOLVER: 127.0.0.11
-      KONG_PLUGINS: request-transformer,cors,key-auth,acl,basic-auth
+      KONG_PLUGINS: request-transformer,cors
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
       KONG_LISTEN: 0.0.0.0:8000,0.0.0.0:8443 ssl
+      KONG_NGINX_WORKER_PROCESSES: "1"
     volumes:
       - ./volumes/api/kong.yml:/var/lib/kong/kong.yml:ro
     ports:
@@ -340,7 +378,7 @@ services:
     networks:
       - apachiy_net
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/"]
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8000/auth/v1/health || exit 1"]
       interval: 15s
       timeout: 5s
       retries: 5

@@ -1,58 +1,56 @@
 _format_version: "2.1"
 _transform: true
 
+# Apachiy TV API gateway routes. Studio is published separately on :3001;
+# do not mount Studio at "/" here or it captures /auth/v1 and /rest/v1.
+
 services:
   - name: auth
-    url: http://supabase-auth:9999/verify
+    url: http://supabase-auth:9999/
     routes:
       - name: auth-all
+        strip_path: true
         paths:
           - /auth/v1/
     plugins:
       - name: cors
+
   - name: rest
     url: http://supabase-rest:3000/
     routes:
       - name: rest-all
+        strip_path: true
         paths:
           - /rest/v1/
     plugins:
       - name: cors
+
   - name: realtime
-    url: http://supabase-realtime:4000/socket
+    url: http://realtime-dev.supabase-realtime:4000/socket
     routes:
       - name: realtime-all
+        strip_path: true
         paths:
           - /realtime/v1/
     plugins:
       - name: cors
+
   - name: storage
     url: http://supabase-storage:5000/
     routes:
       - name: storage-all
+        strip_path: true
         paths:
           - /storage/v1/
     plugins:
       - name: cors
+
   - name: functions
     url: http://supabase-edge-functions:9000/
-    paths:
-      - /functions/v1/
-    plugins:
-      - name: cors
-  - name: meta
-    url: http://supabase-meta:5001/
     routes:
-      - name: meta-all
+      - name: functions-v1-all
+        strip_path: true
         paths:
-          - /pg/
-    plugins:
-      - name: cors
-  - name: studio
-    url: http://supabase-studio:3000/
-    routes:
-      - name: studio-all
-        paths:
-          - /
+          - /functions/v1/
     plugins:
       - name: cors

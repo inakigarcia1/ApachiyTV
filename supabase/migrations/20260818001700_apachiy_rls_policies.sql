@@ -30,11 +30,23 @@ SELECT public._apachiy_enable_owner_rls('watched_items_events');
 SELECT public._apachiy_enable_owner_rls('profile_settings_blob');
 SELECT public._apachiy_enable_owner_rls('home_catalog_settings_blob');
 SELECT public._apachiy_enable_owner_rls('provider_credentials');
-SELECT public._apachiy_enable_owner_rls('user_devices');
+-- user_devices lives in the Apachiy .NET API DB, not this Postgres.
 SELECT public._apachiy_enable_owner_rls('sync_codes');
 SELECT public._apachiy_enable_owner_rls('sync_state');
-SELECT public._apachiy_enable_owner_rls('linked_devices');
-SELECT public._apachiy_enable_owner_rls('tv_login_sessions');
+
+ALTER TABLE public.linked_devices ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS linked_devices_owner_all ON public.linked_devices;
+CREATE POLICY linked_devices_owner_all
+    ON public.linked_devices FOR ALL
+    USING (owner_id = auth.uid())
+    WITH CHECK (owner_id = auth.uid());
+
+ALTER TABLE public.tv_login_sessions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS tv_login_sessions_auth_owner ON public.tv_login_sessions;
+CREATE POLICY tv_login_sessions_auth_owner
+    ON public.tv_login_sessions FOR ALL
+    USING (user_id = auth.uid())
+    WITH CHECK (user_id = auth.uid());
 
 -- profile_locks: owner via join on profiles
 ALTER TABLE public.profile_locks ENABLE ROW LEVEL SECURITY;
