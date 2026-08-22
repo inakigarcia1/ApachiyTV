@@ -1,21 +1,12 @@
 package com.nuvio.tv.core.server
 
 import android.content.Context
-import android.content.res.Configuration
+import com.nuvio.tv.core.locale.AppLocalePreferences
 import com.nuvio.tv.R
-import java.util.Locale
 
 object DebridFormatterWebPage {
     fun html(rawContext: Context?): String {
-        val context = rawContext?.let { base ->
-            val tag = base.getSharedPreferences("app_locale", Context.MODE_PRIVATE)
-                .getString("locale_tag", null)
-            if (!tag.isNullOrEmpty()) {
-                val config = Configuration(base.resources.configuration)
-                config.setLocale(Locale.forLanguageTag(tag))
-                base.createConfigurationContext(config)
-            } else base
-        }
+        val context = rawContext?.let(AppLocalePreferences::createLocalizedContext)
         fun s(id: Int, fallback: String): String = context?.getString(id) ?: fallback
         val appName = context?.getString(R.string.app_name) ?: "NuvioTV"
         return """

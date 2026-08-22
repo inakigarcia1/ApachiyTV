@@ -19,6 +19,7 @@ import coil3.bitmapFactoryMaxParallelism
 
 import okio.Path.Companion.toOkioPath
 import com.nuvio.tv.core.diagnostics.SentryInitializer
+import com.nuvio.tv.core.locale.AppLocalePreferences
 import com.nuvio.tv.core.runtime.PluginRuntimeHooks
 import com.nuvio.tv.core.sync.StartupSyncService
 import com.nuvio.tv.core.sync.androidtv.AndroidTvChannelSyncService
@@ -81,9 +82,8 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         apachiyDeviceRegistrar.startObserving()
         // Load locale synchronously so it's available before Activity.attachBaseContext.
         // SharedPreferences reads are fast (cached in memory after first access).
-        val tag = getSharedPreferences("app_locale", Context.MODE_PRIVATE)
-            .getString("locale_tag", null)
-        LocaleCache.localeTag = tag ?: ""
+        AppLocalePreferences.ensureDefaultLocaleIfUnset(this)
+        LocaleCache.localeTag = AppLocalePreferences.cacheLocaleTag(this)
     }
 
     override fun newImageLoader(context: android.content.Context): ImageLoader {

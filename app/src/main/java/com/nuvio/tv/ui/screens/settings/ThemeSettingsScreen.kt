@@ -63,6 +63,7 @@ import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.LocaleCache
 import com.nuvio.tv.R
+import com.nuvio.tv.core.locale.AppLocalePreferences
 import com.nuvio.tv.domain.model.AppTheme
 import com.nuvio.tv.domain.model.SettingsUiStyle
 import com.nuvio.tv.ui.components.NuvioDialog
@@ -111,10 +112,7 @@ fun ThemeSettingsContent(
         }.sortedBy { it.second }
     }
     var selectedTag by remember {
-        mutableStateOf(
-            context.getSharedPreferences("app_locale", android.content.Context.MODE_PRIVATE)
-                .getString("locale_tag", null)?.takeIf { it.isNotEmpty() }
-        )
+        mutableStateOf(AppLocalePreferences.selectedLocaleTagForUi(context))
     }
     val currentLocaleName = supportedLocales.firstOrNull { it.first == selectedTag }?.second ?: stringResource(R.string.appearance_language_system)
     val strRestartHint = stringResource(R.string.appearance_language_restart_hint)
@@ -278,9 +276,9 @@ fun ThemeSettingsContent(
             onOptionSelected = { tag ->
                 val previousTag = selectedTag
                 val newTag = tag ?: ""
-                context.getSharedPreferences("app_locale", android.content.Context.MODE_PRIVATE)
-                    .edit().putString("locale_tag", newTag).apply()
-                LocaleCache.localeTag = newTag
+                context.getSharedPreferences(AppLocalePreferences.PREFS_NAME, android.content.Context.MODE_PRIVATE)
+                    .edit().putString(AppLocalePreferences.KEY_LOCALE_TAG, newTag).apply()
+                LocaleCache.localeTag = AppLocalePreferences.cacheLocaleTag(context)
                 selectedTag = tag
                 showLanguageDialog = false
                 if (previousTag != tag) {

@@ -1,22 +1,13 @@
 package com.nuvio.tv.core.server
 
 import android.content.Context
-import android.content.res.Configuration
+import com.nuvio.tv.core.locale.AppLocalePreferences
 import com.nuvio.tv.R
 import com.nuvio.tv.core.streams.STREAM_BADGE_IMPORT_LIMIT
-import java.util.Locale
 
 object StreamBadgeWebPage {
     fun html(rawContext: Context?): String {
-        val context = rawContext?.let { base ->
-            val tag = base.getSharedPreferences("app_locale", Context.MODE_PRIVATE)
-                .getString("locale_tag", null)
-            if (!tag.isNullOrEmpty()) {
-                val config = Configuration(base.resources.configuration)
-                config.setLocale(Locale.forLanguageTag(tag))
-                base.createConfigurationContext(config)
-            } else base
-        }
+        val context = rawContext?.let(AppLocalePreferences::createLocalizedContext)
         val appName = context?.getString(R.string.app_name) ?: "NuvioTV"
         val title = context?.getString(R.string.settings_stream_badges_section) ?: "Fusion Style"
         val urlsTitle = context?.getString(R.string.settings_stream_badge_urls_title) ?: "Fusion badge URLs"
