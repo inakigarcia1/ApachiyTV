@@ -31,8 +31,6 @@ import com.nuvio.tv.data.repository.AddonRepositoryImpl
 import com.nuvio.tv.data.repository.AuthDiagnosticReportRepository
 import com.nuvio.tv.data.repository.LibraryRepositoryImpl
 import com.nuvio.tv.data.repository.WatchProgressRepositoryImpl
-import com.nuvio.tv.data.remote.device.AccountProvisioner
-import com.nuvio.tv.data.remote.device.ProvisionResult
 import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.domain.model.ServerConfiguration
 import com.nuvio.tv.domain.repository.SyncRepository
@@ -83,7 +81,6 @@ class AccountViewModel @Inject constructor(
     private val postgrest: Postgrest,
     private val profileManager: ProfileManager,
     private val authDiagnosticReportRepository: AuthDiagnosticReportRepository,
-    private val accountProvisioner: AccountProvisioner,
     private val serverConfiguration: ServerConfiguration,
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -149,7 +146,6 @@ class AccountViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             authManager.signUpWithEmail(email, password).fold(
                 onSuccess = {
-                    handleProvisionResult(accountProvisioner.provisionAfterAuth(password))
                     pushLocalDataToRemote()
                     _uiState.update { it.copy(isLoading = false) }
                 },
@@ -165,7 +161,6 @@ class AccountViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             authManager.signInWithEmail(email, password).fold(
                 onSuccess = {
-                    handleProvisionResult(accountProvisioner.provisionAfterAuth(password))
                     pullRemoteData().onFailure { e ->
                         Log.e("AccountViewModel", "signIn: pullRemoteData failed, continuing signed-in flow", e)
                     }
@@ -176,18 +171,6 @@ class AccountViewModel @Inject constructor(
                     _uiState.update { it.copy(isLoading = false, error = userFriendlyError(e)) }
                 }
             )
-        }
-    }
-
-    private fun handleProvisionResult(result: ProvisionResult) {
-        when (result) {
-            ProvisionResult.Success, ProvisionResult.Skipped, ProvisionResult.NotAuthenticated -> Unit
-            is ProvisionResult.Failed -> {
-                Log.w(TAG, "Apachiy account provision failed: ${result.message}")
-                _uiState.update {
-                    it.copy(error = context.getString(R.string.account_error_api_provision_failed))
-                }
-            }
         }
     }
 

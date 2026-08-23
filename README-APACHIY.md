@@ -248,12 +248,16 @@ Verify in `.NET API` DB: two rows for the same Supabase user, one with
             ▼                                  ▼
    ┌─────────────────┐              ┌─────────────────────┐
    │ Self-hosted     │              │ Apachiy .NET API    │
-   │ Supabase stack  │              │ (existing C#)       │
-   │ (docker compose)│              │ Postgres + EF Core  │
-   │ Postgres + Auth │              │ user_devices table  │
-   │ Storage + RLS   │              │                     │
+   │ Supabase stack  │◄────────────►│ (EF on same Postgres)│
+   │ Postgres + Auth │   apachiy_net│ /v1/devices/register │
+   │ public.user_    │              │ ensures apachiy.Users│
+   │ devices + RLS   │              │                     │
    └─────────────────┘              └─────────────────────┘
 ```
+
+Device registration (`POST /v1/devices/register`) creates the business
+user row in `apachiy."Users"` on first call — there is no separate
+`/v1/account/provision` step.
 
 ## 8. Variables you still need to fill for production
 

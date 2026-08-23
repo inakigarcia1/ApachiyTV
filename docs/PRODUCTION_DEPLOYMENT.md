@@ -125,18 +125,26 @@ one shot.
 
 ## 7. Wire the Apachiy .NET API
 
-Your existing `D:\Proyectos\Apachiy-Repos\Apachiy` (or wherever the .NET API
-lives) must be able to validate Supabase JWTs. Add to its
-`docker-compose.yml` / `.env`:
+The .NET API shares the **same Postgres** as this Supabase stack (schema
+`apachiy` for business tables; `public.user_devices` for TV installs).
+Start Supabase first, then start the Apachiy API compose stack (it joins
+the `apachiy_net` Docker network).
+
+Add to the Apachiy API `.env`:
 
 ```env
 APACHIY_SUPABASE_URL=https://apachiy.example
-APACHIY_SUPABASE_JWT_SECRET=<same JWT_SECRET as the Supabase .env>
+APACHIY_SUPABASE_JWT_SECRET=<same JWT_SECRET as infra/supabase/.env>
+APACHIY_SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY from infra/supabase/.env>
+APACHIY_SUPABASE_POSTGRES_PASSWORD=<POSTGRES_PASSWORD from infra/supabase/.env>
+ConnectionStrings__DefaultConnection=Host=supabase-db;Port=5432;Database=postgres;Username=supabase_admin;Password=<POSTGRES_PASSWORD>
+APACHIY_ADMIN_EMAIL=admin@apachiy.local
+APACHIY_ADMIN_PASSWORD=<strong password>
 ```
 
-The `apachiy-api` service then validates incoming `/v1/devices/register`
-calls with HS256, extracts the `sub` claim, and upserts into the
-`user_devices` table.
+`POST /v1/devices/register` validates the Supabase JWT, ensures a row in
+`apachiy."Users"` (same UUID as `auth.users`), and upserts
+`public.user_devices`. There is no `/v1/account/provision` endpoint.
 
 The .NET API also needs the `Jwt:Supabase:*` settings in `appsettings.json`
 (only `Issuer` and `Secret` are required; `Audience` defaults to

@@ -47,6 +47,8 @@ services:
       timeout: 5s
       retries: 10
       start_period: 30s
+    ports:
+      - "${APACHIY_SUPABASE_DB_PORT:-54322}:5432"
     mem_limit: ${APACHIY_SUPABASE_DB_MEM:-1g}
     cpus: ${APACHIY_SUPABASE_DB_CPUS:-1.0}
 

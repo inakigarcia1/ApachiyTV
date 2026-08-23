@@ -1,7 +1,6 @@
 package com.nuvio.tv.core.di
 
 import com.nuvio.tv.BuildConfig
-import com.nuvio.tv.data.remote.device.ApachiyAccountApi
 import com.nuvio.tv.data.remote.device.ApachiyDeviceApi
 import com.nuvio.tv.core.installation.InstallationIdManager
 import com.nuvio.tv.core.installation.InstallationIdProvider
@@ -63,11 +62,6 @@ object DeviceRegistrationModule {
     @Singleton
     fun provideApachiyDeviceApi(@Named("apachiy") retrofit: Retrofit): ApachiyDeviceApi =
         retrofit.create(ApachiyDeviceApi::class.java)
-
-    @Provides
-    @Singleton
-    fun provideApachiyAccountApi(@Named("apachiy") retrofit: Retrofit): ApachiyAccountApi =
-        retrofit.create(ApachiyAccountApi::class.java)
 
     @Provides
     @Singleton

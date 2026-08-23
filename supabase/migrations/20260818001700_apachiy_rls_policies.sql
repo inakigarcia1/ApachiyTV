@@ -30,7 +30,7 @@ SELECT public._apachiy_enable_owner_rls('watched_items_events');
 SELECT public._apachiy_enable_owner_rls('profile_settings_blob');
 SELECT public._apachiy_enable_owner_rls('home_catalog_settings_blob');
 SELECT public._apachiy_enable_owner_rls('provider_credentials');
--- user_devices lives in the Apachiy .NET API DB, not this Postgres.
+SELECT public._apachiy_enable_owner_rls('user_devices');
 SELECT public._apachiy_enable_owner_rls('sync_codes');
 SELECT public._apachiy_enable_owner_rls('sync_state');
 
