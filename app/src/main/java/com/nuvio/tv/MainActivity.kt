@@ -140,6 +140,7 @@ import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.domain.model.CardDepthStyle
 import com.nuvio.tv.domain.model.DiscoverLocation
 import com.nuvio.tv.domain.model.ExperienceMode
+import com.nuvio.tv.domain.model.HomeLayout
 import com.nuvio.tv.domain.model.SettingsUiStyle
 import com.nuvio.tv.domain.deeplink.AppDeepLink
 import com.nuvio.tv.domain.repository.AddonRepository
@@ -585,11 +586,20 @@ class MainActivity : ComponentActivity() {
                         )
                         return@Surface
                     }
-                    val effectiveExperienceMode = mainUiPrefs.experienceMode
-                        ?: if (layoutChosen) ExperienceMode.ADVANCED else null
-                    val needsExperienceSelection = effectiveExperienceMode == null
+
+                    LaunchedEffect(mainUiPrefs.experienceModeLoaded, mainUiPrefs.experienceMode, layoutChosen) {
+                        if (mainUiPrefs.experienceModeLoaded && mainUiPrefs.experienceMode == null) {
+                            experienceModeDataStore.setMode(ExperienceMode.ESSENTIAL)
+                            if (layoutChosen != true) {
+                                layoutPreferenceDataStore.setLayout(HomeLayout.MODERN)
+                            }
+                        }
+                    }
+
+                    val effectiveExperienceMode = mainUiPrefs.experienceMode ?: ExperienceMode.ESSENTIAL
                     val needsEssentialAddonSetup =
-                        effectiveExperienceMode == ExperienceMode.ESSENTIAL &&
+                        BuildConfig.IS_DEBUG_BUILD &&
+                            effectiveExperienceMode == ExperienceMode.ESSENTIAL &&
                             installedAddons.orEmpty().isEmpty() &&
                             !mainUiPrefs.addonSetupSkipped
                     val pendingDeepLink by pendingDeepLinkUrl.collectAsState()
@@ -624,7 +634,6 @@ class MainActivity : ComponentActivity() {
                     val hideBuiltInHeadersForFloatingPill = modernSidebarEnabled && !sidebarCollapsed
 
                     val startDestination = when {
-                        needsExperienceSelection -> Screen.ExperienceModeSelection.route
                         layoutChosen -> Screen.Home.route
                         else -> Screen.LayoutSelection.route
                     }

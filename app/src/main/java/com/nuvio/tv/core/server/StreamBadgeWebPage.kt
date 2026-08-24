@@ -8,7 +8,7 @@ import com.nuvio.tv.core.streams.STREAM_BADGE_IMPORT_LIMIT
 object StreamBadgeWebPage {
     fun html(rawContext: Context?): String {
         val context = rawContext?.let(AppLocalePreferences::createLocalizedContext)
-        val appName = context?.getString(R.string.app_name) ?: "NuvioTV"
+        val appName = context?.getString(R.string.app_name) ?: "ApachiyTV"
         val title = context?.getString(R.string.settings_stream_badges_section) ?: "Fusion Style"
         val urlsTitle = context?.getString(R.string.settings_stream_badge_urls_title) ?: "Fusion badge URLs"
         val badgePositionTitle = context?.getString(R.string.settings_stream_badge_position_title) ?: "Badge position"

@@ -247,14 +247,6 @@ fun AuthQrSignInScreen(
             )
         }
 
-        if (BuildConfig.FEATURE_CUSTOM_SERVER_CONNECTIONS_ENABLED) {
-            ServerOptionsMenuHost(
-                viewModel = hiltViewModel(),
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(28.dp)
-            )
-        }
     }
 
     LaunchedEffect(Unit) {
@@ -324,12 +316,6 @@ private fun AuthQrBrandPanel(
                 text = fullAccount.email,
                 style = MaterialTheme.typography.titleMedium,
                 color = Color(0xFF7CFF9B)
-            )
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = fullAccount.userId,
-                style = MaterialTheme.typography.bodySmall,
-                color = AuthTextSecondary
             )
         }
     }
@@ -809,18 +795,14 @@ private fun AccountConnectedStatsStrip(
     isLoading: Boolean
 ) {
     val values = if (isLoading) {
-        listOf("...", "...", "...", "...")
+        listOf("...", "...")
     } else {
         listOf(
-            (stats?.addons ?: 0).toString(),
-            (stats?.plugins ?: 0).toString(),
             (stats?.library ?: 0).toString(),
             (stats?.watchProgress ?: 0).toString()
         )
     }
     val labels = listOf(
-        stringResource(R.string.account_stat_addons),
-        stringResource(R.string.account_stat_plugins),
         stringResource(R.string.account_stat_library),
         stringResource(R.string.account_stat_progress)
     )

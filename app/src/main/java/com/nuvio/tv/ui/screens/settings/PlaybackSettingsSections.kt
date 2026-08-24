@@ -660,37 +660,6 @@ internal fun PlaybackSettingsSections(
             )
         }
 
-        playbackCollapsibleSection(
-            keyPrefix = "p2p",
-            title = strSectionP2p,
-            description = strSectionP2pDesc,
-            expanded = p2pExpanded,
-            onToggle = { p2pExpanded = !p2pExpanded },
-            focusRequester = p2pHeaderFocus,
-            onHeaderFocused = { focusedSection = PlaybackSection.P2P }
-        ) {
-            item(key = "p2p_enabled") {
-                ToggleSettingsItem(
-                    icon = Icons.Default.Info,
-                    title = strSectionP2p,
-                    subtitle = strSectionP2pDesc,
-                    isChecked = p2pEnabled,
-                    onCheckedChange = onSetP2pEnabled,
-                    onFocused = { focusedSection = PlaybackSection.P2P }
-                )
-            }
-            item(key = "p2p_hide_stats") {
-                ToggleSettingsItem(
-                    icon = Icons.Default.Info,
-                    title = strHideTorrentStats,
-                    subtitle = strHideTorrentStatsDesc,
-                    isChecked = hideTorrentStats,
-                    onCheckedChange = onSetHideTorrentStats,
-                    onFocused = { focusedSection = PlaybackSection.P2P }
-                )
-            }
-        }
-
         if (playerSettings.internalPlayerEngine == InternalPlayerEngine.EXOPLAYER ||
             playerSettings.internalPlayerEngine == InternalPlayerEngine.AUTO) {
             playbackCollapsibleSection(

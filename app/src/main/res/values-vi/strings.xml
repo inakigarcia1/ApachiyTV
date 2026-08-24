@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">Apachiy</string>
     <string name="type_movie">Phim</string>
     <string name="type_series">Chương trình TV</string>
@@ -480,7 +480,7 @@
     <string name="trakt_stat_watched_hours">Giờ đã xem</string>
     <string name="trakt_disconnect">Ngắt kết nối</string>
     <string name="trakt_disconnect_title">Ngắt kết nối Trakt?</string>
-    <string name="trakt_disconnect_subtitle">Thao tác này sẽ ngắt kết nối tài khoản Trakt khỏi Nuvio.</string>
+    <string name="trakt_disconnect_subtitle">Thao tác này sẽ ngắt kết nối tài khoản Trakt khỏi Apachiy.</string>
     <string name="trakt_login">Đăng nhập</string>
     <string name="trakt_retry">Thử lại</string>
     <string name="trakt_back">Quay lại</string>
@@ -822,7 +822,7 @@
     <string name="catalog_see_all_empty_subtitle">Thử danh mục khác hoặc quay lại sau</string>
 
     <!-- LayoutSelectionScreen -->
-    <string name="layout_selection_welcome">Chào mừng đến Nuvio</string>
+    <string name="layout_selection_welcome">Chào mừng đến Apachiy</string>
     <string name="layout_selection_subtitle">Chọn bố cục màn hình chính</string>
     <string name="layout_selection_continue">Tiếp tục</string>
 

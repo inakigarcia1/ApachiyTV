@@ -268,9 +268,10 @@ fun SettingsScreen(
                 SettingsCategory.PROFILES -> isPrimaryProfileActive
                 SettingsCategory.ACCOUNT -> isPrimaryProfileActive
                 SettingsCategory.LAYOUT -> true
-                SettingsCategory.CONTENT_DISCOVERY -> true
-                SettingsCategory.INTEGRATION -> true
-                SettingsCategory.ADVANCED -> true
+                SettingsCategory.CONTENT_DISCOVERY -> BuildConfig.IS_DEBUG_BUILD
+                SettingsCategory.INTEGRATION -> false
+                SettingsCategory.ADVANCED -> false
+                SettingsCategory.ABOUT -> false
                 else -> true
             }
         }

@@ -588,9 +588,7 @@ fun NuvioNavHost(
                                 sources = playbackInfo.sources,
                                 contentLanguage = playbackInfo.contentLanguage
                             )
-                        ) {
-                            popUpTo(Screen.Stream.route) { inclusive = true }
-                        }
+                        )
                     }
                 }
             )
@@ -753,90 +751,50 @@ fun NuvioNavHost(
                     val contentId = args?.getString("contentId").orEmpty()
                     val focusSeason = currentSeason ?: initialSeason
                     val focusEpisode = currentEpisode ?: initialEpisode
-                    fun returnToDetail() {
-                        val detailEntry = navController.currentBackStack.value
-                            .lastOrNull {
-                                val itemId = it.arguments?.getString("itemId").orEmpty()
-                                val itemType = it.arguments?.getString("itemType").orEmpty()
-                                it.destination.route?.startsWith("detail/") == true &&
-                                    itemId == contentId &&
-                                    (itemType.isBlank() || contentType.isBlank() || itemType.equals(contentType, ignoreCase = true))
-                            }
-                        if (detailEntry != null) {
-                            detailEntry.savedStateHandle["returnFocusSeason"] = focusSeason
-                            detailEntry.savedStateHandle["returnFocusEpisode"] = focusEpisode
-                            navController.popBackStack(Screen.Detail.route, inclusive = false)
-                        } else {
-                            navController.navigate(
-                                Screen.Detail.createRoute(
-                                    itemId = contentId,
-                                    itemType = contentType,
-                                    addonBaseUrl = null,
-                                    returnFocusSeason = focusSeason,
-                                    returnFocusEpisode = focusEpisode,
-                                    returnToHomeOnBack = returnToHomeOnBack,
-                                    heroBackdropUrl = args?.getString("backdrop")
-                                )
-                            ) {
-                                popUpTo(Screen.Player.route) { inclusive = true }
-                                launchSingleTop = true
-                            }
+                    fun returnToStreamOptions() {
+                        val returnedToStream = navController.popBackStack(Screen.Stream.route, inclusive = false)
+                        if (returnedToStream) return
+                        val videoId = currentVideoId ?: args?.getString("videoId").orEmpty()
+                        val title = args?.getString("title").orEmpty()
+                        if (videoId.isBlank() || contentType.isBlank() || title.isBlank()) {
+                            navController.popBackStack()
+                            return
+                        }
+                        navController.navigate(
+                            Screen.Stream.createRoute(
+                                videoId = videoId,
+                                contentType = contentType,
+                                title = title,
+                                poster = args?.getString("poster"),
+                                backdrop = args?.getString("backdrop"),
+                                logo = args?.getString("logo"),
+                                season = focusSeason,
+                                episode = focusEpisode,
+                                episodeName = args?.getString("episodeTitle"),
+                                genres = null,
+                                year = args?.getString("year"),
+                                contentId = contentId.takeIf { it.isNotBlank() },
+                                contentName = args?.getString("contentName"),
+                                runtime = null,
+                                manualSelection = true,
+                                returnToDetailOnBack = returnToDetailOnBack,
+                                returnToHomeOnBack = returnToHomeOnBack
+                            )
+                        ) {
+                            popUpTo(Screen.Player.route) { inclusive = true }
+                            launchSingleTop = true
                         }
                     }
 
                     when {
                         episodeChangedInPlace && autoPlayEnabled -> {
-                            // autoplay moved to next episode — skip Stream, go to detail
-                            if (returnToDetailOnBack && contentType.equals("series", ignoreCase = true) && contentId.isNotBlank()) {
-                                returnToDetail()
-                            } else {
-                                navController.popBackStack()
-                            }
+                            returnToStreamOptions()
                         }
                         episodeChangedInPlace && !autoPlayEnabled -> {
-                            // manual stream switch to next episode — go to Stream of current episode
-                            val videoId = currentVideoId ?: args?.getString("videoId").orEmpty()
-                            if (videoId.isNotBlank() && contentType.isNotBlank()) {
-                                navController.navigate(
-                                    Screen.Stream.createRoute(
-                                        videoId = videoId,
-                                        contentType = contentType,
-                                        title = args?.getString("title").orEmpty(),
-                                        poster = args?.getString("poster"),
-                                        backdrop = args?.getString("backdrop"),
-                                        logo = args?.getString("logo"),
-                                        season = focusSeason,
-                                        episode = focusEpisode,
-                                        year = args?.getString("year"),
-                                        contentId = contentId.takeIf { it.isNotBlank() },
-                                        contentName = args?.getString("contentName"),
-                                        manualSelection = true,
-                                        returnToDetailOnBack = returnToDetailOnBack,
-                                        returnToHomeOnBack = returnToHomeOnBack
-                                    )
-                                ) {
-                                    popUpTo(Screen.Stream.route) { inclusive = true }
-                                    launchSingleTop = true
-                                }
-                            } else {
-                                navController.popBackStack()
-                            }
+                            returnToStreamOptions()
                         }
                         else -> {
-                            // normal back — skip Stream screen if episode/movie was completed
-                            val skipStreamScreen = playbackCompleted && contentId.isNotBlank()
-                            if (skipStreamScreen) {
-                                returnToDetail()
-                            } else {
-                                val returnedToStream = navController.popBackStack(Screen.Stream.route, inclusive = false)
-                                if (!returnedToStream) {
-                                    if (returnToDetailOnBack && contentType.equals("series", ignoreCase = true) && contentId.isNotBlank()) {
-                                        returnToDetail()
-                                    } else {
-                                        navController.popBackStack()
-                                    }
-                                }
-                            }
+                            returnToStreamOptions()
                         }
                     }
                 },

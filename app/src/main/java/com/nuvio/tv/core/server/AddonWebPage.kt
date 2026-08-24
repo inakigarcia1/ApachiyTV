@@ -1073,7 +1073,7 @@ ${tabButtons}
 <body>
 <div class="page">
   <div class="header">
-    <img src="/logo.png" alt="NuvioTV" class="header-logo">
+    <img src="/logo.png" alt="ApachiyTV" class="header-logo">
     <p>$pageSubtitle</p>
   </div>
 

@@ -8,7 +8,7 @@ object DebridFormatterWebPage {
     fun html(rawContext: Context?): String {
         val context = rawContext?.let(AppLocalePreferences::createLocalizedContext)
         fun s(id: Int, fallback: String): String = context?.getString(id) ?: fallback
-        val appName = context?.getString(R.string.app_name) ?: "NuvioTV"
+        val appName = context?.getString(R.string.app_name) ?: "ApachiyTV"
         return """
 <!DOCTYPE html>
 <html lang="en">
@@ -268,7 +268,7 @@ object DebridFormatterWebPage {
 <body>
 <div class="page">
   <div class="header">
-    <img src="/logo.png" alt="NuvioTV" class="header-logo">
+    <img src="/logo.png" alt="ApachiyTV" class="header-logo">
     <p>${s(R.string.web_debrid_title, "Direct Debrid Settings").html()}</p>
   </div>
 
