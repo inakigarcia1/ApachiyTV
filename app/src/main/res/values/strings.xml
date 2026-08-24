@@ -485,9 +485,10 @@
     <string name="account_error_qr_login_expired">QR login expired. Please try again.</string>
     <string name="account_error_invalid_qr_login">Invalid QR login code.</string>
     <string name="account_error_qr_login_other_device">This QR login was requested from another device.</string>
-    <string name="account_error_qr_login_outdated">QR login service is outdated. Reapply TV login SQL setup.</string>
-    <string name="account_error_qr_login_missing_setup">QR login backend is missing setup. Update TV login SQL setup.</string>
-    <string name="account_error_qr_login_misconfigured">QR login URL is misconfigured.</string>
+    <string name="account_error_qr_login_outdated">Could not sign in with QR. Please try again.</string>
+    <string name="account_error_qr_login_missing_setup">Could not sign in with QR. Please try again.</string>
+    <string name="account_error_qr_login_misconfigured">Could not sign in with QR. Please try again.</string>
+    <string name="account_error_qr_login_failed">Could not sign in with QR. Please try again.</string>
     <string name="account_error_qr_login_invalid_request">QR login request was invalid. Please retry.</string>
     <string name="account_error_no_internet">No internet connection.</string>
     <string name="account_error_connection_timeout">Connection timed out. Please try again.</string>
@@ -1945,11 +1946,11 @@
 
     <string name="auth_qr_title">Sign In With QR</string>
     <string name="auth_qr_tagline">Watch your library, anywhere</string>
-    <string name="auth_qr_account_login">Account Login</string>
+    <string name="auth_qr_account_login">Sign in</string>
     <string name="auth_qr_finishing">Finishing sign in\u2026</string>
     <string name="auth_qr_code_label">Code: %1$s</string>
     <string name="auth_qr_expires">Expires in %1$s</string>
-    <string name="auth_qr_phone_hint">Use your phone to sign in with email/password. TV stays QR-only for faster login.</string>
+    <string name="auth_qr_phone_hint">Sign in with your email and password, or scan the QR code on this screen.</string>
     <string name="auth_qr_scan_instruction">Scan QR, approve in browser, then return here.</string>
     <string name="auth_qr_code_display">Code: %1$s</string>
     <string name="auth_qr_refresh">Refresh QR</string>

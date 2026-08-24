@@ -12,10 +12,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -72,12 +74,15 @@ import kotlin.math.cos
 import kotlin.math.sin
 import kotlinx.coroutines.delay
 
-private val AuthTextPrimary = Color(0xFFF5F7F8)
-private val AuthTextSecondary = Color(0xFF969CA3)
-private val AuthPaneBackground = Color.White.copy(alpha = 0.022f)
-private val AuthPaneBorder = Color.White.copy(alpha = 0.07f)
+private val AuthGold = Color(0xFFD4A574)
+private val AuthGoldBright = Color(0xFFE8C794)
+private val AuthGoldDeep = Color(0xFFB8884E)
+private val AuthTextPrimary = Color(0xFFF5F1E8)
+private val AuthTextSecondary = Color(0xFF8A8580)
+private val AuthPaneBackground = Color(0xFF131211).copy(alpha = 0.92f)
+private val AuthPaneBorder = AuthGold.copy(alpha = 0.22f)
 private val AuthSecondaryButtonBackground = Color.White.copy(alpha = 0.05f)
-private val AuthSecondaryButtonBorder = Color.White.copy(alpha = 0.09f)
+private val AuthSecondaryButtonBorder = AuthGold.copy(alpha = 0.28f)
 
 private enum class AuthPanelMode {
     EMAIL,
@@ -112,10 +117,8 @@ fun AuthQrSignInScreen(
     }
 
     fun continueFromAuthScreen() {
+        if (onContinue != null && !isSignedIn) return
         exitRequested = true
-        if (onContinue != null && !isSignedIn) {
-            viewModel.signOut()
-        }
         viewModel.clearQrLoginSession()
         if (onContinue != null) {
             onContinue()
@@ -315,7 +318,7 @@ private fun AuthQrBrandPanel(
             Text(
                 text = fullAccount.email,
                 style = MaterialTheme.typography.titleMedium,
-                color = Color(0xFF7CFF9B)
+                color = AuthGoldBright
             )
         }
     }
@@ -398,95 +401,66 @@ private fun AuthQrLoginPane(
 
         if (!isSignedIn && showEmailPanel && canSwitchToQr) {
             Spacer(modifier = Modifier.height(14.dp))
-            Text(
+            AuthLinkButton(
                 text = stringResource(R.string.auth_use_qr_code),
-                modifier = Modifier
-                    .clickable(onClick = onSwitchToQr)
-                    .padding(vertical = 4.dp),
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = AuthTextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                ),
-                textAlign = TextAlign.Center
+                onClick = onSwitchToQr
             )
         }
         if (!isSignedIn && showQrPanel && canSwitchToEmail) {
             Spacer(modifier = Modifier.height(14.dp))
-            Text(
+            AuthLinkButton(
                 text = stringResource(R.string.auth_use_email_password),
-                modifier = Modifier
-                    .clickable(onClick = onSwitchToEmail)
-                    .padding(vertical = 4.dp),
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = AuthTextPrimary,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                ),
-                textAlign = TextAlign.Center
+                onClick = onSwitchToEmail
             )
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (isSignedIn || showQrPanel) {
-                Button(
-                    onClick = onRefreshOrSignOut,
-                    enabled = !uiState.isLoading,
-                    modifier = if (focusMainAction) Modifier.focusRequester(initialFocusRequester) else Modifier,
-                    colors = ButtonDefaults.colors(
-                        containerColor = AuthSecondaryButtonBackground,
-                        focusedContainerColor = Color.White,
-                        contentColor = AuthTextPrimary,
-                        focusedContentColor = Color.Black,
-                        disabledContainerColor = AuthSecondaryButtonBackground.copy(alpha = 0.45f)
-                    ),
-                    border = ButtonDefaults.border(
-                        border = androidx.tv.material3.Border(
-                            border = androidx.compose.foundation.BorderStroke(1.dp, AuthSecondaryButtonBorder),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                    )
-                ) {
-                    Text(
-                        when {
-                            isSignedIn -> stringResource(R.string.account_sign_out)
-                            uiState.isLoading -> stringResource(R.string.auth_qr_please_wait)
-                            else -> stringResource(R.string.auth_qr_refresh)
-                        }
-                    )
-                }
-            }
-            Button(
-                onClick = onBackOrContinue,
-                modifier = if (!focusEmail && !focusMainAction) {
-                    Modifier.focusRequester(initialFocusRequester)
-                } else {
-                    Modifier
-                },
-                colors = ButtonDefaults.colors(
-                    containerColor = AuthSecondaryButtonBackground,
-                    focusedContainerColor = Color.White,
-                    contentColor = AuthTextPrimary,
-                    focusedContentColor = Color.Black
-                ),
-                border = ButtonDefaults.border(
-                    border = androidx.tv.material3.Border(
-                        border = androidx.compose.foundation.BorderStroke(1.dp, AuthSecondaryButtonBorder),
-                        shape = RoundedCornerShape(16.dp)
-                    )
-                )
+        val showSecondaryAction = !isOnboardingMode || isSignedIn
+        if (isSignedIn || showQrPanel || showSecondaryAction) {
+            Spacer(modifier = Modifier.height(28.dp))
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    if (isOnboardingMode) {
-                        if (isSignedIn) stringResource(R.string.auth_qr_continue) else stringResource(R.string.auth_qr_continue_without_account)
-                    } else {
-                        stringResource(R.string.auth_qr_back)
+                if (isSignedIn || showQrPanel) {
+                    Button(
+                        onClick = onRefreshOrSignOut,
+                        enabled = !uiState.isLoading,
+                        modifier = (if (focusMainAction) Modifier.focusRequester(initialFocusRequester) else Modifier)
+                            .defaultMinSize(minHeight = 48.dp),
+                        colors = authButtonColors(focusedContainer = AuthGoldBright),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        border = authButtonBorder()
+                    ) {
+                        Text(
+                            when {
+                                isSignedIn -> stringResource(R.string.account_sign_out)
+                                uiState.isLoading -> stringResource(R.string.auth_qr_please_wait)
+                                else -> stringResource(R.string.auth_qr_refresh)
+                            }
+                        )
                     }
-                )
+                }
+                if (showSecondaryAction) {
+                    Button(
+                        onClick = onBackOrContinue,
+                        modifier = (if (!focusEmail && !focusMainAction) {
+                            Modifier.focusRequester(initialFocusRequester)
+                        } else {
+                            Modifier
+                        }).defaultMinSize(minHeight = 48.dp),
+                        colors = authButtonColors(focusedContainer = AuthGoldBright),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 12.dp),
+                        border = authButtonBorder()
+                    ) {
+                        Text(
+                            when {
+                                isOnboardingMode && isSignedIn -> stringResource(R.string.auth_qr_continue)
+                                isOnboardingMode -> stringResource(R.string.auth_qr_back)
+                                else -> stringResource(R.string.auth_qr_back)
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -529,20 +503,18 @@ private fun AuthEmailLoginForm(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
     ) {
-        Text(
-            text = if (isRegisterMode) {
-                stringResource(R.string.auth_email_register_instruction)
-            } else {
-                stringResource(R.string.auth_email_instruction)
-            },
-            style = MaterialTheme.typography.bodySmall.copy(
-                color = AuthTextSecondary,
-                fontSize = 14.sp,
-                lineHeight = 20.sp
-            ),
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
+        if (isRegisterMode) {
+            Text(
+                text = stringResource(R.string.auth_email_register_instruction),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    color = AuthTextSecondary,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp
+                ),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
         InputField(
             value = email,
             onValueChange = { email = it },
@@ -576,11 +548,11 @@ private fun AuthEmailLoginForm(
             enabled = canSubmit,
             modifier = Modifier.fillMaxWidth(),
             colors = ButtonDefaults.colors(
-                containerColor = Color.White,
-                focusedContainerColor = Color.White,
-                contentColor = Color.Black,
-                focusedContentColor = Color.Black,
-                disabledContainerColor = Color.White.copy(alpha = 0.12f),
+                containerColor = AuthGold,
+                focusedContainerColor = AuthGoldBright,
+                contentColor = Color(0xFF0A0A0A),
+                focusedContentColor = Color(0xFF0A0A0A),
+                disabledContainerColor = AuthGold.copy(alpha = 0.35f),
                 disabledContentColor = AuthTextPrimary.copy(alpha = 0.58f)
             ),
             shape = ButtonDefaults.shape(RoundedCornerShape(16.dp))
@@ -603,26 +575,18 @@ private fun AuthEmailLoginForm(
                 )
             }
         }
-        Text(
+        AuthLinkButton(
             text = if (isRegisterMode) {
                 stringResource(R.string.auth_switch_to_sign_in)
             } else {
                 stringResource(R.string.auth_switch_to_register)
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = !uiState.isLoading) {
-                    isRegisterMode = !isRegisterMode
-                    confirmPassword = ""
-                    localError = null
-                }
-                .padding(vertical = 4.dp),
-            style = MaterialTheme.typography.bodyMedium.copy(
-                color = AuthTextPrimary,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium
-            ),
-            textAlign = TextAlign.Center
+            onClick = {
+                isRegisterMode = !isRegisterMode
+                confirmPassword = ""
+                localError = null
+            },
+            enabled = !uiState.isLoading
         )
         AuthTermsAcknowledgement()
         when {
@@ -872,6 +836,54 @@ private fun AccountStatItem(
     }
 }
 
+@Composable
+private fun AuthLinkButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier
+            .fillMaxWidth()
+            .defaultMinSize(minHeight = 44.dp),
+        colors = authButtonColors(focusedContainer = AuthGoldBright),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
+        border = authButtonBorder(focusedBorderColor = AuthGold),
+        shape = ButtonDefaults.shape(RoundedCornerShape(12.dp))
+    ) {
+        Text(
+            text = text,
+            textAlign = TextAlign.Center,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+@Composable
+private fun authButtonColors(focusedContainer: Color) = ButtonDefaults.colors(
+    containerColor = AuthSecondaryButtonBackground,
+    focusedContainerColor = focusedContainer,
+    contentColor = AuthTextPrimary,
+    focusedContentColor = Color(0xFF0A0A0A),
+    disabledContainerColor = AuthSecondaryButtonBackground.copy(alpha = 0.45f),
+    disabledContentColor = AuthTextPrimary.copy(alpha = 0.58f)
+)
+
+@Composable
+private fun authButtonBorder(focusedBorderColor: Color = AuthGoldBright) = ButtonDefaults.border(
+    border = androidx.tv.material3.Border(
+        border = androidx.compose.foundation.BorderStroke(1.dp, AuthSecondaryButtonBorder),
+        shape = RoundedCornerShape(16.dp)
+    ),
+    focusedBorder = androidx.tv.material3.Border(
+        border = androidx.compose.foundation.BorderStroke(2.dp, focusedBorderColor),
+        shape = RoundedCornerShape(16.dp)
+    )
+)
+
 private fun Modifier.authGradientBackground(): Modifier = drawWithCache {
     val angleRadians = 122.0 * PI / 180.0
     val directionX = sin(angleRadians).toFloat()
@@ -888,13 +900,12 @@ private fun Modifier.authGradientBackground(): Modifier = drawWithCache {
     )
     val brush = Brush.linearGradient(
         colorStops = arrayOf(
-            0f to Color(0xFF21113B),
-            0.14f to Color(0xFF21113B),
-            0.26f to Color(0xFF1A0E2F),
-            0.36f to Color(0xFF130A23),
-            0.48f to Color(0xFF0A060F),
-            0.60f to Color(0xFF050408),
-            0.70f to Color.Black,
+            0f to Color(0xFF181714),
+            0.18f to Color(0xFF131211),
+            0.34f to Color(0xFF0F0E0C),
+            0.50f to Color(0xFF0A0A0A),
+            0.68f to Color(0xFF070605),
+            0.84f to Color(0xFF040302),
             1f to Color.Black
         ),
         start = start,

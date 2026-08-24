@@ -19,7 +19,7 @@ import javax.inject.Inject
 data class ThemeSettingsUiState(
     val selectedTheme: AppTheme = AppTheme.WHITE,
     val availableThemes: List<AppTheme> = listOf(AppTheme.WHITE) + AppTheme.entries.filterNot { it == AppTheme.WHITE },
-    val selectedFont: AppFont = AppFont.INTER,
+    val selectedFont: AppFont = AppFont.BRICOLAGE_GROTESQUE,
     val availableFonts: List<AppFont> = AppFont.entries.toList(),
     val amoledMode: Boolean = false,
     val amoledSurfacesMode: Boolean = false,

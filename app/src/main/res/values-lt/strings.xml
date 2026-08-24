@@ -867,7 +867,7 @@ Klaida: Bandomoji simuliuojama klaida — tai nėra tikras gedimas. Šaltinis gr
 
     <!-- AuthQrSignInScreen -->
     <string name="auth_qr_title">Prisijungti per telefoną</string>
-    <string name="auth_qr_account_login">Paskyros prisijungimas</string>
+    <string name="auth_qr_account_login">Prisijungti</string>
     <string name="auth_qr_finishing">Užbaigiama…</string>
     <string name="auth_qr_code_label">Skenuokite QR kodą</string>
     <string name="auth_qr_expires">Kodas baigsis po %1$d s</string>

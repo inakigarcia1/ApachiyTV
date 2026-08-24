@@ -1800,7 +1800,7 @@
 
     <string name="auth_qr_title">使用 QR 码登录</string>
     <string name="auth_qr_tagline">随时随地观看您的媒体库</string>
-    <string name="auth_qr_account_login">账户登录</string>
+    <string name="auth_qr_account_login">登录</string>
     <string name="auth_qr_finishing">正在完成登录…</string>
     <string name="auth_qr_code_label">代码：%1$s</string>
     <string name="auth_qr_expires">将在 %1$s 后过期</string>

@@ -79,13 +79,21 @@ object ThemeColors {
     )
 
     val White = ThemeColorPalette(
-        secondary = NuvioPrimitives.neutral100,
-        secondaryVariant = NuvioPrimitives.neutral200,
-        onSecondary = NuvioPrimitives.neutral925,
-        onSecondaryVariant = NuvioPrimitives.neutral925,
-        focusRing = NuvioPrimitives.white,
-        focusBackground = Color(0xFF303030),
-        backgroundCard = NuvioPrimitives.neutral850
+        secondary = Color(0xFFD4A574),
+        secondaryVariant = Color(0xFFB8884E),
+        onSecondary = Color(0xFF0A0A0A),
+        onSecondaryVariant = Color(0xFF0A0A0A),
+        focusRing = Color(0xFFE8C794),
+        focusBackground = Color(0xFF2B2418),
+        background = Color(0xFF0A0A0A),
+        backgroundElevated = Color(0xFF131211),
+        backgroundCard = Color(0xFF181714),
+        surface = Color(0xFF131211),
+        surfaceVariant = Color(0xFF181714),
+        panel = Color(0xFF131211),
+        field = Color(0xFF181714),
+        menu = Color(0xFF131211),
+        modal = Color(0xFF181714)
     )
 
     fun getColorPalette(theme: AppTheme): ThemeColorPalette {

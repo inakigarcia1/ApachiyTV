@@ -150,7 +150,6 @@ import com.nuvio.tv.ui.components.ProfileAvatarCircle
 import com.nuvio.tv.ui.navigation.NuvioNavHost
 import com.nuvio.tv.ui.navigation.Screen
 import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
-import com.nuvio.tv.ui.screens.addon.EssentialAddonSetupScreen
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
 import com.nuvio.tv.ui.theme.NuvioComponents
 import com.nuvio.tv.ui.theme.NuvioLayout
@@ -189,7 +188,7 @@ data class DrawerItem(
 
 private data class MainUiPrefs(
     val theme: AppTheme = AppTheme.WHITE,
-    val font: AppFont = AppFont.INTER,
+    val font: AppFont = AppFont.BRICOLAGE_GROTESQUE,
     val amoledMode: Boolean = false,
     val amoledSurfacesMode: Boolean = false,
     val hasChosenLayout: Boolean? = null,
@@ -340,6 +339,13 @@ class MainActivity : ComponentActivity() {
                         ).show()
                         authSessionNoticeDataStore.consumeNotice(notice)
                     }
+                }
+            }
+
+            LaunchedEffect(authState) {
+                if (authState !is AuthState.FullAccount) {
+                    hasSelectedProfileThisSession = false
+                    onboardingCompletedThisSession = false
                 }
             }
 
@@ -516,47 +522,49 @@ class MainActivity : ComponentActivity() {
                         return@Surface
                     }
 
-                    if (
-                        hasSeenAuthQrOnFirstLaunch == false &&
-                        authState !is AuthState.FullAccount &&
-                        !onboardingCompletedThisSession
-                    ) {
+                    val requiresFirstLaunchOnboarding = hasSeenAuthQrOnFirstLaunch == false
+                    if (authState !is AuthState.FullAccount) {
                         AuthQrSignInScreen(
                             onBackPress = { finish() },
-                            onContinue = {
-                                lifecycleScope.launch {
-                                    val shouldRunRemoteOnboardingSync =
-                                        authManager.authState.value is AuthState.FullAccount
+                            onContinue = if (requiresFirstLaunchOnboarding) {
+                                {
+                                    if (authManager.authState.value !is AuthState.FullAccount) return@AuthQrSignInScreen
+                                    lifecycleScope.launch {
+                                        val shouldRunRemoteOnboardingSync =
+                                            authManager.authState.value is AuthState.FullAccount
 
-                                    if (shouldRunRemoteOnboardingSync) {
-                                        if (onboardingProfileSyncInProgress) return@launch
-                                        onboardingProfileSyncInProgress = true
-                                        val maxAttempts = 3
-                                        var synced = false
-                                        for (attempt in 0 until maxAttempts) {
-                                            val result = profileSyncService.pullFromRemote()
-                                            if (result.isSuccess) {
-                                                synced = true
-                                                break
+                                        if (shouldRunRemoteOnboardingSync) {
+                                            if (onboardingProfileSyncInProgress) return@launch
+                                            onboardingProfileSyncInProgress = true
+                                            val maxAttempts = 3
+                                            var synced = false
+                                            for (attempt in 0 until maxAttempts) {
+                                                val result = profileSyncService.pullFromRemote()
+                                                if (result.isSuccess) {
+                                                    synced = true
+                                                    break
+                                                }
+                                                if (attempt < maxAttempts - 1) {
+                                                    delay(1_000)
+                                                }
                                             }
-                                            if (attempt < maxAttempts - 1) {
-                                                delay(1_000)
+                                            if (!synced) {
+                                                android.util.Log.w(
+                                                    "MainActivity",
+                                                    "Onboarding profile sync failed after retries; continuing"
+                                                )
                                             }
                                         }
-                                        if (!synced) {
-                                            android.util.Log.w(
-                                                "MainActivity",
-                                                "Onboarding profile sync failed after retries; continuing"
-                                            )
-                                        }
+                                        appOnboardingDataStore.setHasSeenAuthQrOnFirstLaunch(true)
+                                        onboardingCompletedThisSession = true
+                                        onboardingProfileSyncInProgress = false
                                     }
-                                    appOnboardingDataStore.setHasSeenAuthQrOnFirstLaunch(true)
-                                    onboardingCompletedThisSession = true
-                                    onboardingProfileSyncInProgress = false
+                                    if (authManager.authState.value is AuthState.FullAccount) {
+                                        startupSyncService.requestSyncNow()
+                                    }
                                 }
-                                if (authManager.authState.value is AuthState.FullAccount) {
-                                    startupSyncService.requestSyncNow()
-                                }
+                            } else {
+                                null
                             }
                         )
                         return@Surface
@@ -596,18 +604,12 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    val effectiveExperienceMode = mainUiPrefs.experienceMode ?: ExperienceMode.ESSENTIAL
-                    val needsEssentialAddonSetup =
-                        BuildConfig.IS_DEBUG_BUILD &&
-                            effectiveExperienceMode == ExperienceMode.ESSENTIAL &&
-                            installedAddons.orEmpty().isEmpty() &&
-                            !mainUiPrefs.addonSetupSkipped
                     val pendingDeepLink by pendingDeepLinkUrl.collectAsState()
 
                     LaunchedEffect(pendingDeepLink) {
                         val url = pendingDeepLink ?: return@LaunchedEffect
                         val deepLink = DeepLinkParser.parse(url)
-                        if (deepLink is AppDeepLink.AddonInstall && (needsEssentialAddonSetup || !layoutChosen)) {
+                        if (deepLink is AppDeepLink.AddonInstall && !layoutChosen) {
                             Toast.makeText(context, context.getString(R.string.addon_installing), Toast.LENGTH_SHORT).show()
                             val installResult = deepLinkHandler.installAddon(deepLink.manifestUrl)
                             if (pendingDeepLinkUrl.value == url) {
@@ -615,17 +617,6 @@ class MainActivity : ComponentActivity() {
                             }
                             Toast.makeText(context, installResult.message, Toast.LENGTH_LONG).show()
                         }
-                    }
-
-                    if (needsEssentialAddonSetup) {
-                        EssentialAddonSetupScreen(
-                            onSkip = {
-                                lifecycleScope.launch {
-                                    experienceModeDataStore.setAddonSetupSkipped(true)
-                                }
-                            }
-                        )
-                        return@Surface
                     }
                     val sidebarCollapsed = mainUiPrefs.sidebarCollapsed
                     val modernSidebarEnabled = mainUiPrefs.modernSidebarEnabled

@@ -1722,7 +1722,7 @@
     <string name="auth_signin_qr_btn">Продължи с QR</string>
 
     <string name="auth_qr_title">Впиши се с QR</string>
-    <string name="auth_qr_account_login">Вписване в акаунт</string>
+    <string name="auth_qr_account_login">Вход</string>
     <string name="auth_qr_finishing">Завършване на вписването…</string>
     <string name="auth_qr_code_label">Код: %1$s</string>
     <string name="auth_qr_expires">Изтича след %1$s</string>

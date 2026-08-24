@@ -48,7 +48,7 @@ val LocalSettingsUiStyle = staticCompositionLocalOf { SettingsUiStyle.CLASSIC }
 @Composable
 fun NuvioTheme(
     appTheme: AppTheme = AppTheme.WHITE,
-    appFont: AppFont = AppFont.INTER,
+    appFont: AppFont = AppFont.BRICOLAGE_GROTESQUE,
     amoledMode: Boolean = false,
     amoledSurfacesMode: Boolean = false,
     settingsUiStyle: SettingsUiStyle = SettingsUiStyle.CLASSIC,
@@ -56,7 +56,7 @@ fun NuvioTheme(
 ) {
     val palette = ThemeColors.getColorPalette(appTheme)
     val colorScheme = NuvioColorScheme(palette, amoledMode, amoledSurfacesMode)
-    val typography = buildNuvioTypography(getFontFamily(appFont))
+    val typography = buildNuvioTypography(BricolageGrotesqueFamily)
     val textStyles = buildNuvioTextStyles(typography)
 
     val materialColorScheme = darkColorScheme(

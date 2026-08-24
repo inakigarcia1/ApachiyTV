@@ -1705,7 +1705,7 @@
   <string name="auth_email_signing_in">Σύνδεση\u2026</string>
   <!-- AuthQrSignInScreen -->
   <string name="auth_qr_title">Σύνδεση με QR</string>
-  <string name="auth_qr_account_login">Σύνδεση λογαριασμού</string>
+  <string name="auth_qr_account_login">Σύνδεση</string>
   <string name="auth_qr_finishing">Ολοκλήρωση σύνδεσης…</string>
   <string name="auth_qr_code_label">Κωδικός: %1$s</string>
   <string name="auth_qr_expires">Λήγει σε %1$s</string>

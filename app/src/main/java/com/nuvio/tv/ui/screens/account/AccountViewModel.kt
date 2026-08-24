@@ -595,11 +595,11 @@ class AccountViewModel @Inject constructor(
             message.contains("tv login") && message.contains("invalid") -> R.string.account_error_invalid_qr_login
             message.contains("tv login") && message.contains("nonce") -> R.string.account_error_qr_login_other_device
             message.contains("start_tv_login_session") && message.contains("could not find the function") ->
-                R.string.account_error_qr_login_outdated
+                R.string.account_error_qr_login_failed
             message.contains("gen_random_bytes") && message.contains("does not exist") ->
-                R.string.account_error_qr_login_missing_setup
+                R.string.account_error_qr_login_failed
             message.contains("invalid tv login redirect base url") ->
-                R.string.account_error_qr_login_misconfigured
+                R.string.account_error_qr_login_failed
             message.contains("invalid device nonce") ->
                 R.string.account_error_qr_login_invalid_request
 

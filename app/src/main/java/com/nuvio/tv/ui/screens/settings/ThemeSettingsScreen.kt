@@ -69,7 +69,6 @@ import com.nuvio.tv.domain.model.SettingsUiStyle
 import com.nuvio.tv.ui.components.NuvioDialog
 import com.nuvio.tv.ui.screens.detail.requestFocusAfterFrames
 import com.nuvio.tv.ui.theme.ThemeColors
-import com.nuvio.tv.ui.theme.getFontFamily
 import kotlinx.coroutines.delay
 import java.util.Locale
 
@@ -94,7 +93,6 @@ fun ThemeSettingsContent(
     initialFocusRequester: FocusRequester? = null
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var showFontDialog by remember { mutableStateOf(false) }
     var showLanguageDialog by remember { mutableStateOf(false) }
     var pendingLanguageRestart by remember { mutableStateOf(false) }
     val context = LocalContext.current
@@ -230,14 +228,8 @@ fun ThemeSettingsContent(
             SettingsGroupCard(
                 modifier = Modifier.fillMaxWidth(),
                 title = stringResource(R.string.appearance_font_and_language),
-                subtitle = stringResource(R.string.appearance_font_and_language_subtitle)
+                subtitle = stringResource(R.string.appearance_language_subtitle)
             ) {
-                SettingsActionRow(
-                    title = stringResource(R.string.appearance_font),
-                    subtitle = stringResource(R.string.appearance_font_subtitle),
-                    value = uiState.selectedFont.displayName,
-                    onClick = { showFontDialog = true }
-                )
                 SettingsActionRow(
                     title = stringResource(R.string.appearance_language),
                     subtitle = stringResource(R.string.appearance_language_subtitle),
@@ -247,23 +239,6 @@ fun ThemeSettingsContent(
             }
         }
         SettingsVerticalScrollIndicators(state = themeScrollState)
-    }
-
-    if (showFontDialog) {
-        SettingsSingleChoiceDialog(
-            title = stringResource(R.string.appearance_font_dialog_title),
-            options = uiState.availableFonts.map { font ->
-                SettingsPickerOption(font, font.displayName, titleFontFamily = getFontFamily(font))
-            },
-            selectedValue = uiState.selectedFont,
-            onOptionSelected = { font ->
-                viewModel.onEvent(ThemeSettingsEvent.SelectFont(font))
-                showFontDialog = false
-            },
-            onDismiss = { showFontDialog = false },
-            width = 400.dp,
-            maxHeight = 280.dp
-        )
     }
 
     if (showLanguageDialog) {
