@@ -75,11 +75,13 @@ MIG_DIR="$ROOT_DIR/supabase/migrations"
 if compgen -G "$MIG_DIR/*.sql" >/dev/null; then
   for m in "$MIG_DIR"/*.sql; do
     echo "  applying $(basename "$m")"
-    docker exec -i apachiy-supabase-db \
-      psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -f - < "$m" \
-      && docker exec apachiy-supabase-db \
-           psql -U supabase_admin -d postgres -c \
-           "INSERT INTO public._apachiy_migrations(name) VALUES ('$(basename "$m")') ON CONFLICT DO NOTHING;" >/dev/null
+    if ! docker exec -i apachiy-supabase-db \
+      psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -f - < "$m"; then
+      fail "migration failed: $(basename "$m")"
+    fi
+    docker exec apachiy-supabase-db \
+      psql -U supabase_admin -d postgres -c \
+      "INSERT INTO public._apachiy_migrations(name) VALUES ('$(basename "$m")') ON CONFLICT DO NOTHING;" >/dev/null
   done
   docker exec apachiy-supabase-db \
     psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \

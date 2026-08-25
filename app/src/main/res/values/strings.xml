@@ -96,7 +96,7 @@
     <string name="web_import_success">Imported {count} collection(s). Review and hit Save Changes to apply.</string>
     <string name="web_import_invalid_json">Invalid JSON</string>
 
-    <string name="home_no_addons">No addons installed. Add one to get started.</string>
+    <string name="home_no_addons">Catalog unavailable. Visit apachiy.org/dashboard to manage your account.</string>
     <string name="home_no_catalog_addons">No catalog addons installed. Install a catalog addon to see content.</string>
     <string name="auth_notice_nuvio_logged_out">You have been signed out of Apachiy. Please sign in again.</string>
     <string name="auth_notice_trakt_logged_out">You have been signed out of Trakt. Please reconnect.</string>
@@ -587,6 +587,9 @@
     <string name="action_none">None</string>
     <string name="action_back">Back</string>
     <string name="action_close">Close</string>
+    <string name="action_ok">OK</string>
+    <string name="device_limit_title">Device limit reached</string>
+    <string name="device_limit_message">You have reached the maximum number of devices allowed for your account. To manage them, visit apachiy.org/dashboard/devices.</string>
 
     <string name="supporters_contributors_title">Supporters &amp; Contributors</string>
     <string name="supporters_contributors_subtitle">The people backing Apachiy and the contributors building it across TV and mobile.</string>

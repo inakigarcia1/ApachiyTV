@@ -98,6 +98,10 @@ class AuthManager @Inject constructor(
     private var cachedEffectiveUserId: String? = null
     private var cachedEffectiveUserSourceUserId: String? = null
     private var startupAuthDiagnostics: AuthDiagnosticsSession? = null
+
+    @Volatile
+    var lastAuthKind: LastAuthKind? = null
+        private set
     private var startupAuthCompleted = false
 
     init {
@@ -333,6 +337,7 @@ class AuthManager @Inject constructor(
                 val result = json.decodeFromString<TvLoginExchangeResult>(body)
                 auth.importTokenResponse(result)
             }
+            markAuthKind(LastAuthKind.SignUp)
             diagnostics.finishSuccess("signup_completed")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -363,6 +368,7 @@ class AuthManager @Inject constructor(
             val result = json.decodeFromString<TvLoginExchangeResult>(body)
             Log.d(TAG, "Sign in token response tokenType=${result.tokenType ?: "-"} expiresIn=${result.expiresIn ?: "-"} accessTokenPresent=${result.accessToken.isNotBlank()} refreshTokenPresent=${result.refreshToken.isNotBlank()}")
             auth.importTokenResponse(result)
+            markAuthKind(LastAuthKind.SignIn)
             diagnostics.finishSuccess("password_login_completed")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -681,6 +687,7 @@ class AuthManager @Inject constructor(
             val result = json.decodeFromString<TvLoginExchangeResult>(body)
             Log.d(TAG, "$trace exchangeTvLoginSession decoded tokenType=${result.tokenType ?: "-"} expiresIn=${result.expiresIn ?: "-"} accessTokenPresent=${result.accessToken.isNotBlank()} refreshTokenPresent=${result.refreshToken.isNotBlank()}")
             auth.importTokenResponse(result)
+            markAuthKind(LastAuthKind.QrLogin)
             Log.d(TAG, "$trace exchangeTvLoginSession imported auth token elapsedMs=${SystemClock.elapsedRealtime() - startedAtMs}")
             Result.success(Unit)
         } catch (e: Exception) {
@@ -815,6 +822,10 @@ class AuthManager @Inject constructor(
             put("Accept", "application/json")
             if (!accessToken.isNullOrBlank()) put("Authorization", "Bearer $accessToken")
         }
+
+    private fun markAuthKind(kind: LastAuthKind) {
+        lastAuthKind = kind
+    }
 }
 
 private data class AuthHttpResponse(

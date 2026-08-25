@@ -16,6 +16,8 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.postgrest
+import io.github.jan.supabase.realtime.Realtime
+import io.github.jan.supabase.realtime.realtime
 import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.statement.request
@@ -73,6 +75,7 @@ object SupabaseModule {
                 enableLifecycleCallbacks = false
             }
             install(Postgrest)
+            install(Realtime)
         }
     }
 

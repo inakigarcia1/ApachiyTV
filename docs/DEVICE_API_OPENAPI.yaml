@@ -106,15 +106,23 @@ paths:
                   $ref: '#/components/schemas/DeviceSummary'
         '401':
           $ref: '#/components/responses/Unauthorized'
-  /v1/devices/{id}/revoke:
-    post:
+        '409':
+          description: User has reached the maximum number of registered devices
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: max_devices_exceeded
+  /v1/devices/{id}:
+    delete:
       tags: [Devices]
-      summary: Revoke a single device
+      summary: Delete a single device
       description: |
-        Sets `revoked_at = NOW()`. Future `/v1/devices/register` calls from
-        the same `(user, installation_id)` will respond with `revoked: true`
-        — the TV app is expected to sign the user out and stop retrying.
-      operationId: revokeDevice
+        Hard-deletes the `user_devices` row and revokes the device's Supabase
+        Auth session when `auth_session_id` is stored. The TV app listens
+        for the DELETE via Supabase Realtime and signs out locally.
+      operationId: deleteDevice
       parameters:
         - name: id
           in: path
@@ -122,15 +130,9 @@ paths:
           schema:
             type: integer
             format: int64
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeviceRevokeRequest'
       responses:
         '204':
-          description: Revoked
+          description: Deleted
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -215,13 +217,6 @@ components:
         revoked: { type: boolean }
         revoked_at: { type: string, format: date-time, nullable: true }
         revoked_reason: { type: string, nullable: true }
-    DeviceRevokeRequest:
-      type: object
-      properties:
-        reason:
-          type: string
-          maxLength: 64
-          example: "user requested removal"
     ErrorResponse:
       type: object
       required: [error]

@@ -17,4 +17,11 @@ interface InstallationIdProvider {
      * a fresh UUID on first call; returns the stored value thereafter.
      */
     fun getInstallationId(): String
+
+    /** Server-assigned `user_devices.id` from `POST /v1/devices/register`. */
+    fun getRegisteredDeviceId(): Long?
+
+    fun setRegisteredDeviceId(deviceId: Long)
+
+    fun clearRegisteredDeviceId()
 }

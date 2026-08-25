@@ -49,6 +49,12 @@ if [ "$healthy" -lt 6 ]; then
   exit 1
 fi
 
+# After Postgres image/recreate, GoTrue/PostgREST keep stale sockets until restarted.
+echo "[apachiy-infra-up] refreshing DB client pools (auth, rest, storage, realtime)..."
+docker compose --env-file "$ENV_FILE" -f docker-compose.yml restart \
+  supabase-auth supabase-rest supabase-storage supabase-realtime >/dev/null
+sleep 5
+
 echo
 echo "Apachiy Supabase is up."
 echo "  Kong gateway:   $(grep '^API_EXTERNAL_URL=' "$ENV_FILE" | cut -d= -f2-)"

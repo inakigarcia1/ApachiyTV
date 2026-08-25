@@ -14,6 +14,7 @@ if [ ! -f "$ENV_FILE" ]; then
 fi
 
 API_URL=$(grep -E '^API_EXTERNAL_URL=' "$ENV_FILE" | cut -d= -f2- | tr -d '\r')
+ANON_KEY=$(grep -E '^ANON_KEY=' "$ENV_FILE" | cut -d= -f2- | tr -d '\r')
 STUDIO_URL=$(grep -E '^STUDIO_PUBLIC_URL=' "$ENV_FILE" | cut -d= -f2- | tr -d '\r')
 POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' "$ENV_FILE" | cut -d= -f2- | tr -d '\r')
 POSTGRES_USER=$(grep -E '^POSTGRES_USER=' "$ENV_FILE" | cut -d= -f2- | tr -d '\r' | sed 's/^supabase_admin$/supabase_admin/')
@@ -34,10 +35,10 @@ check() {
 }
 
 echo "=== Apachiy infra health ==="
-check "Kong gateway reachable" "curl -fsS -o /dev/null -m 5 $API_URL/"
-check "PostgREST (public schema)" "curl -fsS -o /dev/null -m 5 $API_URL/rest/v1/ -H 'apikey: dummy'"
+check "Kong gateway reachable" "curl -fsS -o /dev/null -m 5 $API_URL/auth/v1/health"
+check "PostgREST (public schema)" "curl -fsS -o /dev/null -m 5 '$API_URL/rest/v1/profiles?select=id&limit=0' -H 'apikey: $ANON_KEY' -H 'Authorization: Bearer $ANON_KEY'"
 check "Auth (GoTrue) health" "curl -fsS -o /dev/null -m 5 $API_URL/auth/v1/health"
-check "Storage health" "curl -fsS -o /dev/null -m 5 $API_URL/storage/v1/health"
+check "Storage health" "curl -fsS -o /dev/null -m 5 $API_URL/storage/v1/status"
 check "Studio reachable" "curl -fsS -o /dev/null -m 5 $STUDIO_URL/"
 
 if command -v psql >/dev/null 2>&1; then

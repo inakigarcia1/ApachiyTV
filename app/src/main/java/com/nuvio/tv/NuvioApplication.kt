@@ -43,6 +43,7 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
     @Inject lateinit var sentrySettingsDataStore: SentrySettingsDataStore
     @Inject lateinit var simklAnimeIdPreferenceHolder: SimklAnimeIdPreferenceHolder
     @Inject lateinit var apachiyDeviceRegistrar: com.nuvio.tv.data.remote.device.DeviceRegistrar
+    @Inject lateinit var remoteLogoutWatcher: com.nuvio.tv.core.auth.RemoteLogoutWatcher
 
     companion object {
         /**
@@ -80,6 +81,7 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         PluginRuntimeHooks.onApplicationCreate(this)
         androidTvChannelSyncService.start()
         apachiyDeviceRegistrar.startObserving()
+        remoteLogoutWatcher.startObserving()
         // Load locale synchronously so it's available before Activity.attachBaseContext.
         // SharedPreferences reads are fast (cached in memory after first access).
         AppLocalePreferences.ensureDefaultLocaleIfUnset(this)

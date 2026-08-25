@@ -10,6 +10,18 @@ CREATE SCHEMA IF NOT EXISTS extensions;
 CREATE SCHEMA IF NOT EXISTS auth;
 CREATE SCHEMA IF NOT EXISTS storage;
 CREATE SCHEMA IF NOT EXISTS _realtime;
+CREATE SCHEMA IF NOT EXISTS realtime AUTHORIZATION supabase_admin;
+
+GRANT USAGE ON SCHEMA realtime TO supabase_admin, anon, authenticated, service_role;
+GRANT ALL ON SCHEMA realtime TO supabase_admin;
+
+-- Realtime migrations GRANT to role "postgres" (expected by supabase/realtime image).
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'postgres') THEN
+        CREATE ROLE postgres LOGIN SUPERUSER;
+    END IF;
+END $$;
 
 -- Required extensions for Supabase + Apachiy schema
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp"      WITH SCHEMA extensions;
@@ -61,6 +73,16 @@ BEGIN
 END $$;
 
 ALTER ROLE supabase_admin SET search_path TO auth, public, extensions;
+
+-- Realtime Postgres Changes (self-hosted slice; requires wal2json in Postgres image).
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime'
+    ) THEN
+        CREATE PUBLICATION supabase_realtime;
+    END IF;
+END $$;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
   GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated, service_role;

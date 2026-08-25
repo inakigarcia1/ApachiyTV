@@ -202,7 +202,6 @@ fun HomeScreen(
         )
     }
 
-    val noAddonsError = stringResource(R.string.home_error_no_addons)
     val noCatalogAddonsError = stringResource(R.string.home_error_no_catalog_addons)
     val hasAnyContent = uiState.catalogRows.isNotEmpty() ||
         (uiState.continueWatchingEnabled && uiState.continueWatchingItems.isNotEmpty()) ||
@@ -211,7 +210,7 @@ fun HomeScreen(
     val showStartupLoader = when {
         !uiState.layoutPreferencesReady -> true
         uiState.isLoading && !hasAnyContent -> true
-        uiState.error == noAddonsError && uiState.catalogRows.isEmpty() -> !homeStableGateReleased
+        uiState.isNoAddons && uiState.catalogRows.isEmpty() -> !homeStableGateReleased
         uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> !homeStableGateReleased
         uiState.error != null && uiState.catalogRows.isEmpty() -> false
         !uiState.isLoading && !hasAnyContent -> !homeStableGateReleased
@@ -233,7 +232,7 @@ fun HomeScreen(
                 Unit
             }
 
-            uiState.error == noAddonsError && uiState.catalogRows.isEmpty() -> {
+            uiState.isNoAddons && uiState.catalogRows.isEmpty() -> {
                 if (!homeStableGateReleased) {
                     Unit
                 } else {

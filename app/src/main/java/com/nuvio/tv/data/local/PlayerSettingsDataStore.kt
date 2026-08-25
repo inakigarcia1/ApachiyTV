@@ -133,7 +133,7 @@ val AVAILABLE_TMDB_LANGUAGES = AVAILABLE_SUBTITLE_LANGUAGES + listOf(
  * Data class representing subtitle style settings
  */
 data class SubtitleStyleSettings(
-    val preferredLanguage: String = "en",
+    val preferredLanguage: String = "es",
     val secondaryPreferredLanguage: String? = null,
     val useForcedSubtitles: Boolean = false,
     val showOnlyPreferredLanguages: Boolean = false,
@@ -776,7 +776,7 @@ class PlayerSettingsDataStore @Inject constructor(
                     prefs[subtitleUseForcedSubtitlesKey] = true
                     val migratedPreferred = normalizedSecondarySubtitleLanguage
                         ?.takeUnless { it == SUBTITLE_LANGUAGE_FORCED || it == "none" }
-                        ?: "en"
+                        ?: "es"
                     prefs[subtitlePreferredLanguageKey] = migratedPreferred
                     prefs.remove(subtitleSecondaryLanguageKey)
                 }
@@ -1366,13 +1366,13 @@ class PlayerSettingsDataStore @Inject constructor(
     ): String {
         val preferred = preferredLanguage
             ?.let(::normalizeSelectableLanguageCode)
-            ?: return "en"
+            ?: return "es"
         if (preferred != SUBTITLE_LANGUAGE_FORCED) return preferred
 
         return secondaryLanguage
             ?.let(::normalizeSelectableLanguageCode)
             ?.takeUnless { it == SUBTITLE_LANGUAGE_FORCED || it == "none" }
-            ?: "en"
+            ?: "es"
     }
 
     suspend fun setMpvHardwareDecodeMode(mode: MpvHardwareDecodeMode) {
@@ -1407,7 +1407,7 @@ class PlayerSettingsDataStore @Inject constructor(
     suspend fun setStripHdr10PlusSei(enabled: Boolean) { store().edit { it[stripHdr10PlusSeiKey] = enabled } }
 
     // Subtitle styles
-    suspend fun setSubtitlePreferredLanguage(language: String) { store().edit { it[subtitlePreferredLanguageKey] = normalizeSelectableLanguageCode(language.ifBlank { "en" }) } }
+    suspend fun setSubtitlePreferredLanguage(language: String) { store().edit { it[subtitlePreferredLanguageKey] = normalizeSelectableLanguageCode(language.ifBlank { "es" }) } }
     suspend fun setSubtitleSecondaryLanguage(language: String?) {
         store().edit { prefs ->
             val normalizedLanguage = language?.takeIf { it.isNotBlank() }?.let(::normalizeSelectableLanguageCode)

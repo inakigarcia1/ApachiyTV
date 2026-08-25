@@ -20,6 +20,7 @@ data class HomeUiState(
     val upcomingItems: List<ContinueWatchingItem> = emptyList(),
     val isLoading: Boolean = true,
     val layoutPreferencesReady: Boolean = false,
+    val isNoAddons: Boolean = false,
     val error: String? = null,
     val selectedItemId: String? = null,
     val installedAddonsCount: Int = 0,

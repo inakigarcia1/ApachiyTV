@@ -11,6 +11,7 @@ import javax.inject.Singleton
 private const val TAG = "ApachiyInstallation"
 private const val PREFS_NAME = "apachiy_installation"
 private const val KEY_ID = "installation_id"
+private const val KEY_REGISTERED_DEVICE_ID = "registered_device_id"
 private val UUID_V4_REGEX = Regex(
     "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$"
 )
@@ -50,6 +51,22 @@ class InstallationIdManager @Inject constructor(
             Log.i(TAG, "Generated new installation id: $fresh")
         }
         return fresh
+    }
+
+    @Synchronized
+    override fun getRegisteredDeviceId(): Long? {
+        if (!prefs.contains(KEY_REGISTERED_DEVICE_ID)) return null
+        return prefs.getLong(KEY_REGISTERED_DEVICE_ID, -1L)
+    }
+
+    @Synchronized
+    override fun setRegisteredDeviceId(deviceId: Long) {
+        prefs.edit().putLong(KEY_REGISTERED_DEVICE_ID, deviceId).commit()
+    }
+
+    @Synchronized
+    override fun clearRegisteredDeviceId() {
+        prefs.edit().remove(KEY_REGISTERED_DEVICE_ID).apply()
     }
 
     companion object {

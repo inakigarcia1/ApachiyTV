@@ -161,7 +161,7 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
     // catalogs load in the background to avoid a flash of empty content.
     val isReload = _uiState.value.catalogRows.isNotEmpty() || _uiState.value.homeRows.isNotEmpty()
     if (!isReload) {
-        _uiState.update { it.copy(isLoading = true, error = null, installedAddonsCount = addons.size) }
+        _uiState.update { it.copy(isLoading = true, error = null, isNoAddons = false, installedAddonsCount = addons.size) }
         synchronized(catalogStateLock) {
             catalogOrder.clear()
         }
@@ -193,7 +193,7 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
     try {
         if (addons.isEmpty()) {
             catalogsLoadInProgress = false
-            _uiState.update { it.copy(isLoading = false, error = appContext.getString(R.string.home_error_no_addons)) }
+            _uiState.update { it.copy(isLoading = false, isNoAddons = true, error = null) }
             return
         }
 

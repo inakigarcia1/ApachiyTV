@@ -4,6 +4,8 @@ import android.os.Build
 import android.util.Log
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.core.auth.AuthManager
+import com.nuvio.tv.core.auth.DeviceLimitNotifier
+import com.nuvio.tv.core.auth.LastAuthKind
 import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.core.installation.InstallationIdProvider
 import com.nuvio.tv.data.remote.device.dto.DeviceRegistrationError
@@ -51,6 +53,7 @@ class DeviceRegistrar @Inject constructor(
     private val supabaseAuth: Auth,
     private val installationIdProvider: InstallationIdProvider,
     private val apachiyDeviceApi: ApachiyDeviceApi,
+    private val deviceLimitNotifier: DeviceLimitNotifier,
     @Named("apachiy") private val json: Json
 ) {
     @Suppress("unused")
@@ -72,6 +75,8 @@ class DeviceRegistrar @Inject constructor(
                 .collect { isAuthed ->
                     if (isAuthed) {
                         registerNow()
+                    } else {
+                        installationIdProvider.clearRegisteredDeviceId()
                     }
                 }
         }
@@ -119,7 +124,11 @@ class DeviceRegistrar @Inject constructor(
                 )
                 if (resp.isSuccessful) {
                     val body: DeviceRegistrationResponse? = resp.body()
-                    Log.i(TAG, "device registered id=${body?.deviceId} created=${body?.created} revoked=${body?.revoked}")
+                    val deviceId = body?.deviceId?.takeIf { it > 0L }
+                    Log.i(TAG, "device registered id=$deviceId created=${body?.created} revoked=${body?.revoked}")
+                    if (deviceId != null) {
+                        installationIdProvider.setRegisteredDeviceId(deviceId)
+                    }
                     if (body?.revoked == true) {
                         Log.w(TAG, "device was reported revoked; signing out")
                         authManager.signOut()
@@ -148,6 +157,14 @@ class DeviceRegistrar @Inject constructor(
                         authManager.signOut()
                         return
                     }
+                    409 -> {
+                        if (err?.error == "max_devices_exceeded") {
+                            handleMaxDevicesExceeded()
+                        } else {
+                            Log.w(TAG, "device registration conflict (409): $errBody")
+                        }
+                        return
+                    }
                     in 500..599 -> {
                         Log.w(TAG, "server error ${resp.code()}; will retry (attempt $attempt/$MAX_ATTEMPTS) err=$err")
                         lastError = RuntimeException("HTTP ${resp.code()}")
@@ -166,6 +183,14 @@ class DeviceRegistrar @Inject constructor(
             delay(RETRY_BASE_DELAY_MS * (1L shl (attempt - 1)))
         }
         Log.e(TAG, "device registration gave up after $MAX_ATTEMPTS attempts: ${lastError?.message}")
+    }
+
+    private suspend fun handleMaxDevicesExceeded() {
+        Log.w(TAG, "max devices exceeded for user")
+        deviceLimitNotifier.notifyMaxDevicesExceeded()
+        if (authManager.lastAuthKind != LastAuthKind.SignUp) {
+            authManager.signOut(explicit = false)
+        }
     }
 
     private fun buildRequest(): DeviceRegistrationRequest {

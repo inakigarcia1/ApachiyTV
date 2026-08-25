@@ -249,6 +249,9 @@ class MainActivity : ComponentActivity() {
     lateinit var authSessionNoticeDataStore: AuthSessionNoticeDataStore
 
     @Inject
+    lateinit var deviceLimitNotifier: com.nuvio.tv.core.auth.DeviceLimitNotifier
+
+    @Inject
     lateinit var appOnboardingDataStore: AppOnboardingDataStore
 
     @Inject
@@ -328,6 +331,19 @@ class MainActivity : ComponentActivity() {
             val hasSeenAuthQrOnFirstLaunch by hasSeenAuthQrFlow.collectAsState(initial = null)
             val authState by authManager.authState.collectAsState()
             val context = LocalContext.current
+            var showMaxDevicesDialog by remember { mutableStateOf(false) }
+
+            LaunchedEffect(deviceLimitNotifier) {
+                deviceLimitNotifier.events.collect {
+                    showMaxDevicesDialog = true
+                }
+            }
+
+            if (showMaxDevicesDialog) {
+                com.nuvio.tv.ui.components.MaxDevicesExceededDialog(
+                    onDismiss = { showMaxDevicesDialog = false }
+                )
+            }
 
             LaunchedEffect(authSessionNoticeDataStore, context) {
                 authSessionNoticeDataStore.pendingNotice.collect { notice ->
@@ -586,22 +602,26 @@ class MainActivity : ComponentActivity() {
                     }
 
                     val layoutChosen = mainUiPrefs.hasChosenLayout
-                    if (layoutChosen == null || !mainUiPrefs.experienceModeLoaded || installedAddons == null) {
+                    if (
+                        layoutChosen == null ||
+                        layoutChosen == false ||
+                        !mainUiPrefs.experienceModeLoaded ||
+                        installedAddons == null
+                    ) {
+                        LaunchedEffect(layoutChosen, mainUiPrefs.experienceModeLoaded, mainUiPrefs.experienceMode) {
+                            if (layoutChosen == false) {
+                                layoutPreferenceDataStore.setLayout(HomeLayout.MODERN)
+                            }
+                            if (mainUiPrefs.experienceModeLoaded && mainUiPrefs.experienceMode == null) {
+                                experienceModeDataStore.setMode(ExperienceMode.ESSENTIAL)
+                            }
+                        }
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .background(NuvioTheme.colors.Background)
                         )
                         return@Surface
-                    }
-
-                    LaunchedEffect(mainUiPrefs.experienceModeLoaded, mainUiPrefs.experienceMode, layoutChosen) {
-                        if (mainUiPrefs.experienceModeLoaded && mainUiPrefs.experienceMode == null) {
-                            experienceModeDataStore.setMode(ExperienceMode.ESSENTIAL)
-                            if (layoutChosen != true) {
-                                layoutPreferenceDataStore.setLayout(HomeLayout.MODERN)
-                            }
-                        }
                     }
 
                     val pendingDeepLink by pendingDeepLinkUrl.collectAsState()
@@ -624,10 +644,7 @@ class MainActivity : ComponentActivity() {
                         mainUiPrefs.modernSidebarBlurPref && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
                     val hideBuiltInHeadersForFloatingPill = modernSidebarEnabled && !sidebarCollapsed
 
-                    val startDestination = when {
-                        layoutChosen -> Screen.Home.route
-                        else -> Screen.LayoutSelection.route
-                    }
+                    val startDestination = Screen.Home.route
                     val navController = rememberNavController()
                     var optimisticRoute by remember { mutableStateOf<String?>(null) }
                     val navBackStackEntry by navController.currentBackStackEntryAsState()

@@ -24,6 +24,7 @@ import com.nuvio.tv.core.sync.WatchedItemsSyncService
 import com.nuvio.tv.core.sync.ProfileSettingsSyncService
 import com.nuvio.tv.core.sync.ProviderCredentialSyncService
 import com.nuvio.tv.data.local.LibraryPreferences
+import com.nuvio.tv.data.local.PlayerSettingsDataStore
 import com.nuvio.tv.data.local.WatchedItemsPreferences
 import com.nuvio.tv.data.local.TraktAuthDataStore
 import com.nuvio.tv.data.local.WatchProgressPreferences
@@ -78,6 +79,7 @@ class AccountViewModel @Inject constructor(
     private val libraryPreferences: LibraryPreferences,
     private val watchedItemsPreferences: WatchedItemsPreferences,
     private val traktAuthDataStore: TraktAuthDataStore,
+    private val playerSettingsDataStore: PlayerSettingsDataStore,
     private val postgrest: Postgrest,
     private val profileManager: ProfileManager,
     private val authDiagnosticReportRepository: AuthDiagnosticReportRepository,
@@ -146,6 +148,9 @@ class AccountViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true, error = null) }
             authManager.signUpWithEmail(email, password).fold(
                 onSuccess = {
+                    viewModelScope.launch {
+                        playerSettingsDataStore.setSubtitlePreferredLanguage("es")
+                    }
                     pushLocalDataToRemote()
                     _uiState.update { it.copy(isLoading = false) }
                 },
