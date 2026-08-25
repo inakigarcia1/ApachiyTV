@@ -17,6 +17,7 @@ import com.nuvio.tv.domain.model.nextCatalogSkip
 import com.nuvio.tv.domain.model.skipStep
 import com.nuvio.tv.domain.model.WatchedItem
 import com.nuvio.tv.domain.model.supportsExtra
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
@@ -128,12 +129,44 @@ internal fun HomeViewModel.observeTmdbSettingsPipeline() {
 @OptIn(FlowPreview::class)
 internal fun HomeViewModel.observeInstalledAddonsPipeline() {
     viewModelScope.launch {
-        addonRepository.getInstalledAddons()
+        combine(
+            addonRepository.getInstalledAddonUrls(),
+            addonRepository.getInstalledAddons()
+        ) { urls, installedAddons -> urls to installedAddons }
             .distinctUntilChanged()
-            .collectLatest { installedAddons ->
+            .collectLatest { (urls, installedAddons) ->
                 val addons = installedAddons.enabledAddons()
+
+                // URLs synced but manifests still loading — keep Home in loading,
+                // never flash the empty/no-catalogs error.
+                if (urls.isNotEmpty() && addons.isEmpty()) {
+                    addonsCache = emptyList()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = true,
+                            isNoAddons = false,
+                            error = null,
+                            installedAddonsCount = urls.size
+                        )
+                    }
+                    return@collectLatest
+                }
+
+                if (addons.isEmpty()) {
+                    if (addonRepository.isRemoteSyncInProgress) {
+                        _uiState.update {
+                            it.copy(isLoading = true, isNoAddons = false, error = null)
+                        }
+                        return@collectLatest
+                    }
+                    addonsCache = emptyList()
+                    loadAllCatalogsPipeline(addons, forceReload = true)
+                    return@collectLatest
+                }
+
+                val forceReload = addonsCache.isEmpty()
                 addonsCache = addons
-                loadAllCatalogsPipeline(addons)
+                loadAllCatalogsPipeline(addons, forceReload = forceReload)
             }
     }
 }
@@ -352,6 +385,10 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
                 }
             }
         }
+    } catch (e: CancellationException) {
+        // collectLatest / generation bumps cancel in-flight loads; let the
+        // replacement load own UI state instead of flashing empty Home.
+        throw e
     } catch (e: Exception) {
         catalogsLoadInProgress = false
         _uiState.update { it.copy(isLoading = false, error = e.message) }

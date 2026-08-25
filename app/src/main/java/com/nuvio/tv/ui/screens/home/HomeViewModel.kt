@@ -29,6 +29,7 @@ import com.nuvio.tv.domain.model.LibraryEntryInput
 import com.nuvio.tv.domain.model.ListMembershipChanges
 import com.nuvio.tv.domain.model.Meta
 import com.nuvio.tv.domain.model.MetaPreview
+import com.nuvio.tv.domain.model.enabledAddons
 import com.nuvio.tv.data.repository.MDBListRepository
 import com.nuvio.tv.domain.model.MDBListSettings
 import com.nuvio.tv.domain.model.TmdbSettings
@@ -606,7 +607,11 @@ class HomeViewModel @Inject constructor(
                 episode = event.episode,
                 isNextUp = event.isNextUp
             )
-            HomeEvent.OnRetry -> viewModelScope.launch { loadAllCatalogs(addonsCache, forceReload = true) }
+            HomeEvent.OnRetry -> viewModelScope.launch {
+                val addons = addonRepository.getInstalledAddons().first().enabledAddons()
+                addonsCache = addons
+                loadAllCatalogs(addons, forceReload = true)
+            }
         }
     }
 

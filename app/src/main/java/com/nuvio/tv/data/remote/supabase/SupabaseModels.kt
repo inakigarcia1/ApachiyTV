@@ -10,7 +10,7 @@ import kotlinx.serialization.json.buildJsonObject
 
 @Serializable
 data class SupabasePlugin(
-    val id: String? = null,
+    val id: Long? = null,
     @SerialName("user_id") val userId: String,
     val url: String,
     val name: String? = null,
@@ -24,7 +24,7 @@ data class SupabasePlugin(
 
 @Serializable
 data class SupabaseAddon(
-    val id: String? = null,
+    val id: Long? = null,
     @SerialName("user_id") val userId: String,
     val url: String,
     val name: String? = null,
@@ -49,7 +49,7 @@ data class ClaimSyncResult(
 
 @Serializable
 data class SupabaseLinkedDevice(
-    val id: String? = null,
+    val id: Long? = null,
     @SerialName("owner_id") val ownerId: String,
     @SerialName("device_user_id") val deviceUserId: String,
     @SerialName("device_name") val deviceName: String? = null,
@@ -82,7 +82,7 @@ data class TvLoginExchangeResult(
 
 @Serializable
 data class SupabaseWatchProgress(
-    val id: String? = null,
+    val id: Long? = null,
     @SerialName("user_id") val userId: String,
     @SerialName("content_id") val contentId: String,
     @SerialName("content_type") val contentType: String,
@@ -113,7 +113,7 @@ data class SupabaseWatchProgressEvent(
 
 @Serializable
 data class SupabaseWatchedItem(
-    val id: String? = null,
+    val id: Long? = null,
     @SerialName("user_id") val userId: String? = null,
     @SerialName("content_id") val contentId: String,
     @SerialName("content_type") val contentType: String,
@@ -138,7 +138,7 @@ data class SupabaseWatchedItemEvent(
 
 @Serializable
 data class SupabaseProfile(
-    val id: String? = null,
+    val id: Long? = null,
     @SerialName("user_id") val userId: String? = null,
     @SerialName("profile_index") val profileIndex: Int,
     val name: String = "",

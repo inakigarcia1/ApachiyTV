@@ -56,6 +56,11 @@ class AddonRepositoryImpl @Inject constructor(
     private var syncJob: Job? = null
     var isSyncingFromRemote = false
 
+    override val isRemoteSyncInProgress: Boolean
+        get() = isSyncingFromRemote
+
+    override fun getInstalledAddonUrls(): Flow<List<String>> = preferences.installedAddonUrls
+
     private fun canonicalizeUrl(url: String): String {
         val trimmed = url.trim().trimEnd('/')
         // Separate path from query string so we can detect /manifest.json
@@ -184,7 +189,7 @@ class AddonRepositoryImpl @Inject constructor(
                     val canonical = canonicalizeUrl(url)
                     (enabledByUrl[canonical] ?: true) && getCachedManifest(canonical) == null
                 }
-                if (hasCacheMiss) {
+                    if (hasCacheMiss) {
                     val fresh = coroutineScope {
                         urls.map { url ->
                             async {
@@ -203,7 +208,9 @@ class AddonRepositoryImpl @Inject constructor(
                         }.awaitAll().filterNotNull()
                     }
 
-                    if (fresh != cached) {
+                    // Always emit after a cache-miss fetch so collectors leave the
+                    // initial empty StateFlow value even when every fetch fails.
+                    if (fresh != cached || cached.isEmpty()) {
                         emit(applyDisplayNames(fresh, userNames, enabledByUrl))
                     }
                 } else if (isCacheStale() && urls.isNotEmpty()) {

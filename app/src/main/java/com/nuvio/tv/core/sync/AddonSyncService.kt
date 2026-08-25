@@ -89,9 +89,11 @@ class AddonSyncService @Inject constructor(
     suspend fun getRemoteAddonUrls(): Result<List<String>> = withContext(Dispatchers.IO) {
         try {
             val effectiveUserId = authManager.getEffectiveUserId(fallbackToOwnIdOnFailure = false)
-                ?: return@withContext Result.failure(
+            if (effectiveUserId == null) {
+                return@withContext Result.failure(
                     IllegalStateException("Unable to resolve sync owner for addon sync")
                 )
+            }
 
             val activeProfile = profileManager.activeProfile
             val profileId = if (activeProfile != null && !activeProfile.isPrimary && activeProfile.usesPrimaryAddons) 1
