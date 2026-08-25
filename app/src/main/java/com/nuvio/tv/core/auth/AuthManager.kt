@@ -424,6 +424,14 @@ class AuthManager @Inject constructor(
         }
     }
 
+    suspend fun refreshCurrentSessionSerialized(reason: String): Boolean {
+        val refreshToken = auth.currentSessionOrNull()?.refreshToken?.takeIf { it.isNotBlank() }
+        return refreshCurrentSessionSerialized(
+            observedRefreshToken = refreshToken,
+            reason = reason
+        ).result == SessionRefreshResult.REFRESHED
+    }
+
     suspend fun refreshSessionIfJwtExpired(error: Throwable): Boolean {
         if (!error.isJwtExpiredAuthError()) return false
         val refreshToken = auth.currentSessionOrNull()?.refreshToken?.takeIf { it.isNotBlank() }

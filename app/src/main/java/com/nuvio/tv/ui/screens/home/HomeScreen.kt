@@ -236,16 +236,10 @@ fun HomeScreen(
                 if (!homeStableGateReleased) {
                     Unit
                 } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.home_no_addons),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = NuvioTheme.colors.TextSecondary
-                        )
-                    }
+                    ErrorState(
+                        message = stringResource(R.string.home_no_addons),
+                        onRetry = { viewModel.onEvent(HomeEvent.OnRetry) }
+                    )
                 }
             }
 
@@ -253,16 +247,10 @@ fun HomeScreen(
                 if (!homeStableGateReleased) {
                     Unit
                 } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.home_no_catalog_addons),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = NuvioTheme.colors.TextSecondary
-                        )
-                    }
+                    ErrorState(
+                        message = stringResource(R.string.home_no_catalog_addons),
+                        onRetry = { viewModel.onEvent(HomeEvent.OnRetry) }
+                    )
                 }
             }
 
@@ -279,16 +267,10 @@ fun HomeScreen(
                 if (!homeStableGateReleased) {
                     Unit
                 } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.web_no_catalogs),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = NuvioTheme.colors.TextSecondary
-                        )
-                    }
+                    ErrorState(
+                        message = stringResource(R.string.web_no_catalogs),
+                        onRetry = { viewModel.onEvent(HomeEvent.OnRetry) }
+                    )
                 }
             }
 

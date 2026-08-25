@@ -23,7 +23,6 @@ import com.nuvio.tv.core.locale.AppLocalePreferences
 import com.nuvio.tv.core.runtime.PluginRuntimeHooks
 import com.nuvio.tv.core.sync.StartupSyncService
 import com.nuvio.tv.core.sync.androidtv.AndroidTvChannelSyncService
-import com.nuvio.tv.core.network.IPv4FirstDns
 import com.nuvio.tv.data.local.SentrySettingsDataStore
 import com.nuvio.tv.data.simkl.SimklAnimeIdPreferenceHolder
 import coil3.network.cachecontrol.CacheControlCacheStrategy
@@ -34,6 +33,7 @@ import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
 import java.util.concurrent.ConcurrentHashMap
 import javax.inject.Inject
+import javax.inject.Named
 
 @HiltAndroidApp
 class NuvioApplication : Application(), SingletonImageLoader.Factory {
@@ -44,6 +44,8 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
     @Inject lateinit var simklAnimeIdPreferenceHolder: SimklAnimeIdPreferenceHolder
     @Inject lateinit var apachiyDeviceRegistrar: com.nuvio.tv.data.remote.device.DeviceRegistrar
     @Inject lateinit var remoteLogoutWatcher: com.nuvio.tv.core.auth.RemoteLogoutWatcher
+    /** Same client as AddonApi: trust-all TLS for local HTTPS + Apachiy JWT on image proxy URLs. */
+    @Inject @Named("addon") lateinit var addonOkHttpClient: OkHttpClient
 
     companion object {
         /**
@@ -101,13 +103,9 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
                 // so dynamic images (e.g. BetterPosters with max-age) revalidate.
                 add(
                     coil3.network.okhttp.OkHttpNetworkFetcherFactory(
-                        callFactory = {
-                            OkHttpClient.Builder()
-                                .dns(IPv4FirstDns())
-                                .followRedirects(true)
-                                .followSslRedirects(true)
-                                .build()
-                        },
+                        // Reuse the addon OkHttp stack so /metadata/img on the local
+                        // HTTPS API (self-signed) works the same as catalog/meta GETs.
+                        callFactory = { addonOkHttpClient },
                         cacheStrategy = { CacheControlCacheStrategy() },
                     )
                 )

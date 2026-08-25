@@ -42,6 +42,8 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
+import com.nuvio.tv.core.auth.AuthManager
+import com.nuvio.tv.core.network.ApachiyAddonAuthInterceptor
 import com.nuvio.tv.core.network.IPv4FirstDns
 import com.nuvio.tv.core.diagnostics.SentryNetworkBreadcrumbInterceptor
 import java.io.File
@@ -49,6 +51,7 @@ import java.security.SecureRandom
 import java.security.cert.X509Certificate
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicLong
+import io.github.jan.supabase.auth.Auth
 import javax.inject.Named
 import javax.inject.Singleton
 import javax.net.ssl.SSLContext
@@ -142,6 +145,23 @@ object NetworkModule {
             })
             .build()
     }
+
+    @Provides
+    @Singleton
+    fun provideApachiyAddonAuthInterceptor(
+        auth: Auth,
+        authManager: AuthManager
+    ): ApachiyAddonAuthInterceptor = ApachiyAddonAuthInterceptor(auth, authManager)
+
+    @Provides
+    @Singleton
+    @Named("addon")
+    fun provideAddonOkHttpClient(
+        okHttpClient: OkHttpClient,
+        apachiyAddonAuthInterceptor: ApachiyAddonAuthInterceptor
+    ): OkHttpClient = okHttpClient.newBuilder()
+        .addInterceptor(apachiyAddonAuthInterceptor)
+        .build()
 
     @Provides
     @Singleton
@@ -310,8 +330,16 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideAddonApi(retrofit: Retrofit): AddonApi =
-        retrofit.create(AddonApi::class.java)
+    fun provideAddonApi(
+        @Named("addon") okHttpClient: OkHttpClient,
+        moshi: Moshi
+    ): AddonApi =
+        Retrofit.Builder()
+            .baseUrl("https://placeholder.nuvio.tv/")
+            .client(okHttpClient)
+            .addConverterFactory(MoshiConverterFactory.create(moshi))
+            .build()
+            .create(AddonApi::class.java)
 
     @Provides
     @Singleton
