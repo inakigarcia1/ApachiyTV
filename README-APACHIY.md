@@ -90,7 +90,7 @@ TV will be an emulator on the same machine, or your LAN IP like
 ```properties
 APACHIY_SUPABASE_URL=http://192.168.0.50:8000
 APACHIY_SUPABASE_ANON_KEY=<paste ANON_KEY from .env>
-APACHIY_TV_LOGIN_WEB_BASE_URL=http://192.168.0.50:8000/tv-login
+APACHIY_TV_LOGIN_WEB_BASE_URL=http://192.168.0.50:5173/tv-login
 APACHIY_API_BASE_URL=https://your-apachiy-api.example
 ```
 

@@ -691,7 +691,7 @@ class AccountViewModel @Inject constructor(
                         cancelQrLoginPolling()
                         exchangeQrLogin()
                     }
-                    "expired", "used", "cancelled" -> {
+                    "expired", "used", "cancelled", "consumed", "not_found" -> {
                         Log.w(TAG, "QR_LOGIN[${traceId ?: "-"}] poll attempt=$attempt terminal status=$normalizedStatus")
                         cancelQrLoginPolling()
                         diagnostics?.finishTerminal(status = normalizedStatus, reason = "qr_login_$normalizedStatus", failingEndpoint = QR_ENDPOINT_POLL)

@@ -208,7 +208,7 @@ android {
             buildConfigField("String", "SUPABASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "APACHIY_SUPABASE_URL")))
             buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(resolveProperty(devProperties, localProperties, "APACHIY_SUPABASE_ANON_KEY")))
             buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(resolveProperty(devProperties, localProperties, "APACHIY_SUPABASE_FALLBACK_URL")))
-            buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", "\"${devProperties.getProperty("APACHIY_TV_LOGIN_WEB_BASE_URL", devProperties.getProperty("TV_LOGIN_WEB_BASE_URL", ""))}\"")
+            buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "APACHIY_TV_LOGIN_WEB_BASE_URL", resolveProperty(devProperties, localProperties, "TV_LOGIN_WEB_BASE_URL"))))
             buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${devProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
             buildConfigField("String", "INTRODB_API_URL", "\"${devProperties.getProperty("INTRODB_API_URL", "")}\"")
             buildConfigField("String", "TRAILER_API_URL", "\"${devProperties.getProperty("TRAILER_API_URL", "")}\"")
