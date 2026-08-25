@@ -194,14 +194,6 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
         if (addons.isEmpty()) {
             catalogsLoadInProgress = false
             _uiState.update { it.copy(isLoading = false, isNoAddons = true, error = null) }
-            // #region agent log
-            com.nuvio.tv.core.network.ApachiyAddonAuthInterceptor.agentDebugLog(
-                hypothesisId = "H3",
-                location = "HomeViewModelCatalogPipeline.loadAllCatalogs",
-                message = "no enabled addons",
-                data = mapOf("addons" to 0)
-            )
-            // #endregion
             return
         }
 
@@ -219,17 +211,6 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
         if (isCatalogOrderEmpty() && !hasHeroSelections) {
             catalogsLoadInProgress = false
             _uiState.update { it.copy(isLoading = false, error = appContext.getString(R.string.home_error_no_catalog_addons)) }
-            // #region agent log
-            com.nuvio.tv.core.network.ApachiyAddonAuthInterceptor.agentDebugLog(
-                hypothesisId = "H3",
-                location = "HomeViewModelCatalogPipeline.loadAllCatalogs",
-                message = "catalog order empty",
-                data = mapOf(
-                    "addons" to addons.size,
-                    "catalogCounts" to addons.map { "${it.id}:${it.catalogs.size}" }.joinToString(",")
-                )
-            )
-            // #endregion
             return
         }
 
@@ -266,21 +247,6 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
         }
 
         val allCatalogsToLoad = catalogsToLoad + heroOnlyCatalogs
-        // #region agent log
-        com.nuvio.tv.core.network.ApachiyAddonAuthInterceptor.agentDebugLog(
-            hypothesisId = "H3",
-            location = "HomeViewModelCatalogPipeline.loadAllCatalogs",
-            message = "catalogs scheduled",
-            data = mapOf(
-                "addons" to addons.size,
-                "catalogsToLoad" to catalogsToLoad.size,
-                "heroOnly" to heroOnlyCatalogs.size,
-                "samples" to catalogsToLoad.take(5).joinToString("|") { (a, c) ->
-                    "${a.baseUrl}|${c.apiType}|${c.id}"
-                }
-            )
-        )
-        // #endregion
         if (allCatalogsToLoad.isEmpty()) {
             // No home catalogs and no hero catalogs to load —
             // but collections may still exist to render.
@@ -504,20 +470,6 @@ internal fun HomeViewModel.loadCatalogPipeline(
                             type = catalog.apiType,
                             catalogId = catalog.id
                         )
-                        // #region agent log
-                        com.nuvio.tv.core.network.ApachiyAddonAuthInterceptor.agentDebugLog(
-                            hypothesisId = "H4",
-                            location = "HomeViewModelCatalogPipeline.loadCatalog",
-                            message = "catalog load error",
-                            data = mapOf(
-                                "baseUrl" to addon.baseUrl,
-                                "type" to catalog.apiType,
-                                "catalogId" to catalog.id,
-                                "code" to result.code,
-                                "error" to (result.message?.take(120) ?: "")
-                            )
-                        )
-                        // #endregion
                         // Remove placeholder on error so it doesn't show forever
                         synchronized(catalogStateLock) {
                             placeholderDescriptors.removeAll { it.catalogKey == errorKey }
