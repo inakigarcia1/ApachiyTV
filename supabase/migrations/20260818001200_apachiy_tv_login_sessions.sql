@@ -18,6 +18,13 @@ CREATE TABLE IF NOT EXISTS public.tv_login_sessions (
 );
 CREATE INDEX IF NOT EXISTS idx_tv_login_status_expires ON public.tv_login_sessions(status, expires_at);
 
+-- Drop first: CREATE OR REPLACE cannot rename input parameters (e.g. after
+-- 20260826000000_apachiy_tv_login_qr_align.sql already replaced this RPC).
+DROP FUNCTION IF EXISTS public.start_tv_login_session(TEXT, TEXT, TEXT, INTEGER);
+DROP FUNCTION IF EXISTS public.poll_tv_login_session(TEXT);
+DROP FUNCTION IF EXISTS public.poll_tv_login_session(TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.approve_tv_login_session(TEXT);
+
 CREATE OR REPLACE FUNCTION public.start_tv_login_session(
     p_device_nonce    TEXT,
     p_installation_id TEXT,

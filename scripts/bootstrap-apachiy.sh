@@ -73,15 +73,31 @@ echo "=== 5. Applying Apachiy schema migrations ==="
 POSTGRES_PASSWORD=$(grep -E '^POSTGRES_PASSWORD=' "$ENV_FILE" | cut -d= -f2- | tr -d '\r')
 MIG_DIR="$ROOT_DIR/supabase/migrations"
 if compgen -G "$MIG_DIR/*.sql" >/dev/null; then
+  # Tracking table must exist before the loop (also created in 017 for fresh DBs).
+  docker exec apachiy-supabase-db \
+    psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -c \
+    "CREATE TABLE IF NOT EXISTS public._apachiy_migrations (
+       name TEXT PRIMARY KEY,
+       applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+     );" >/dev/null
+
   for m in "$MIG_DIR"/*.sql; do
-    echo "  applying $(basename "$m")"
+    name="$(basename "$m")"
+    already="$(docker exec apachiy-supabase-db \
+      psql -U supabase_admin -d postgres -Atqc \
+      "SELECT 1 FROM public._apachiy_migrations WHERE name = '$name';" 2>/dev/null || true)"
+    if [ "$already" = "1" ]; then
+      echo "  skip $name (already applied)"
+      continue
+    fi
+    echo "  applying $name"
     if ! docker exec -i apachiy-supabase-db \
       psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 -f - < "$m"; then
-      fail "migration failed: $(basename "$m")"
+      fail "migration failed: $name"
     fi
     docker exec apachiy-supabase-db \
       psql -U supabase_admin -d postgres -c \
-      "INSERT INTO public._apachiy_migrations(name) VALUES ('$(basename "$m")') ON CONFLICT DO NOTHING;" >/dev/null
+      "INSERT INTO public._apachiy_migrations(name) VALUES ('$name') ON CONFLICT DO NOTHING;" >/dev/null
   done
   docker exec apachiy-supabase-db \
     psql -U supabase_admin -d postgres -v ON_ERROR_STOP=1 \
