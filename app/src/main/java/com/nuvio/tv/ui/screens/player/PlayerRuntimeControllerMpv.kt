@@ -2,6 +2,8 @@ package com.nuvio.tv.ui.screens.player
 
 import android.util.Log
 import androidx.media3.exoplayer.SeekParameters
+import com.nuvio.tv.core.error.UserFacingError
+import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.data.local.InternalPlayerEngine
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
@@ -162,7 +164,7 @@ internal fun PlayerRuntimeController.initializeMpvPlayer(
         emitScrobbleStart()
     }.onFailure { error ->
         Log.e(PlayerRuntimeController.TAG, "libmpv initialize failed: ${error.message}", error)
-        val detailedError = error.message ?: context.getString(com.nuvio.tv.R.string.player_error_mpv_playback_failed)
+        val detailedError = UserFacingError.fromThrowable(error, context, UserFacingErrorSituation.Playback)
         if (
             maybeAutoSwitchInternalPlayerOnStartupError(
                 detailedError = detailedError,

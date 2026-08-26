@@ -2,6 +2,8 @@ package com.nuvio.tv.ui.screens.home
 
 import android.util.Log
 import androidx.lifecycle.viewModelScope
+import com.nuvio.tv.core.error.UserFacingError
+import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.tracking.TrackingMembershipRemovalConfirmation
 import com.nuvio.tv.core.tracking.mergeTrackingMembershipWithTabs
 import com.nuvio.tv.core.tracking.toggleTrackingMembershipSelection
@@ -163,7 +165,7 @@ fun HomeViewModel.openPosterListPicker(item: MetaPreview, addonBaseUrl: String?)
                 state.copy(
                     showPosterListPicker = true,
                     posterListPickerPending = false,
-                    posterListPickerError = error.message ?: appContext.getString(com.nuvio.tv.R.string.home_poster_lists_error_load_failed)
+                    posterListPickerError = UserFacingError.fromThrowable(error, appContext, UserFacingErrorSituation.Library)
                 )
             }
         }
@@ -223,7 +225,7 @@ fun HomeViewModel.savePosterListPickerMembership() {
             _uiState.update { state ->
                 state.copy(
                     posterListPickerPending = false,
-                    posterListPickerError = error.message ?: appContext.getString(com.nuvio.tv.R.string.home_poster_lists_error_update_failed)
+                    posterListPickerError = UserFacingError.fromThrowable(error, appContext, UserFacingErrorSituation.Library)
                 )
             }
         }
@@ -265,7 +267,7 @@ fun HomeViewModel.confirmPosterListPickerRemoval() {
                 it.copy(
                     posterListPickerPending = false,
                     posterListPickerRemovalConfirmations = emptyList(),
-                    posterListPickerError = error.message
+                    posterListPickerError = UserFacingError.fromThrowable(error, appContext, UserFacingErrorSituation.Library)
                         ?: appContext.getString(com.nuvio.tv.R.string.home_poster_lists_error_update_failed)
                 )
             }

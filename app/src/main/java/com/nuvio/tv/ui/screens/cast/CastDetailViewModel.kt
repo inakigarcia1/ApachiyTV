@@ -5,6 +5,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
+import com.nuvio.tv.core.error.UserFacingError
+import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.tmdb.TmdbMetadataService
 import com.nuvio.tv.data.local.TmdbSettingsDataStore
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -75,7 +77,7 @@ class CastDetailViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.value = CastDetailUiState.Error(
-                    e.message ?: context.getString(R.string.error_unknown)
+                    UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Catalog)
                 )
             }
         }

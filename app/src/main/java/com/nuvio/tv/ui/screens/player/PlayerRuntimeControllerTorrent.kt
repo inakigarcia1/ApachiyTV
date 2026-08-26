@@ -143,7 +143,7 @@ internal fun PlayerRuntimeController.observeTorrentState() {
                     Log.e(TAG, "Torrent error: ${torrentState.message}")
                     _uiState.update {
                         it.copy(
-                            error = context.getString(com.nuvio.tv.R.string.player_error_torrent, torrentState.message),
+                            error = context.getString(com.nuvio.tv.R.string.player_error_torrent),
                             showLoadingOverlay = false,
                             torrentBufferingMessage = null
                         )
@@ -194,10 +194,7 @@ internal fun PlayerRuntimeController.launchTorrentSourceStream(
             Log.e(TAG, "Failed to start torrent stream", e)
             _uiState.update {
                 it.copy(
-                    error = context.getString(
-                        R.string.player_error_failed_start_torrent,
-                        e.message ?: context.getString(R.string.error_unknown)
-                    ),
+                    error = context.getString(R.string.player_error_torrent),
                     showLoadingOverlay = false,
                     loadingProgress = null
                 )

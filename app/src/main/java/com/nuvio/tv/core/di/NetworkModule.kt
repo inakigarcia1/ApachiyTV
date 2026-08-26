@@ -160,6 +160,8 @@ object NetworkModule {
         okHttpClient: OkHttpClient,
         apachiyAddonAuthInterceptor: ApachiyAddonAuthInterceptor
     ): OkHttpClient = okHttpClient.newBuilder()
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
         .addInterceptor(apachiyAddonAuthInterceptor)
         .build()
 

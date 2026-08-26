@@ -50,6 +50,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import com.nuvio.tv.R
+import com.nuvio.tv.core.error.UserFacingError
+import com.nuvio.tv.core.error.UserFacingErrorSituation
 import java.util.Locale
 import javax.inject.Inject
 
@@ -812,8 +814,9 @@ class LibraryViewModel @Inject constructor(
         return state.listTabs.firstOrNull { it.key == selectedKey && it.type == LibraryListTab.Type.PERSONAL }
     }
 
-    private fun setError(message: String) {
-        _uiState.update { it.copy(errorMessage = message, transientMessage = message) }
+    private fun setError(message: String?) {
+        val display = UserFacingError.fromMessage(message, context, UserFacingErrorSituation.Library)
+        _uiState.update { it.copy(errorMessage = display, transientMessage = display) }
         messageClearJob?.cancel()
         messageClearJob = viewModelScope.launch {
             delay(2800)

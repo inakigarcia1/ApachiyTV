@@ -557,3 +557,14 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 }
+
+tasks.withType<JavaCompile>().configureEach {
+    if (name.contains("hiltJavaCompile")) {
+        doFirst {
+            options.annotationProcessorPath =
+                options.annotationProcessorPath?.filter {
+                    !it.name.startsWith("moshi-kotlin-codegen-")
+                }
+        }
+    }
+}

@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
+import com.nuvio.tv.core.error.UserFacingError
+import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.data.local.TraktAuthDataStore
 import com.nuvio.tv.data.local.TraktAuthState
 import com.nuvio.tv.data.local.TraktSettingsDataStore
@@ -140,8 +142,11 @@ class TraktViewModel @Inject constructor(
                     } else {
                         state.copy(
                             isLoading = false,
-                            errorMessage = result.exceptionOrNull()?.message
-                                ?: context.getString(R.string.trakt_error_failed_start)
+                            errorMessage = UserFacingError.fromThrowable(
+                                result.exceptionOrNull() ?: Exception(),
+                                context,
+                                UserFacingErrorSituation.Generic
+                            )
                         )
                     }
                 }
@@ -444,7 +449,7 @@ class TraktViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 isPolling = false,
-                                errorMessage = poll.reason,
+                                errorMessage = UserFacingError.fromMessage(poll.reason, context, UserFacingErrorSituation.Generic),
                                 statusMessage = null
                             )
                         }

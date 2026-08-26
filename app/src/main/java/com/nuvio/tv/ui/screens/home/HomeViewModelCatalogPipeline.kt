@@ -3,6 +3,8 @@ package com.nuvio.tv.ui.screens.home
 import android.util.Log
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
+import com.nuvio.tv.core.error.UserFacingError
+import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CatalogDescriptor
@@ -391,7 +393,12 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
         throw e
     } catch (e: Exception) {
         catalogsLoadInProgress = false
-        _uiState.update { it.copy(isLoading = false, error = e.message) }
+        _uiState.update {
+            it.copy(
+                isLoading = false,
+                error = UserFacingError.fromThrowable(e, appContext, UserFacingErrorSituation.Catalog)
+            )
+        }
     }
 }
 

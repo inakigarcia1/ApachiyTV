@@ -2,6 +2,8 @@ package com.nuvio.tv.ui.screens.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.nuvio.tv.core.error.UserFacingError
+import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.data.repository.GitHubContributor
 import com.nuvio.tv.data.repository.GitHubContributorsRepository
 import com.nuvio.tv.data.repository.DevelopmentSponsor
@@ -154,7 +156,7 @@ class SupportersContributorsViewModel @Inject constructor(
                             hasLoadedSupporters = false,
                             supporters = emptyList(),
                             donationProgress = null,
-                            supportersErrorMessage = error.message ?: appContext.getString(com.nuvio.tv.R.string.supporters_error_load)
+                            supportersErrorMessage = UserFacingError.fromThrowable(error, appContext, UserFacingErrorSituation.Generic)
                         )
                     }
                 }
@@ -191,7 +193,7 @@ class SupportersContributorsViewModel @Inject constructor(
                             isContributorsLoading = false,
                             hasLoadedContributors = false,
                             contributors = emptyList(),
-                            contributorsErrorMessage = error.message ?: appContext.getString(com.nuvio.tv.R.string.contributors_error_load)
+                            contributorsErrorMessage = UserFacingError.fromThrowable(error, appContext, UserFacingErrorSituation.Generic)
                         )
                     }
                 }
@@ -228,7 +230,7 @@ class SupportersContributorsViewModel @Inject constructor(
                             isSponsorsLoading = false,
                             hasLoadedSponsors = false,
                             sponsors = emptyList(),
-                            sponsorsErrorMessage = error.message ?: appContext.getString(com.nuvio.tv.R.string.sponsors_error_load)
+                            sponsorsErrorMessage = UserFacingError.fromThrowable(error, appContext, UserFacingErrorSituation.Generic)
                         )
                     }
                 }

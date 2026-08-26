@@ -5,6 +5,8 @@ import android.util.Log
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.SeekParameters
 import com.nuvio.tv.R
+import com.nuvio.tv.core.error.UserFacingError
+import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.player.LastPlaybackDiagnostics
 import com.nuvio.tv.core.tracking.TRACKING_SCROBBLE_DIAGNOSTIC_TAG
 import com.nuvio.tv.core.tracking.TrackingMediaKind
@@ -460,7 +462,11 @@ internal fun PlayerRuntimeController.submitPlaybackIssueReport() {
                         current.copy(
                             playbackIssueReportStatus = PlaybackIssueReportStatus.Failed,
                             playbackIssueReportId = null,
-                            playbackIssueReportError = error.message ?: "Unable to send report"
+                            playbackIssueReportError = UserFacingError.fromThrowable(
+                                error,
+                                context,
+                                UserFacingErrorSituation.Generic
+                            )
                         )
                     }
                 )

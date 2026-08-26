@@ -5,6 +5,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
+import com.nuvio.tv.core.error.UserFacingError
+import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.sync.CollectionSyncService
 import com.nuvio.tv.core.tmdb.TmdbCollectionSourceResolver
 import com.nuvio.tv.core.trakt.TraktPublicListSearchResult
@@ -583,7 +585,11 @@ class CollectionEditorViewModel @Inject constructor(
                 it.copy(
                     traktTrendingResults = trending.getOrDefault(it.traktTrendingResults),
                     traktPopularResults = popular.getOrDefault(it.traktPopularResults),
-                    traktSearchError = trending.exceptionOrNull()?.message ?: popular.exceptionOrNull()?.message ?: it.traktSearchError
+                    traktSearchError = UserFacingError.fromMessage(
+                        trending.exceptionOrNull()?.message ?: popular.exceptionOrNull()?.message,
+                        appContext,
+                        UserFacingErrorSituation.Search
+                    ).takeIf { trending.isFailure || popular.isFailure } ?: it.traktSearchError
                 )
             }
         }

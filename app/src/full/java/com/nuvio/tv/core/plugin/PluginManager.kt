@@ -56,7 +56,7 @@ private const val MAX_RESPONSE_SIZE = 5 * 1024 * 1024L
 // at 60s and returns partial links. This outer cap only fires if the runner hangs
 // outside of loadLinks (e.g. slow TMDB enrichment, slow search). Generous to avoid
 // cancelling the runner's coroutine before it can return accumulated links.
-private const val SCRAPER_TIMEOUT_MS = 120_000L
+private const val SCRAPER_TIMEOUT_MS = 240_000L
 private const val MANIFEST_SUFFIX = "/manifest.json"
 
 @Singleton
@@ -77,8 +77,8 @@ class PluginManager @Inject constructor(
     
     private val httpClient = OkHttpClient.Builder()
         .dns(com.nuvio.tv.core.network.IPv4FirstDns())
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
+        .connectTimeout(60, TimeUnit.SECONDS)
+        .readTimeout(60, TimeUnit.SECONDS)
         .build()
 
     private fun sha256Hex(text: String): String {

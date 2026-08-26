@@ -14,7 +14,7 @@
 
     <!-- ErrorState -->
     <string name="action_retry">Reintentar</string>
-    <string name="error_state_generic_issue">Something went wrong.</string>
+    <string name="error_state_generic_issue">Algo salió mal.</string>
     <string name="error_state_possible_fix">Posible solución: %1$s</string>
     <string name="error_state_fix_retry_soon">reintentar en un momento.</string>
     <string name="error_state_issue_no_metadata_any_addon">Este ID no pudo cargar detalles porque ninguno de los complementos instalados devolvió metadatos.</string>
@@ -35,7 +35,55 @@
     <string name="error_state_issue_addon_cleartext">utiliza una conexión HTTP insegura que Android bloqueó</string>
     <string name="error_state_fix_addon_cleartext">cambia la URL del complemento a HTTPS o actualiza la configuración del complemento.</string>
     <string name="error_state_fix_addon_generic">reintentar, actualizar o reinstalar el complemento, o intenta otro complemento.</string>
+    <string name="error_state_issue_addon_generic">no se pudo cargar contenido desde este complemento</string>
     <string name="error_state_addon_issue_template">%1$s: %2$s.</string>
+
+    <!-- Account errors -->
+    <string name="account_error_incorrect_pin">PIN incorrecto.</string>
+    <string name="account_error_sync_code_expired">El código de sincronización ha expirado.</string>
+    <string name="account_error_invalid_sync_code">Código de sincronización inválido.</string>
+    <string name="account_error_sync_code_not_found">No se encontró el código de sincronización.</string>
+    <string name="account_error_device_already_linked">El dispositivo ya está vinculado.</string>
+    <string name="account_error_generic_retry">Algo salió mal. Inténtalo de nuevo.</string>
+    <string name="account_error_invalid_credentials">Correo electrónico o contraseña incorrectos.</string>
+    <string name="account_error_email_not_confirmed">Primero confirma tu correo electrónico.</string>
+    <string name="account_error_email_already_registered">Ya existe una cuenta con este correo electrónico.</string>
+    <string name="account_error_invalid_email">Ingresa una dirección de correo válida.</string>
+    <string name="account_error_password_too_short">La contraseña es demasiado corta.</string>
+    <string name="account_error_password_too_weak">La contraseña es demasiado débil.</string>
+    <string name="account_error_signup_disabled">El registro está deshabilitado actualmente.</string>
+    <string name="account_error_rate_limited">Demasiados intentos. Inténtalo más tarde.</string>
+    <string name="account_error_qr_login_expired">El inicio de sesión por QR expiró. Inténtalo de nuevo.</string>
+    <string name="account_error_invalid_qr_login">Código QR de inicio de sesión inválido.</string>
+    <string name="account_error_qr_login_other_device">Este inicio de sesión por QR fue solicitado desde otro dispositivo.</string>
+    <string name="account_error_qr_login_outdated">No se pudo iniciar sesión con QR. Inténtalo de nuevo.</string>
+    <string name="account_error_qr_login_missing_setup">No se pudo iniciar sesión con QR. Inténtalo de nuevo.</string>
+    <string name="account_error_qr_login_misconfigured">No se pudo iniciar sesión con QR. Inténtalo de nuevo.</string>
+    <string name="account_error_qr_login_failed">No se pudo iniciar sesión con QR. Inténtalo de nuevo.</string>
+    <string name="account_error_qr_login_invalid_request">La solicitud de inicio de sesión por QR fue inválida. Inténtalo nuevamente.</string>
+    <string name="account_error_no_internet">Sin conexión a internet.</string>
+    <string name="account_error_connection_timeout">La conexión agotó el tiempo de espera. Inténtalo nuevamente.</string>
+    <string name="account_error_connection_refused">No se pudo conectar al servidor.</string>
+    <string name="account_error_not_authenticated">Primero inicia sesión.</string>
+    <string name="account_error_service_unavailable">Servicio no disponible. Inténtalo más tarde.</string>
+    <string name="account_error_invalid_request">Solicitud inválida. Verifica tu información.</string>
+    <string name="account_error_unexpected">Ocurrió un error inesperado.</string>
+    <string name="account_error_signin_required">Primero debes iniciar sesión con una cuenta.</string>
+
+    <!-- Player errors -->
+    <string name="player_error_stream_blocked">\n\nLa fuente del stream está bloqueada o restringida. Prueba otra fuente.</string>
+    <string name="player_error_stream_removed">\n\nEl enlace del stream expiró o fue eliminado. Prueba otra fuente.</string>
+    <string name="player_error_stream_expired">\n\nEl enlace del stream expiró. Prueba otra fuente.</string>
+    <string name="player_error_stream_rate_limited">\n\nDemasiadas solicitudes a la fuente del stream. Espera un momento e inténtalo de nuevo.</string>
+    <string name="player_error_stream_unavailable">\n\nEl servidor del stream no está disponible actualmente. Prueba otra fuente.</string>
+    <string name="player_error_source_invalid_content">La fuente del stream devolvió contenido inválido o no reproducible. El enlace pudo haber expirado o el servidor devolvió una página de error en lugar de video.\n\nPrueba otra fuente.</string>
+    <string name="player_error_unsupported_format">Este stream usa un formato que tu dispositivo podría no soportar. Prueba otra fuente.</string>
+    <string name="player_error_playback_fallback">Error de reproducción</string>
+    <string name="player_error_torrent">No se pudo reproducir este torrent. Prueba otra fuente.</string>
+    <string name="plugin_error_generic">Algo salió mal con los plugins. Inténtalo de nuevo.</string>
+    <string name="plugin_error_add_repo">No se pudo agregar el repositorio. Inténtalo de nuevo.</string>
+    <string name="plugin_error_refresh">No se pudieron actualizar los plugins. Inténtalo de nuevo.</string>
+    <string name="plugin_error_test">La prueba del plugin falló. Inténtalo de nuevo.</string>
     <string name="error_meta_not_found">Metadatos no encontrados</string>
     <string name="error_meta_no_supported_addon">Ningún complemento instalado admite metadatos para \"%1$s\".</string>
     <string name="error_meta_no_addon_for_id">Ningún complemento instalado pudo proporcionar metadatos para id=%1$s (tipo=%2$s).</string>

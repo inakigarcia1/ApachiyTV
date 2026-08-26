@@ -69,10 +69,7 @@ internal fun PlayerRuntimeController.startInitialPlaybackIfNeeded() {
                 Log.e("PlayerStartup", "Failed to start torrent", e)
                 _uiState.update {
                     it.copy(
-                        error = context.getString(
-                            R.string.player_error_failed_start_torrent,
-                            e.message ?: context.getString(R.string.error_unknown)
-                        ),
+                        error = context.getString(R.string.player_error_torrent),
                         showLoadingOverlay = false
                     )
                 }

@@ -124,6 +124,7 @@
     <string name="error_state_issue_addon_cleartext">uses an insecure HTTP connection that Android blocked</string>
     <string name="error_state_fix_addon_cleartext">switch the addon URL to HTTPS or update the addon configuration.</string>
     <string name="error_state_fix_addon_generic">retry, update or reinstall the addon, or try a different addon.</string>
+    <string name="error_state_issue_addon_generic">could not load content from this addon</string>
     <string name="error_state_addon_issue_template">%1$s: %2$s.</string>
     <string name="error_meta_not_found">Meta not found</string>
     <string name="error_meta_no_supported_addon">No installed addon supports metadata for \"%1$s\".</string>
@@ -1527,6 +1528,7 @@
 
     <string name="player_no_external_player">No external player found</string>
     <string name="player_loading_preparing">Preparing stream…</string>
+    <string name="player_loading_generic">Cargando...</string>
     <string name="player_loading_detecting_format">Detecting stream format…</string>
     <string name="external_player_loading_skip_segments">Loading intro/outro segments…</string>
     <string name="player_loading_subtitles">Fetching subtitles…</string>
@@ -2027,9 +2029,10 @@
     <string name="plugin_disabled">Disabled</string>
     <string name="plugin_no_repos">No repositories added yet.\nAdd a repository to get started.</string>
     <string name="plugin_error_invalid_url">Please enter a valid URL</string>
-    <string name="plugin_error_add_repo">Failed to add repository: %1$s</string>
-    <string name="plugin_error_refresh">Failed to refresh: %1$s</string>
-    <string name="plugin_error_test">Test failed: %1$s</string>
+    <string name="plugin_error_generic">Something went wrong with plugins. Please try again.</string>
+    <string name="plugin_error_add_repo">Could not add repository. Please try again.</string>
+    <string name="plugin_error_refresh">Could not refresh plugins. Please try again.</string>
+    <string name="plugin_error_test">Plugin test failed. Please try again.</string>
     <string name="plugin_test_no_results">No results found</string>
     <string name="plugin_test_found_streams">Found %1$d streams</string>
     <string name="plugin_version">Version %1$s</string>
@@ -2593,13 +2596,13 @@
     <string name="player_error_stream_expired">\n\nThe stream link has expired. Try a different source.</string>
     <string name="player_error_stream_rate_limited">\n\nToo many requests to the stream source. Wait a moment and try again.</string>
     <string name="player_error_stream_unavailable">\n\nThe stream server is currently unavailable. Try a different source.</string>
-    <string name="player_error_source_invalid_content">Source error: The stream source returned invalid or unplayable content. The link may have expired or the server returned an error page instead of video.\n\nTry a different source. [%1$s]</string>
+    <string name="player_error_source_invalid_content">The stream source returned invalid or unplayable content. The link may have expired or the server returned an error page instead of video.\n\nTry a different source.</string>
     <string name="player_error_decoder">Decoder error</string>
-    <string name="player_error_unsupported_format">This stream uses a format your device may not support. Try a different source. [%1$s]</string>
+    <string name="player_error_unsupported_format">This stream uses a format your device may not support. Try a different source.</string>
     <string name="player_error_initialize_failed">Failed to initialize player</string>
     <string name="player_error_mpv_surface_failed">Failed to initialize libmpv surface</string>
     <string name="player_error_mpv_playback_failed">Failed to initialize libmpv playback</string>
-    <string name="player_error_torrent">Torrent error: %1$s</string>
+    <string name="player_error_torrent">Could not play this torrent. Try a different source.</string>
     <string name="player_error_playback_fallback">Playback error</string>
     <!-- Subtitle timing recovery -->
     <string name="subtitle_timing_file_no_lines">No subtitle lines were found in this file.</string>

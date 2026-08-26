@@ -11,6 +11,8 @@ import com.nuvio.tv.core.debrid.DirectDebridResolveResult
 import com.nuvio.tv.core.debrid.DirectDebridResolver
 import com.nuvio.tv.core.debrid.DirectDebridStreamPreparer
 import com.nuvio.tv.core.plugin.PluginManager
+import com.nuvio.tv.core.error.UserFacingError
+import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.torrent.TorrentSettings
 import com.nuvio.tv.core.torrent.TorrentService
@@ -63,7 +65,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 private const val TAG = "StreamScreenViewModel"
-private const val DIRECT_AUTOPLAY_HARD_TIMEOUT_MS = 60_000L
+private const val DIRECT_AUTOPLAY_HARD_TIMEOUT_MS = 120_000L
 
 @HiltViewModel
 class StreamScreenViewModel @Inject constructor(
@@ -713,7 +715,11 @@ class StreamScreenViewModel @Inject constructor(
                             updateUiStateIfChanged {
                                 it.copy(
                                     isLoading = false,
-                                    error = result.message,
+                                    error = UserFacingError.fromMessage(
+                                        result.message,
+                                        context,
+                                        UserFacingErrorSituation.StreamSearch
+                                    ),
                                     isDirectAutoPlayFlow = false,
                                     showDirectAutoPlayOverlay = false,
                                     directAutoPlayMessage = null
@@ -1544,7 +1550,7 @@ class StreamScreenViewModel @Inject constructor(
                         directAutoPlayProgress = null,
                         playbackErrorMessage = context.getString(
                             R.string.player_error_failed_start_torrent,
-                            e.message ?: context.getString(R.string.error_unknown)
+                            UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.StreamSearch)
                         )
                     )
                 }

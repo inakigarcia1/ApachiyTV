@@ -3,6 +3,8 @@ package com.nuvio.tv.data.repository
 import android.content.Context
 import android.util.Log
 import com.nuvio.tv.R
+import com.nuvio.tv.core.error.UserFacingError
+import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.network.safeApiCall
 import com.nuvio.tv.core.debrid.DebridStreamPresentation
@@ -234,7 +236,11 @@ class StreamRepositoryImpl @Inject constructor(
                             attemptedFailures += StreamAttemptFailure(
                                 addonName = addon.displayName,
                                 kind = StreamFailureKind.REQUEST_FAILED,
-                                detail = e.message ?: context.getString(com.nuvio.tv.R.string.stream_error_detail_addon_request_failed)
+                                detail = UserFacingError.fromThrowable(
+                                    e,
+                                    context,
+                                    UserFacingErrorSituation.StreamSearch
+                                )
                             )
                         } finally {
                             if (completedJobs.incrementAndGet() >= totalJobs) {
@@ -309,7 +315,7 @@ class StreamRepositoryImpl @Inject constructor(
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             Log.e(TAG, "Failed to fetch streams: ${e.message}", e)
-            emit(NetworkResult.Error(e.message ?: context.getString(com.nuvio.tv.R.string.stream_error_fetch_failed)))
+            emit(NetworkResult.Error(UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.StreamSearch)))
         }
     }
 
@@ -708,9 +714,7 @@ class StreamRepositoryImpl @Inject constructor(
                 context.getString(com.nuvio.tv.R.string.stream_error_detail_addon_cleartext_blocked)
             error.message.isBlank() ->
                 context.getString(com.nuvio.tv.R.string.stream_error_detail_addon_request_failed)
-            else -> error.message.replaceFirstChar { char ->
-                if (char.isLowerCase()) char.titlecase() else char.toString()
-            }
+            else -> context.getString(com.nuvio.tv.R.string.stream_error_detail_addon_request_failed)
         }
         val httpSuffix = error.code?.let { " (HTTP $it)" } ?: ""
         return StreamAttemptFailure(
