@@ -5,8 +5,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.build.AppFeaturePolicy
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.tmdb.TmdbCollectionSourceResolver
@@ -692,10 +690,7 @@ class FolderDetailViewModel @Inject constructor(
                         _uiState.update { state ->
                             val tabs = state.tabs.toMutableList()
                             if (tabIndex < tabs.size) {
-                                tabs[tabIndex] = tabs[tabIndex].copy(
-                                    isLoading = false,
-                                    error = UserFacingError.fromMessage(result.message, appContext, UserFacingErrorSituation.Catalog)
-                                )
+                                tabs[tabIndex] = tabs[tabIndex].copy(isLoading = false, error = result.message)
                             }
                             state.copy(tabs = tabs)
                         }
@@ -943,7 +938,7 @@ class FolderDetailViewModel @Inject constructor(
                             if (current != null) {
                                 tabs[tabIndex] = current.copy(
                                     isLoading = false,
-                                    error = UserFacingError.fromMessage(result.message, appContext, UserFacingErrorSituation.Catalog),
+                                    error = result.message,
                                     catalogRow = current.catalogRow?.copy(isLoading = false)
                                 )
                             }
@@ -1004,7 +999,7 @@ class FolderDetailViewModel @Inject constructor(
                             if (current != null) {
                                 tabs[tabIndex] = current.copy(
                                     isLoading = false,
-                                    error = UserFacingError.fromMessage(result.message, appContext, UserFacingErrorSituation.Catalog),
+                                    error = result.message,
                                     catalogRow = current.catalogRow?.copy(isLoading = false)
                                 )
                             }

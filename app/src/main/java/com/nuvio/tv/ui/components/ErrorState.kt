@@ -121,7 +121,6 @@ private data class ErrorStateStrings(
     val addonTimeoutFix: String,
     val addonCleartextIssue: String,
     val addonCleartextFix: String,
-    val addonGenericIssue: String,
     val addonGenericFix: String,
     val addonIssueTemplate: String,
     val metaNotFound: String
@@ -150,7 +149,6 @@ private fun rememberErrorStateStrings(): ErrorStateStrings {
         addonTimeoutFix = stringResource(R.string.error_state_fix_addon_timeout),
         addonCleartextIssue = stringResource(R.string.error_state_issue_addon_cleartext),
         addonCleartextFix = stringResource(R.string.error_state_fix_addon_cleartext),
-        addonGenericIssue = stringResource(R.string.error_state_issue_addon_generic),
         addonGenericFix = stringResource(R.string.error_state_fix_addon_generic),
         addonIssueTemplate = stringResource(R.string.error_state_addon_issue_template, "%1\$s", "%2\$s"),
         metaNotFound = stringResource(R.string.error_meta_not_found)
@@ -179,7 +177,6 @@ private fun defaultErrorStateStrings(): ErrorStateStrings {
         addonTimeoutFix = "retry in a moment, or try a different addon if this keeps happening.",
         addonCleartextIssue = "uses an insecure HTTP connection that Android blocked",
         addonCleartextFix = "switch the addon URL to HTTPS or update the addon configuration.",
-        addonGenericIssue = "could not load content from this addon",
         addonGenericFix = "retry, update or reinstall the addon, or try a different addon.",
         addonIssueTemplate = "%s: %s.",
         metaNotFound = "Meta not found"
@@ -270,12 +267,12 @@ private fun buildErrorStatePresentation(
 
         addonName != null -> {
             messageWithFix(
-                issue = buildAddonIssue(addonName, strings.addonGenericIssue, strings),
+                issue = buildAddonIssue(addonName, reason, strings),
                 fix = strings.addonGenericFix
             )
         }
 
-        else -> withPossibleFix(strings.genericIssue, strings.retrySoonFix, strings)
+        else -> trimmed
     }
 
     val boldRanges = linkedSetOf<IntRange>()

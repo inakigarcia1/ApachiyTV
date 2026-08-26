@@ -64,8 +64,6 @@ import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.data.local.Dv7HandlingMode
 import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.domain.model.ExperienceMode
@@ -300,7 +298,7 @@ fun AdvancedSettingsContent(
 
                 streamTestState = "Done"
             } catch (e: java.lang.Exception) {
-                streamErrorMessage = UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Network)
+                streamErrorMessage = e.localizedMessage ?: unknownError
                 streamTestState = "Error"
             }
         }
@@ -373,7 +371,7 @@ fun AdvancedSettingsContent(
                 testState = NetworkTestState.Done
 
             } catch (e: Exception) {
-                errorMessage = UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Network)
+                errorMessage = e.localizedMessage ?: unknownError
                 testState = NetworkTestState.Error
             }
         }

@@ -1,8 +1,6 @@
 package com.nuvio.tv.ui.screens.player
 
 import android.util.Log
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.player.OpenSubtitlesHasher
 import androidx.media3.common.C
 import androidx.media3.common.Player
@@ -147,7 +145,7 @@ internal fun PlayerRuntimeController.fetchAddonSubtitles() {
             _uiState.update {
                 it.copy(
                     isLoadingAddonSubtitles = false,
-                    addonSubtitlesError = UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Generic)
+                    addonSubtitlesError = e.message
                 )
             }
         }

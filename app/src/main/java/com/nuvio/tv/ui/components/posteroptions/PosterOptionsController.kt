@@ -1,8 +1,6 @@
 package com.nuvio.tv.ui.components.posteroptions
 
 import android.util.Log
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.core.tracking.TrackingMembershipRemovalConfirmation
@@ -265,7 +263,7 @@ class PosterOptionsController @Inject constructor(
                 _state.update { current ->
                     current.copy(
                         listPickerPending = false,
-                        listPickerError = UserFacingError.fromThrowable(error, appContext, UserFacingErrorSituation.Library)
+                        listPickerError = error.message ?: appContext.getString(com.nuvio.tv.R.string.poster_options_error_load_lists_failed)
                     )
                 }
             }
@@ -322,7 +320,7 @@ class PosterOptionsController @Inject constructor(
                 _state.update {
                     it.copy(
                         listPickerPending = false,
-                        listPickerError = UserFacingError.fromThrowable(error, appContext, UserFacingErrorSituation.Library)
+                        listPickerError = error.message ?: appContext.getString(com.nuvio.tv.R.string.poster_options_error_update_lists_failed)
                     )
                 }
             }
@@ -373,7 +371,7 @@ class PosterOptionsController @Inject constructor(
                     it.copy(
                         listPickerPending = false,
                         removalConfirmations = emptyList(),
-                        listPickerError = UserFacingError.fromThrowable(error, appContext, UserFacingErrorSituation.Library)
+                        listPickerError = error.message
                             ?: appContext.getString(com.nuvio.tv.R.string.poster_options_error_update_lists_failed)
                     )
                 }

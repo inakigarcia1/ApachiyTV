@@ -4,8 +4,6 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.plugin.PluginManager
 import com.nuvio.tv.core.plugin.PluginSafety
 import com.nuvio.tv.core.profile.ProfileManager
@@ -136,7 +134,7 @@ class PluginViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isAddingRepo = false,
-                            errorMessage = UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Plugin)
+                            errorMessage = context.getString(R.string.plugin_error_add_repo, e.message ?: "")
                         )
                     }
                 }
@@ -176,7 +174,7 @@ class PluginViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            errorMessage = UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Plugin)
+                            errorMessage = context.getString(R.string.plugin_error_refresh, e.message ?: "")
                         )
                     }
                 }
@@ -262,7 +260,10 @@ class PluginViewModel @Inject constructor(
                             isTesting = false,
                             testResults = emptyList(),
                             testDiagnostics = null,
-                            errorMessage = UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Plugin)
+                            errorMessage = context.getString(
+                                R.string.plugin_error_test,
+                                e.message ?: context.getString(R.string.error_unknown)
+                            )
                         )
                     }
                 }

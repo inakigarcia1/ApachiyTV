@@ -31,8 +31,6 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.source.MergingMediaSource
 import com.nuvio.tv.core.player.LocalTrailerPlayerPool
 import com.nuvio.tv.core.player.TrailerPlayerPool
-import com.nuvio.tv.core.player.applyTrailerAudioPolicy
-import com.nuvio.tv.core.player.disableTrailerAudio
 import com.nuvio.tv.data.trailer.YoutubeChunkedDataSourceFactory
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
@@ -94,9 +92,9 @@ fun TrailerPlayer(
     }
 
     // Configure player settings when acquired
-    LaunchedEffect(trailerPlayer, muted, cropToFill, trailerAudioUrl) {
+    LaunchedEffect(trailerPlayer, muted, cropToFill) {
         val player = trailerPlayer ?: return@LaunchedEffect
-        player.applyTrailerAudioPolicy(muted, trailerAudioUrl)
+        player.volume = if (muted) 0f else 1f
         player.videoScalingMode = if (cropToFill) {
             C.VIDEO_SCALING_MODE_SCALE_TO_FIT_WITH_CROPPING
         } else {
@@ -106,7 +104,7 @@ fun TrailerPlayer(
 
     LaunchedEffect(isPlaying, trailerUrl, trailerAudioUrl, muted, trailerPlayer) {
         val player = trailerPlayer ?: return@LaunchedEffect
-        player.applyTrailerAudioPolicy(muted, trailerAudioUrl)
+        player.volume = if (muted) 0f else 1f
         if (isPlaying && trailerUrl != null) {
             hasRenderedFirstFrame = false
             if (!trailerAudioUrl.isNullOrBlank()) {
@@ -127,7 +125,6 @@ fun TrailerPlayer(
             if (!isPlaying) {
                 player.stop()
                 player.clearMediaItems()
-                player.disableTrailerAudio()
             }
         }
     }
@@ -205,7 +202,6 @@ fun TrailerPlayer(
                     player.pause()
                     player.stop()
                     player.clearMediaItems()
-                    player.disableTrailerAudio()
                 }
                 // Do NOT release on destroy — the pool owns the lifecycle.
                 else -> Unit

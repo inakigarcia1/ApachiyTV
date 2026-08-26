@@ -4,8 +4,6 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.data.local.DebugSettingsDataStore
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
@@ -93,7 +91,7 @@ class DebugSettingsViewModel @Inject constructor(
                         _uiState.update {
                             it.copy(
                                 generateLibraryLoading = false,
-                                generateLibraryResult = UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Generic)
+                                generateLibraryResult = context.getString(R.string.debug_generate_result_failed, e.message ?: "")
                             )
                         }
                     }
@@ -106,15 +104,7 @@ class DebugSettingsViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             signInLoading = false,
-                            signInResult = if (result.isSuccess) {
-                                context.getString(R.string.debug_signin_success)
-                            } else {
-                                UserFacingError.fromThrowable(
-                                    result.exceptionOrNull() ?: Exception(),
-                                    context,
-                                    UserFacingErrorSituation.Login
-                                )
-                            }
+                            signInResult = if (result.isSuccess) context.getString(R.string.debug_signin_success) else context.getString(R.string.debug_generate_result_failed, result.exceptionOrNull()?.message ?: "")
                         )
                     }
                 }

@@ -4,8 +4,6 @@ import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.network.NetworkResult
@@ -805,8 +803,8 @@ class MetaDetailsViewModel @Inject constructor(
     }
 
     private fun buildMetaLoadErrorMessage(originalMessage: String?, lookupId: String): String {
-        val base = UserFacingError.fromMessage(originalMessage, context, UserFacingErrorSituation.Catalog)
-        return if (lookupId.isNotBlank()) "$base\n\nID: $lookupId" else base
+        val base = originalMessage ?: "Failed to load metadata"
+        return "$base\n\nID: $lookupId"
     }
 
     private fun syncEffectiveContentId(meta: Meta) {
@@ -2070,7 +2068,7 @@ class MetaDetailsViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         pickerPending = false,
-                        pickerError = UserFacingError.fromThrowable(error, context, UserFacingErrorSituation.Library),
+                        pickerError = error.message ?: context.getString(com.nuvio.tv.R.string.detail_error_load_lists_failed),
                         showListPicker = false
                     )
                 }
@@ -2123,7 +2121,7 @@ class MetaDetailsViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         pickerPending = false,
-                        pickerError = UserFacingError.fromThrowable(error, context, UserFacingErrorSituation.Library)
+                        pickerError = error.message ?: context.getString(com.nuvio.tv.R.string.detail_error_update_lists_failed)
                     )
                 }
                 showMessage(error.message ?: context.getString(com.nuvio.tv.R.string.detail_error_update_lists_failed), isError = true)
@@ -2178,7 +2176,7 @@ class MetaDetailsViewModel @Inject constructor(
                     it.copy(
                         pickerPending = false,
                         removalConfirmations = emptyList(),
-                        pickerError = UserFacingError.fromThrowable(error, context, UserFacingErrorSituation.Library)
+                        pickerError = error.message
                             ?: context.getString(com.nuvio.tv.R.string.detail_error_update_lists_failed)
                     )
                 }
@@ -2580,17 +2578,12 @@ class MetaDetailsViewModel @Inject constructor(
     }
 
     private fun showMessage(message: String, isError: Boolean = false) {
-        val display = if (isError) {
-            UserFacingError.sanitizeForDisplay(message, context)
-        } else {
-            message
-        }
         _uiState.update { state ->
-            if (state.userMessage == display && state.userMessageIsError == isError) {
+            if (state.userMessage == message && state.userMessageIsError == isError) {
                 state
             } else {
                 state.copy(
-                    userMessage = display,
+                    userMessage = message,
                     userMessageIsError = isError
                 )
             }

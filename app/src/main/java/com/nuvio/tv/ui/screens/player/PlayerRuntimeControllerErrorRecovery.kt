@@ -6,7 +6,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.HttpDataSource
 import com.nuvio.tv.R
-import com.nuvio.tv.core.error.UserFacingError
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -150,34 +149,47 @@ internal fun PlaybackException.toDisplayMessage(context: android.content.Context
     val responseException = findInvalidResponseCodeException()
     if (responseException != null) {
         val code = responseException.responseCode
-        return when (code) {
-            400, 403 -> context.getString(com.nuvio.tv.R.string.player_error_stream_blocked)
-            401, 410 -> context.getString(com.nuvio.tv.R.string.player_error_stream_expired)
+        val statusText = responseException.responseMessage?.takeIf { it.isNotBlank() }
+        val providerHint = when (code) {
+            400 -> context.getString(com.nuvio.tv.R.string.player_error_stream_blocked)
+            401 -> context.getString(com.nuvio.tv.R.string.player_error_stream_expired)
+            403 -> context.getString(com.nuvio.tv.R.string.player_error_stream_blocked)
             404 -> context.getString(com.nuvio.tv.R.string.player_error_stream_removed)
+            410 -> context.getString(com.nuvio.tv.R.string.player_error_stream_expired)
             429 -> context.getString(com.nuvio.tv.R.string.player_error_stream_rate_limited)
             500, 502, 503, 504 -> context.getString(com.nuvio.tv.R.string.player_error_stream_unavailable)
-            else -> context.getString(com.nuvio.tv.R.string.player_error_playback_fallback)
+            else -> ""
+        }
+        return buildString {
+            append("HTTP $code")
+            statusText?.let { append(" $it") }
+            append(" [$errorCodeName]")
+            append(providerHint)
         }
     }
 
+    // Check for unrecognized format (provider returned non-video content)
     val isUnrecognizedFormat = findCauseOfType<androidx.media3.exoplayer.source.UnrecognizedInputFormatException>() != null
     if (isUnrecognizedFormat) {
-        return context.getString(com.nuvio.tv.R.string.player_error_source_invalid_content)
+        return context.getString(com.nuvio.tv.R.string.player_error_source_invalid_content, errorCodeName)
     }
 
+    // Check for codec/renderer errors
     val isRendererError = errorCode == PlaybackException.ERROR_CODE_DECODING_FAILED ||
         errorCode == PlaybackException.ERROR_CODE_DECODER_INIT_FAILED
     if (isRendererError) {
-        return context.getString(com.nuvio.tv.R.string.player_error_unsupported_format)
+        val meaningfulMessage = findMostRelevantCauseMessage()
+        val decoderHeader = meaningfulMessage ?: context.getString(com.nuvio.tv.R.string.player_error_decoder)
+        val unsupported = context.getString(com.nuvio.tv.R.string.player_error_unsupported_format, errorCodeName)
+        return "$decoderHeader\n\n$unsupported"
     }
 
-    if (errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED ||
-        errorCode == PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT
-    ) {
-        return context.getString(com.nuvio.tv.R.string.player_error_stream_unavailable)
+    val meaningfulMessage = findMostRelevantCauseMessage()
+    return if (meaningfulMessage != null) {
+        "$meaningfulMessage [$errorCodeName]"
+    } else {
+        errorCodeName
     }
-
-    return context.getString(com.nuvio.tv.R.string.player_error_playback_fallback)
 }
 
 private inline fun <reified T : Throwable> Throwable.findCauseOfType(): T? {
@@ -190,11 +202,9 @@ private inline fun <reified T : Throwable> Throwable.findCauseOfType(): T? {
 }
 
 internal fun Throwable.toDisplayMessage(context: android.content.Context, fallback: String? = null): String {
-    return UserFacingError.fromThrowable(
-        this,
-        context,
-        com.nuvio.tv.core.error.UserFacingErrorSituation.Playback
-    ).takeIf { it != context.getString(com.nuvio.tv.R.string.player_error_playback_fallback) }
+    val meaningfulMessage = findMostRelevantCauseMessage()
+    return meaningfulMessage
+        ?: message?.takeIf { it.isNotBlank() }
         ?: fallback
         ?: context.getString(com.nuvio.tv.R.string.player_error_playback_fallback)
 }

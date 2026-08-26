@@ -4,8 +4,6 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.sync.CollectionSyncService
 import com.nuvio.tv.data.local.CollectionsDataStore
 import com.nuvio.tv.data.local.ValidationResult
@@ -218,7 +216,10 @@ class CollectionManagementViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoadingImport = false,
-                        importError = UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Network)
+                        importError = context.getString(
+                            R.string.collections_import_failed_fetch_url,
+                            e.message ?: context.getString(R.string.error_unknown)
+                        )
                     )
                 }
             }
@@ -285,7 +286,10 @@ class CollectionManagementViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         isLoadingImport = false,
-                        importError = UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Generic)
+                        importError = context.getString(
+                            R.string.collections_import_failed_read_file,
+                            e.message ?: context.getString(R.string.error_unknown)
+                        )
                     )
                 }
             }

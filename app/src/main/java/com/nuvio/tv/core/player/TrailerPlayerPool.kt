@@ -1,7 +1,6 @@
 package com.nuvio.tv.core.player
 
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import androidx.media3.common.C
 import androidx.media3.common.Player
@@ -82,7 +81,6 @@ class TrailerPlayerPool @Inject constructor(
                 player.playWhenReady = false
                 player.stop()
                 player.clearMediaItems()
-                player.disableTrailerAudio()
             }
         }
     }
@@ -169,32 +167,6 @@ class TrailerPlayerPool @Inject constructor(
             .build()
             .apply {
                 repeatMode = Player.REPEAT_MODE_OFF
-                disableTrailerAudio()
             }
     }
-}
-
-internal fun isTrailerEmulator(): Boolean {
-    val fingerprint = Build.FINGERPRINT.lowercase()
-    return fingerprint.contains("ranchu") ||
-        fingerprint.contains("generic") ||
-        fingerprint.contains("sdk_gphone")
-}
-
-internal fun ExoPlayer.applyTrailerAudioPolicy(muted: Boolean, trailerAudioUrl: String?) {
-    val disableAudio = isTrailerEmulator() || muted || trailerAudioUrl.isNullOrBlank()
-    trackSelectionParameters = trackSelectionParameters
-        .buildUpon()
-        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, disableAudio)
-        .build()
-    if (!disableAudio) {
-        volume = 1f
-    }
-}
-
-internal fun ExoPlayer.disableTrailerAudio() {
-    trackSelectionParameters = trackSelectionParameters
-        .buildUpon()
-        .setTrackTypeDisabled(C.TRACK_TYPE_AUDIO, true)
-        .build()
 }

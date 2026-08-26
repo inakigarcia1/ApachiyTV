@@ -8,8 +8,6 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
 import com.nuvio.tv.core.auth.AuthManager
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.auth.diagnostics.AuthDiagnosticsSession
 import com.nuvio.tv.core.logging.bodySnippetForLog
 import com.nuvio.tv.core.logging.diagnosticSummary
@@ -232,7 +230,7 @@ class AccountViewModel @Inject constructor(
                         _uiState.update { it.copy(isLoading = false, syncClaimSuccess = true) }
                     } else {
                         authManager.signOut(explicit = false)
-                        _uiState.update { it.copy(isLoading = false, error = context.getString(R.string.account_error_generic_retry)) }
+                        _uiState.update { it.copy(isLoading = false, error = result.message) }
                     }
                 },
                 onFailure = { e ->
@@ -573,8 +571,59 @@ class AccountViewModel @Inject constructor(
     }
 
     private fun userFriendlyError(e: Throwable): String {
-        Log.w(TAG, "Raw error: ${e.message?.bodySnippetForLog()}")
-        return UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Login)
+        val raw = e.message ?: ""
+        val message = raw.lowercase()
+        val compactRaw = raw.bodySnippetForLog()
+        Log.w(TAG, "Raw error: $compactRaw")
+
+        val resId = when {
+            // PIN errors (from PG RAISE EXCEPTION or any wrapper)
+            message.contains("incorrect pin") || message.contains("invalid pin") || message.contains("wrong pin") -> R.string.account_error_incorrect_pin
+
+            // Sync code errors
+            message.contains("expired") -> R.string.account_error_sync_code_expired
+            message.contains("invalid") && message.contains("code") -> R.string.account_error_invalid_sync_code
+            message.contains("not found") || message.contains("no sync code") -> R.string.account_error_sync_code_not_found
+            message.contains("already linked") -> R.string.account_error_device_already_linked
+            message.contains("empty response") -> R.string.account_error_generic_retry
+
+            // Auth errors
+            message.contains("invalid login credentials") -> R.string.account_error_invalid_credentials
+            message.contains("email not confirmed") -> R.string.account_error_email_not_confirmed
+            message.contains("user already registered") -> R.string.account_error_email_already_registered
+            message.contains("invalid email") -> R.string.account_error_invalid_email
+            message.contains("password") && message.contains("short") -> R.string.account_error_password_too_short
+            message.contains("password") && message.contains("weak") -> R.string.account_error_password_too_weak
+            message.contains("signup is disabled") -> R.string.account_error_signup_disabled
+            message.contains("rate limit") || message.contains("too many requests") -> R.string.account_error_rate_limited
+            message.contains("tv login") && message.contains("expired") -> R.string.account_error_qr_login_expired
+            message.contains("tv login") && message.contains("invalid") -> R.string.account_error_invalid_qr_login
+            message.contains("tv login") && message.contains("nonce") -> R.string.account_error_qr_login_other_device
+            message.contains("start_tv_login_session") && message.contains("could not find the function") ->
+                R.string.account_error_qr_login_failed
+            message.contains("gen_random_bytes") && message.contains("does not exist") ->
+                R.string.account_error_qr_login_failed
+            message.contains("invalid tv login redirect base url") ->
+                R.string.account_error_qr_login_failed
+            message.contains("invalid device nonce") ->
+                R.string.account_error_qr_login_invalid_request
+
+            // Network errors
+            message.contains("unable to resolve host") || message.contains("no address associated") -> R.string.account_error_no_internet
+            message.contains("timeout") || message.contains("timed out") -> R.string.account_error_connection_timeout
+            message.contains("connection refused") || message.contains("connect failed") -> R.string.account_error_connection_refused
+
+            // Auth state
+            message.contains("not authenticated") -> R.string.account_error_not_authenticated
+
+            // Supabase HTTP errors (e.g. 404 for missing RPC, 400 for bad params)
+            message.contains("404") || message.contains("could not find") -> R.string.account_error_service_unavailable
+            message.contains("400") || message.contains("bad request") -> R.string.account_error_invalid_request
+
+            // Fallback
+            else -> R.string.account_error_unexpected
+        }
+        return context.getString(resId)
     }
 
     private fun startQrLoginPolling() {

@@ -5,8 +5,6 @@ import android.net.Uri
 import android.util.Log
 import androidx.media3.common.util.UnstableApi
 import com.nuvio.tv.core.debrid.DirectDebridPlayableResult
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.player.StreamAutoPlaySelector
 import com.nuvio.tv.data.local.PlayerSettings
@@ -288,11 +286,7 @@ internal fun PlayerRuntimeController.loadSourceStreams(forceRefresh: Boolean) {
                     _uiState.update {
                         it.copy(
                             isLoadingSourceStreams = false,
-                            sourceStreamsError = UserFacingError.fromMessage(
-                                result.message,
-                                context,
-                                UserFacingErrorSituation.StreamSearch
-                            )
+                            sourceStreamsError = result.message
                         )
                     }
                 }
@@ -651,9 +645,9 @@ private fun PlayerRuntimeController.openExternalStreamInBrowser(
     }.onFailure { error ->
         _uiState.update {
             if (fromEpisodePanel) {
-                it.copy(episodeStreamsError = UserFacingError.fromThrowable(error, context, UserFacingErrorSituation.Playback))
+                it.copy(episodeStreamsError = error.message ?: context.getString(com.nuvio.tv.R.string.player_stream_error_open_external_link_failed))
             } else {
-                it.copy(sourceStreamsError = UserFacingError.fromThrowable(error, context, UserFacingErrorSituation.Playback))
+                it.copy(sourceStreamsError = error.message ?: context.getString(com.nuvio.tv.R.string.player_stream_error_open_external_link_failed))
             }
         }
     }
@@ -804,9 +798,7 @@ internal fun PlayerRuntimeController.switchToSourceStream(
                 player.playWhenReady = true
                 player.prepare()
             } catch (e: Exception) {
-                _uiState.update {
-                    it.copy(error = UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Playback))
-                }
+                _uiState.update { it.copy(error = e.message ?: context.getString(com.nuvio.tv.R.string.player_error_play_stream_failed)) }
             }
         }
     } ?: run {
@@ -966,16 +958,7 @@ internal fun PlayerRuntimeController.loadEpisodesIfNeeded() {
             }
 
             is NetworkResult.Error -> {
-                _uiState.update {
-                    it.copy(
-                        isLoadingEpisodes = false,
-                        episodesError = UserFacingError.fromMessage(
-                            result.message,
-                            context,
-                            UserFacingErrorSituation.Catalog
-                        )
-                    )
-                }
+                _uiState.update { it.copy(isLoadingEpisodes = false, episodesError = result.message) }
             }
 
             NetworkResult.Loading -> {
@@ -1089,11 +1072,7 @@ internal fun PlayerRuntimeController.loadStreamsForEpisode(video: Video, forceRe
                     _uiState.update {
                         it.copy(
                             isLoadingEpisodeStreams = false,
-                            episodeStreamsError = UserFacingError.fromMessage(
-                                result.message,
-                                context,
-                                UserFacingErrorSituation.StreamSearch
-                            )
+                            episodeStreamsError = result.message
                         )
                     }
                 }

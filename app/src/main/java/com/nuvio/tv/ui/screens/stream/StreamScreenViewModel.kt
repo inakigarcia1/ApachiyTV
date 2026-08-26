@@ -11,8 +11,6 @@ import com.nuvio.tv.core.debrid.DirectDebridResolveResult
 import com.nuvio.tv.core.debrid.DirectDebridResolver
 import com.nuvio.tv.core.debrid.DirectDebridStreamPreparer
 import com.nuvio.tv.core.plugin.PluginManager
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.torrent.TorrentSettings
 import com.nuvio.tv.core.torrent.TorrentService
@@ -715,11 +713,7 @@ class StreamScreenViewModel @Inject constructor(
                             updateUiStateIfChanged {
                                 it.copy(
                                     isLoading = false,
-                                    error = UserFacingError.fromMessage(
-                                        result.message,
-                                        context,
-                                        UserFacingErrorSituation.StreamSearch
-                                    ),
+                                    error = result.message,
                                     isDirectAutoPlayFlow = false,
                                     showDirectAutoPlayOverlay = false,
                                     directAutoPlayMessage = null
@@ -1550,7 +1544,7 @@ class StreamScreenViewModel @Inject constructor(
                         directAutoPlayProgress = null,
                         playbackErrorMessage = context.getString(
                             R.string.player_error_failed_start_torrent,
-                            UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.StreamSearch)
+                            e.message ?: context.getString(R.string.error_unknown)
                         )
                     )
                 }

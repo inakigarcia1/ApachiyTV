@@ -4,8 +4,6 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.SearchHistoryDataStore
@@ -467,12 +465,7 @@ class SearchViewModel @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 if (generation == searchGeneration && activeSearchQuery == query) {
-                    _uiState.update {
-                        it.copy(
-                            isSearching = false,
-                            error = UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Search)
-                        )
-                    }
+                    _uiState.update { it.copy(isSearching = false, error = e.message ?: context.getString(com.nuvio.tv.R.string.search_error_load_addons_failed)) }
                 }
                 return@launch
             }
@@ -660,15 +653,7 @@ class SearchViewModel @Inject constructor(
                     pendingCatalogResponses = (pendingCatalogResponses - 1).coerceAtLeast(0)
                     // Ignore per-catalog errors unless we have nothing to show.
                     if (catalogsMap.isEmpty()) {
-                        _uiState.update {
-                            it.copy(
-                                error = UserFacingError.fromMessage(
-                                    result.message,
-                                    context,
-                                    UserFacingErrorSituation.Search
-                                )
-                            )
-                        }
+                        _uiState.update { it.copy(error = result.message ?: context.getString(com.nuvio.tv.R.string.search_error_failed)) }
                     }
                     scheduleCatalogRowsUpdate()
                 }

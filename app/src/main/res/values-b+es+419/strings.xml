@@ -124,7 +124,6 @@
     <string name="error_state_issue_addon_cleartext">usa una conexión HTTP insegura que Android bloqueó</string>
     <string name="error_state_fix_addon_cleartext">cambia la URL del addon a HTTPS o actualiza la configuración del addon.</string>
     <string name="error_state_fix_addon_generic">reintenta, actualiza o reinstala el addon, o intenta con un addon diferente.</string>
-    <string name="error_state_issue_addon_generic">no se pudo cargar contenido desde este addon</string>
     <string name="error_state_addon_issue_template">%1$s: %2$s.</string>
     <string name="error_meta_not_found">Meta no encontrado</string>
     <string name="error_meta_no_supported_addon">Ningún addon instalado soporta metadatos para \"%1$s\".</string>
@@ -1505,7 +1504,6 @@
     
     <string name="player_no_external_player">No se encontró un reproductor externo</string>
     <string name="player_loading_preparing">Preparando reproducción…</string>
-    <string name="player_loading_generic">Cargando...</string>
     <string name="player_loading_detecting_format">Detectando formato del stream…</string>
     <string name="external_player_loading_skip_segments">Cargando segmentos de introducción y créditos finales…</string>
     <string name="player_loading_subtitles">Buscando subtítulos…</string>
@@ -1956,10 +1954,9 @@
     <string name="plugin_disabled">Deshabilitado</string>
     <string name="plugin_no_repos">Aún no se han agregado repositorios.\nAgrega un repositorio para comenzar.</string>
     <string name="plugin_error_invalid_url">Por favor, ingresa una URL válida</string>
-    <string name="plugin_error_add_repo">No se pudo agregar el repositorio. Intentá de nuevo.</string>
-    <string name="plugin_error_refresh">No se pudieron actualizar los plugins. Intentá de nuevo.</string>
-    <string name="plugin_error_test">La prueba del plugin falló. Intentá de nuevo.</string>
-    <string name="plugin_error_generic">Algo salió mal con los plugins. Intentá de nuevo.</string>
+    <string name="plugin_error_add_repo">Error al agregar el repositorio: %1$s</string>
+    <string name="plugin_error_refresh">Error al actualizar: %1$s</string>
+    <string name="plugin_error_test">La prueba falló: %1$s</string>
     <string name="plugin_test_no_results">No se encontraron resultados</string>
     <string name="plugin_test_found_streams">Se encontraron %1$d streams</string>
     <string name="plugin_version">Versión %1$s</string>
@@ -2514,9 +2511,9 @@
     <string name="player_error_stream_expired">\n\nEl enlace del stream expiró. Prueba otra fuente.</string>
     <string name="player_error_stream_rate_limited">\n\nDemasiadas solicitudes a la fuente del stream. Espera un momento e inténtalo de nuevo.</string>
     <string name="player_error_stream_unavailable">\n\nEl servidor del stream no está disponible actualmente. Prueba otra fuente.</string>
-    <string name="player_error_source_invalid_content">La fuente del stream devolvió contenido inválido o no reproducible. El enlace pudo haber expirado o el servidor devolvió una página de error en lugar de video.\n\nPrueba otra fuente.</string>
+    <string name="player_error_source_invalid_content">Error de fuente: la fuente del stream devolvió contenido inválido o no reproducible. El enlace pudo haber expirado o el servidor devolvió una página de error en lugar de video.\n\nPrueba otra fuente. [%1$s]</string>
     <string name="player_error_decoder">Error del decodificador</string>
-    <string name="player_error_unsupported_format">Este stream usa un formato que tu dispositivo podría no soportar. Prueba otra fuente.</string>
+    <string name="player_error_unsupported_format">Este stream usa un formato que tu dispositivo podría no soportar. Prueba otra fuente. [%1$s]</string>
     <string name="player_error_initialize_failed">No se pudo inicializar el reproductor</string>
     <string name="player_error_mpv_surface_failed">No se pudo inicializar la superficie de libmpv</string>
     <string name="player_error_mpv_playback_failed">No se pudo inicializar la reproducción de libmpv</string>

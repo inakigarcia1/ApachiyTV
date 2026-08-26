@@ -4,8 +4,6 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.sync.CollectionSyncService
 import com.nuvio.tv.core.sync.HomeCatalogSettingsSyncService
 import com.nuvio.tv.core.sync.StartupSyncService
@@ -800,7 +798,7 @@ class AddonManagerViewModel @Inject constructor(
             }
             addonRepository.getInstalledAddons()
                 .catch { error ->
-                    _uiState.update { it.copy(isLoading = false, error = UserFacingError.fromThrowable(error, context, UserFacingErrorSituation.Catalog)) }
+                    _uiState.update { it.copy(isLoading = false, error = error.message) }
                 }
                 .collect { addons ->
                     _uiState.update { state ->

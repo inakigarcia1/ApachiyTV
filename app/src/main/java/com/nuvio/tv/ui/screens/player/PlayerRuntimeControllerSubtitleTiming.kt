@@ -1,8 +1,6 @@
 package com.nuvio.tv.ui.screens.player
 
 import com.nuvio.tv.R
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.domain.model.Subtitle
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CancellationException
@@ -187,11 +185,7 @@ private fun PlayerRuntimeController.maybeLoadSubtitleAutoSyncCues(force: Boolean
                 it.copy(
                     subtitleAutoSyncLoading = false,
                     subtitleAutoSyncCues = emptyList(),
-                    subtitleAutoSyncError = UserFacingError.fromThrowable(
-                        e,
-                        context,
-                        UserFacingErrorSituation.Generic
-                    ),
+                    subtitleAutoSyncError = e.message ?: context.getString(com.nuvio.tv.R.string.subtitle_timing_load_lines_failed),
                     subtitleAutoSyncLoadedTrackKey = selectedTrackKey
                 )
             }

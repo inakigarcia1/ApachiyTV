@@ -2,8 +2,6 @@ package com.nuvio.tv.core.cloud
 
 import android.content.Context
 import com.nuvio.tv.R
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.debrid.DebridProviderCapability
 import com.nuvio.tv.core.debrid.DebridProviders
 import com.nuvio.tv.core.debrid.DebridServiceCredential
@@ -55,7 +53,7 @@ class CloudLibraryRepository @Inject constructor(
                     onFailure = { error ->
                         CloudLibraryProviderState(
                             provider = credential.provider,
-                            errorMessage = UserFacingError.fromThrowable(error, context, UserFacingErrorSituation.Library)
+                            errorMessage = error.message
                         )
                     }
                 )

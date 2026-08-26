@@ -5,8 +5,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.tmdb.TmdbEntityBrowseData
 import com.nuvio.tv.core.tmdb.TmdbEntityKind
 import com.nuvio.tv.core.tmdb.TmdbEntityRailType
@@ -142,7 +140,7 @@ class TmdbEntityBrowseViewModel @Inject constructor(
                 }
             } catch (e: Exception) {
                 _uiState.value = TmdbEntityBrowseUiState.Error(
-                    UserFacingError.fromThrowable(e, context, UserFacingErrorSituation.Catalog)
+                    e.message ?: context.getString(R.string.tmdb_entity_error_load)
                 )
             }
         }

@@ -1,13 +1,8 @@
 package com.nuvio.tv.data.simkl
 
-import android.content.Context
 import android.util.Log
-import com.nuvio.tv.R
-import com.nuvio.tv.core.error.UserFacingError
-import com.nuvio.tv.core.error.UserFacingErrorSituation
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.tracking.TrackingRefreshIntent
-import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.CancellationException
@@ -26,7 +21,6 @@ import kotlinx.serialization.json.Json
 
 @Singleton
 class SimklSyncRepository @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val engine: SimklSyncEngine,
     private val storage: SimklSyncStorage,
     private val authRepository: SimklAuthRepository,
@@ -203,7 +197,7 @@ class SimklSyncRepository @Inject constructor(
                 _state.value = previous.copy(
                     isLoading = false,
                     hasLoaded = true,
-                    errorMessage = UserFacingError.fromThrowable(error, context, UserFacingErrorSituation.Generic)
+                    errorMessage = error.message ?: "Unable to sync Simkl"
                 )
             }
             return@withLock
