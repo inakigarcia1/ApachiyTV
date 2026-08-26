@@ -56,18 +56,24 @@ class ServerConfigurationStore @Inject constructor(
             .clear()
             .commit()
 
-    private fun officialConfiguration() = ServerConfiguration(
-        backendUrl = BuildConfig.SUPABASE_URL.trimEnd('/'),
-        publishableKey = BuildConfig.SUPABASE_ANON_KEY,
-        capabilities = ServerCapabilities(
-            emailPasswordAuth = true,
-            tvLogin = true
-        ),
-        isCustom = false,
-        fallbackBackendUrl = BuildConfig.SUPABASE_FALLBACK_URL.trim().trimEnd('/').takeIf { it.isNotBlank() },
-        tvLoginWebBaseUrl = BuildConfig.TV_LOGIN_WEB_BASE_URL,
-        avatarPublicBaseUrl = BuildConfig.AVATAR_PUBLIC_BASE_URL.trimEnd('/').takeIf { it.isNotBlank() }
-    )
+    private fun officialConfiguration(): ServerConfiguration {
+        val backendUrl = BuildConfig.SUPABASE_URL.trimEnd('/')
+        val avatarBaseOverride = BuildConfig.AVATAR_PUBLIC_BASE_URL.trim().trimEnd('/')
+        val avatarPublicBaseUrl = avatarBaseOverride.takeIf { it.isNotBlank() }
+            ?: backendUrl.takeIf { it.isNotBlank() }?.let { "$it/storage/v1/object/public/avatars" }
+        return ServerConfiguration(
+            backendUrl = backendUrl,
+            publishableKey = BuildConfig.SUPABASE_ANON_KEY,
+            capabilities = ServerCapabilities(
+                emailPasswordAuth = true,
+                tvLogin = true
+            ),
+            isCustom = false,
+            fallbackBackendUrl = BuildConfig.SUPABASE_FALLBACK_URL.trim().trimEnd('/').takeIf { it.isNotBlank() },
+            tvLoginWebBaseUrl = BuildConfig.TV_LOGIN_WEB_BASE_URL,
+            avatarPublicBaseUrl = avatarPublicBaseUrl
+        )
+    }
 
     private companion object {
         const val PREFERENCES_NAME = "server_configuration"
