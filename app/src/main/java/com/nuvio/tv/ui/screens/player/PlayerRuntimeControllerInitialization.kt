@@ -81,11 +81,13 @@ import com.nuvio.tv.data.repository.PlaybackIssueErrorInput
 import com.nuvio.tv.domain.model.Subtitle
 import io.github.peerless2012.ass.media.kt.buildWithAssSupport
 import io.github.peerless2012.ass.media.type.AssRenderType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import java.net.SocketTimeoutException
 import kotlin.math.min
@@ -254,14 +256,28 @@ internal fun PlayerRuntimeController.initializePlayer(
                 message = context.getString(R.string.player_loading_detecting_format)
             )
 
+            // Resolve Comet-style /playback/ redirects up-front so ExoPlayer/MPV open the
+            // final CDN URL directly. Mid-open HTTP→HTTPS redirect + DNS to Torbox CDNs
+            // can hang with no connectStart (infinite spinner) on emulator/broken IPv6.
+            val streamUrl = withContext(Dispatchers.IO) {
+                PlayerPlaybackNetworking.resolveRedirectedPlaybackUrl(url, headers).finalUrl
+            }
+            if (streamUrl != url) {
+                currentStreamUrl = streamUrl
+                playbackAnalyticsDiagnostics.setTraceContext(
+                    host = streamUrl.safeHost(),
+                    engine = effectiveInternalPlayerEngine.name
+                )
+            }
+
             resolveCurrentStreamMimeType(
-                url = url,
+                url = streamUrl,
                 headers = headers
             )
 
             val afrJob = async {
                 runAfrPreflightIfEnabled(
-                    url = url,
+                    url = streamUrl,
                     headers = headers,
                     frameRateMatchingMode = playerSettings.frameRateMatchingMode,
                     resolutionMatchingEnabled = playerSettings.resolutionMatchingEnabled,
@@ -286,7 +302,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                         phase = "mpv_buffering",
                         message = context.getString(R.string.player_loading_buffering)
                     )
-                    initializeMpvPlayer(url = url, headers = headers, allowEngineFailover = allowEngineFailover)
+                    initializeMpvPlayer(url = streamUrl, headers = headers, allowEngineFailover = allowEngineFailover)
                     fetchAddonSubtitles()
                 } finally {
                     mpvInitializationInProgress = false
@@ -977,7 +993,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                 val initialResumePosition = resolvePendingInitialResumePosition()
                 playbackAnalyticsDiagnostics.setStartupStartPosition(initialResumePosition)
                 playbackAnalyticsDiagnostics.recordRawEventLine(
-                    "PLAYER_INIT: engine=EXOPLAYER host=${url.safeHost()} " +
+                    "PLAYER_INIT: engine=EXOPLAYER host=${streamUrl.safeHost()} " +
                         "playbackSpeed=${_uiState.value.playbackSpeed} " +
                         "resumePositionMs=$initialResumePosition mime=${currentStreamMimeType ?: "unknown"} " +
                         "bufferEngine=${playerSettings.bufferEngineEnabled} parallel=${mediaSourceFactory.useParallelConnections} " +
@@ -985,7 +1001,7 @@ internal fun PlayerRuntimeController.initializePlayer(
                 )
                 val initialMediaSource = mediaSourceFactory.createMediaSource(
                     context = context,
-                    url = url,
+                    url = streamUrl,
                     headers = headers,
                     subtitleConfigurations = startupSubtitleConfigurations,
                     filename = currentFilename,

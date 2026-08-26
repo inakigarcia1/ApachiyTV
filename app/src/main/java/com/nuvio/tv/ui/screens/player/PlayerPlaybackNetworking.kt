@@ -53,6 +53,7 @@ internal object PlayerPlaybackNetworking {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
+            .callTimeout(45, TimeUnit.SECONDS)
             .followRedirects(true)
             .followSslRedirects(true)
             .retryOnConnectionFailure(true)
@@ -76,6 +77,7 @@ internal object PlayerPlaybackNetworking {
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
+            .callTimeout(45, TimeUnit.SECONDS)
             .followRedirects(true)
             .followSslRedirects(true)
             .retryOnConnectionFailure(true)
@@ -89,6 +91,59 @@ internal object PlayerPlaybackNetworking {
                 }
             }
             .build()
+    }
+
+    data class RedirectResolution(
+        val originalUrl: String,
+        val finalUrl: String,
+        val redirected: Boolean,
+        val httpCode: Int
+    )
+
+    /**
+     * Follows HTTP redirects for Comet-style `/playback/` proxy URLs and returns the
+     * final CDN URL. ExoPlayer then opens the CDN directly, avoiding a mid-open
+     * redirect+DNS hang that presents as an infinite buffering spinner.
+     */
+    fun resolveRedirectedPlaybackUrl(
+        url: String,
+        headers: Map<String, String> = emptyMap()
+    ): RedirectResolution {
+        if (!shouldResolvePlaybackRedirects(url)) {
+            return RedirectResolution(url, url, redirected = false, httpCode = -1)
+        }
+        val client = playbackHttpClient.newBuilder()
+            .callTimeout(25, TimeUnit.SECONDS)
+            .build()
+        val requestBuilder = okhttp3.Request.Builder()
+            .url(url)
+            .header("Range", "bytes=0-0")
+            .get()
+        val sanitized = PlayerMediaSourceFactory.sanitizeHeaders(headers)
+        sanitized.forEach { (key, value) ->
+            if (!key.equals("Range", ignoreCase = true)) {
+                requestBuilder.header(key, value)
+            }
+        }
+        if (sanitized.none { it.key.equals("User-Agent", ignoreCase = true) }) {
+            requestBuilder.header("User-Agent", PlayerMediaSourceFactory.DEFAULT_USER_AGENT)
+        }
+        client.newCall(requestBuilder.build()).execute().use { response ->
+            // Do not drain the body — Torbox CDNs may ignore Range and stream the full file.
+            val finalUrl = response.request.url.toString()
+            val redirected = !finalUrl.equals(url, ignoreCase = true)
+            return RedirectResolution(
+                originalUrl = url,
+                finalUrl = finalUrl,
+                redirected = redirected,
+                httpCode = response.code
+            )
+        }
+    }
+
+    fun shouldResolvePlaybackRedirects(url: String): Boolean {
+        val path = android.net.Uri.parse(url).path.orEmpty()
+        return path.contains("/playback/", ignoreCase = true)
     }
 
     fun createHttpClient(defaultHeaders: Map<String, String> = emptyMap()): OkHttpClient {
