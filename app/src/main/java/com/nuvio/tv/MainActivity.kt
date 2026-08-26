@@ -147,6 +147,7 @@ import com.nuvio.tv.domain.repository.AddonRepository
 import com.nuvio.tv.ui.components.NuvioScrollDefaults
 import com.nuvio.tv.ui.components.LocalCardDepthStyle
 import com.nuvio.tv.ui.components.ProfileAvatarCircle
+import com.nuvio.tv.ui.navigation.LocalPlaybackGate
 import com.nuvio.tv.ui.navigation.NuvioNavHost
 import com.nuvio.tv.ui.navigation.Screen
 import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
@@ -252,6 +253,12 @@ class MainActivity : ComponentActivity() {
     lateinit var deviceLimitNotifier: com.nuvio.tv.core.auth.DeviceLimitNotifier
 
     @Inject
+    lateinit var inactiveSubscriptionNotifier: com.nuvio.tv.core.auth.InactiveSubscriptionNotifier
+
+    @Inject
+    lateinit var accountStatusRepository: com.nuvio.tv.data.account.AccountStatusRepository
+
+    @Inject
     lateinit var appOnboardingDataStore: AppOnboardingDataStore
 
     @Inject
@@ -332,6 +339,7 @@ class MainActivity : ComponentActivity() {
             val authState by authManager.authState.collectAsState()
             val context = LocalContext.current
             var showMaxDevicesDialog by remember { mutableStateOf(false) }
+            var showInactiveSubscriptionDialog by remember { mutableStateOf(false) }
 
             LaunchedEffect(deviceLimitNotifier) {
                 deviceLimitNotifier.events.collect {
@@ -339,9 +347,21 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            LaunchedEffect(inactiveSubscriptionNotifier) {
+                inactiveSubscriptionNotifier.events.collect {
+                    showInactiveSubscriptionDialog = true
+                }
+            }
+
             if (showMaxDevicesDialog) {
                 com.nuvio.tv.ui.components.MaxDevicesExceededDialog(
                     onDismiss = { showMaxDevicesDialog = false }
+                )
+            }
+
+            if (showInactiveSubscriptionDialog) {
+                com.nuvio.tv.ui.components.InactiveSubscriptionDialog(
+                    onDismiss = { showInactiveSubscriptionDialog = false }
                 )
             }
 
@@ -646,6 +666,16 @@ class MainActivity : ComponentActivity() {
 
                     val startDestination = Screen.Home.route
                     val navController = rememberNavController()
+                    val accountIsActive by accountStatusRepository.isActive.collectAsState()
+                    val gatePlaybackNavigation = remember(accountIsActive) {
+                        { navigate: () -> Unit ->
+                            if (accountIsActive == false) {
+                                showInactiveSubscriptionDialog = true
+                            } else {
+                                navigate()
+                            }
+                        }
+                    }
                     var optimisticRoute by remember { mutableStateOf<String?>(null) }
                     val navBackStackEntry by navController.currentBackStackEntryAsState()
                     val actualRoute = navBackStackEntry?.destination?.route
@@ -843,6 +873,7 @@ class MainActivity : ComponentActivity() {
                         onOpenUnknownSources = updateViewModel::openUnknownSourcesSettings,
                         onFeedbackShown = updateViewModel::consumeFeedbackMessage
                     ) {
+                        CompositionLocalProvider(LocalPlaybackGate provides gatePlaybackNavigation) {
                         Box(modifier = Modifier.fillMaxSize()) {
                             if (modernSidebarEnabled) {
                                 ModernSidebarScaffold(
@@ -903,6 +934,7 @@ class MainActivity : ComponentActivity() {
                                 )
                             }
                         }
+                        }
                     }
                 }
             }
@@ -925,6 +957,11 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             deviceSessionRegistration.requestForegroundRegistration()
             startupSyncService.requestForegroundSync()
+        }
+        lifecycleScope.launch {
+            if (authManager.authState.value is com.nuvio.tv.domain.model.AuthState.FullAccount) {
+                accountStatusRepository.refresh()
+            }
         }
         lifecycleScope.launch {
             val refreshIntent = if (isFirstResumeAfterCreate) {

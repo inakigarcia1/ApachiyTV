@@ -1,10 +1,13 @@
 package com.nuvio.tv.core.network
 
 import com.nuvio.tv.core.auth.AuthManager
+import com.nuvio.tv.data.account.AccountStatusRepository
 import io.github.jan.supabase.auth.Auth
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
+import io.mockk.verify
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Protocol
@@ -22,10 +25,12 @@ class ApachiyAddonAuthInterceptorTest {
         val auth = mockk<Auth>()
         every { auth.currentAccessTokenOrNull() } returns "access-token"
         val authManager = mockk<AuthManager>(relaxed = true)
+        val accountStatus = mockk<AccountStatusRepository>(relaxed = true)
 
         val interceptor = ApachiyAddonAuthInterceptor(
             auth = auth,
             authManager = authManager,
+            accountStatusRepository = accountStatus,
             apachiyApiHost = "api.apachiy.test"
         )
 
@@ -52,10 +57,12 @@ class ApachiyAddonAuthInterceptorTest {
         val auth = mockk<Auth>()
         every { auth.currentAccessTokenOrNull() } returns "access-token"
         val authManager = mockk<AuthManager>(relaxed = true)
+        val accountStatus = mockk<AccountStatusRepository>(relaxed = true)
 
         val interceptor = ApachiyAddonAuthInterceptor(
             auth = auth,
             authManager = authManager,
+            accountStatusRepository = accountStatus,
             apachiyApiHost = "api.apachiy.test"
         )
 
@@ -83,10 +90,12 @@ class ApachiyAddonAuthInterceptorTest {
         every { auth.currentAccessTokenOrNull() } returnsMany listOf("stale-token", "fresh-token")
         val authManager = mockk<AuthManager>()
         coEvery { authManager.refreshCurrentSessionSerialized("Apachiy addon 401") } returns true
+        val accountStatus = mockk<AccountStatusRepository>(relaxed = true)
 
         val interceptor = ApachiyAddonAuthInterceptor(
             auth = auth,
             authManager = authManager,
+            accountStatusRepository = accountStatus,
             apachiyApiHost = "api.apachiy.test"
         )
 
@@ -115,6 +124,40 @@ class ApachiyAddonAuthInterceptorTest {
 
         assertEquals(200, response.code)
         assertEquals(2, attempt)
+        verify(exactly = 0) { accountStatus.markInactive() }
+    }
+
+    @Test
+    fun `marks inactive and does not refresh on 403 account_inactive`() {
+        val auth = mockk<Auth>()
+        every { auth.currentAccessTokenOrNull() } returns "access-token"
+        val authManager = mockk<AuthManager>(relaxed = true)
+        val accountStatus = mockk<AccountStatusRepository>(relaxed = true)
+
+        val interceptor = ApachiyAddonAuthInterceptor(
+            auth = auth,
+            authManager = authManager,
+            accountStatusRepository = accountStatus,
+            apachiyApiHost = "api.apachiy.test"
+        )
+
+        val serverInterceptor = Interceptor { chain ->
+            inactiveAccountResponse(chain.request())
+        }
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(interceptor)
+            .addInterceptor(serverInterceptor)
+            .build()
+
+        val response = client.newCall(
+            Request.Builder().url("https://api.apachiy.test/apachiy/stream/movie/tt123.json").build()
+        ).execute()
+        response.close()
+
+        assertEquals(403, response.code)
+        verify(exactly = 1) { accountStatus.markInactive() }
+        coVerify(exactly = 0) { authManager.refreshCurrentSessionSerialized(any()) }
     }
 
     private fun successResponse(request: Request): Response =
@@ -133,5 +176,14 @@ class ApachiyAddonAuthInterceptorTest {
             .code(401)
             .message("Unauthorized")
             .body("".toResponseBody(null))
+            .build()
+
+    private fun inactiveAccountResponse(request: Request): Response =
+        Response.Builder()
+            .request(request)
+            .protocol(Protocol.HTTP_1_1)
+            .code(403)
+            .message("Forbidden")
+            .body("""{"error":"account_inactive"}""".toResponseBody(null))
             .build()
 }

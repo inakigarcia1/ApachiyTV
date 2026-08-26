@@ -4,6 +4,7 @@ import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.data.remote.device.dto.DeviceRegistrationRequest
 import com.nuvio.tv.data.remote.device.dto.DeviceRegistrationResponse
 import com.nuvio.tv.data.remote.device.dto.DeviceSummaryDto
+import com.nuvio.tv.data.remote.device.dto.AccountMeResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -31,6 +32,12 @@ interface ApachiyDeviceApi {
         @Header("Authorization") bearer: String,
         @Header("X-Apachiy-Client") clientHeader: String = CLIENT_HEADER_VALUE
     ): Response<List<DeviceSummaryDto>>
+
+    @GET("api/account/me")
+    suspend fun getAccountMe(
+        @Header("Authorization") bearer: String,
+        @Header("X-Apachiy-Client") clientHeader: String = CLIENT_HEADER_VALUE
+    ): Response<AccountMeResponse>
 
     companion object {
         const val CLIENT_HEADER_VALUE: String = "apachiy-tv/${BuildConfig.VERSION_NAME}"

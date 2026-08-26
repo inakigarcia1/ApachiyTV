@@ -10,6 +10,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -53,8 +54,13 @@ import com.nuvio.tv.ui.screens.home.HeroBackdropState
 fun NuvioNavHost(
     navController: NavHostController,
     startDestination: String = Screen.Home.route,
-    hideBuiltInHeaders: Boolean = false
+    hideBuiltInHeaders: Boolean = false,
+    gatePlaybackNavigation: (navigate: () -> Unit) -> Unit = LocalPlaybackGate.current
 ) {
+    fun navigateToStream(route: String) {
+        gatePlaybackNavigation { navController.navigate(route) }
+    }
+
     fun isStreamToPlayer(from: String, to: String): Boolean {
         return from.startsWith("stream/") && to.startsWith("player/")
     }
@@ -205,15 +211,15 @@ fun NuvioNavHost(
                     )
                 },
                 onContinueWatchingClick = { item ->
-                    navController.navigate(createContinueWatchingRoute(item))
+                    navigateToStream(createContinueWatchingRoute(item))
                 },
                 onContinueWatchingStartFromBeginning = { item ->
-                    navController.navigate(
+                    navigateToStream(
                         createContinueWatchingRoute(item, startFromBeginning = true)
                     )
                 },
                 onContinueWatchingPlayManually = { item ->
-                    navController.navigate(
+                    navigateToStream(
                         createContinueWatchingRoute(item, manualSelection = true)
                     )
                 },
@@ -311,7 +317,7 @@ fun NuvioNavHost(
                     navController.navigate(Screen.Detail.createRoute(itemId, itemType, addonBaseUrl))
                 },
                 onPlayClick = { videoId, contentType, contentId, title, poster, backdrop, logo, season, episode, episodeName, genres, year, runtime, contentLanguage ->
-                    navController.navigate(
+                    navigateToStream(
                         Screen.Stream.createRoute(
                             videoId = videoId,
                             contentType = contentType,
@@ -333,7 +339,7 @@ fun NuvioNavHost(
                     )
                 },
                 onPlayManuallyClick = { videoId, contentType, contentId, title, poster, backdrop, logo, season, episode, episodeName, genres, year, runtime, contentLanguage ->
-                    navController.navigate(
+                    navigateToStream(
                         Screen.Stream.createRoute(
                             videoId = videoId,
                             contentType = contentType,
@@ -356,7 +362,7 @@ fun NuvioNavHost(
                     )
                 },
                 onPlayStartFromBeginningClick = { videoId, contentType, contentId, title, poster, backdrop, logo, season, episode, episodeName, genres, year, runtime, contentLanguage ->
-                    navController.navigate(
+                    navigateToStream(
                         Screen.Stream.createRoute(
                             videoId = videoId,
                             contentType = contentType,

@@ -590,6 +590,8 @@
     <string name="action_ok">OK</string>
     <string name="device_limit_title">Device limit reached</string>
     <string name="device_limit_message">You have reached the maximum number of devices allowed for your account. To manage them, visit apachiy.org/dashboard/devices.</string>
+    <string name="subscription_inactive_title">No active subscription</string>
+    <string name="subscription_inactive_message">You don\u2019t have an active subscription. Manage your plan at apachiy.org/dashboard.</string>
 
     <string name="supporters_contributors_title">Supporters &amp; Contributors</string>
     <string name="supporters_contributors_subtitle">The people backing Apachiy and the contributors building it across TV and mobile.</string>

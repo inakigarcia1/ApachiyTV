@@ -87,6 +87,8 @@ class StreamScreenViewModel @Inject constructor(
     private val subtitleRepository: com.nuvio.tv.domain.repository.SubtitleRepository,
     private val subtitleFileCache: com.nuvio.tv.core.player.SubtitleFileCache,
     private val torrentService: TorrentService,
+    private val accountStatusRepository: com.nuvio.tv.data.account.AccountStatusRepository,
+    private val inactiveSubscriptionNotifier: com.nuvio.tv.core.auth.InactiveSubscriptionNotifier,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     private var autoPlayHandledForSession = false
@@ -245,8 +247,12 @@ class StreamScreenViewModel @Inject constructor(
                 )
             }
         }
-        loadMissingMetaDetailsIfNeeded()
-        loadStreams()
+        if (accountStatusRepository.isActive.value == false) {
+            inactiveSubscriptionNotifier.notifyInactiveSubscription()
+        } else {
+            loadMissingMetaDetailsIfNeeded()
+            loadStreams()
+        }
     }
 
     private fun SavedStateHandle.getOptionalString(key: String): String? {

@@ -216,6 +216,8 @@
     <string name="action_ok">Aceptar</string>
     <string name="device_limit_title">Límite de dispositivos</string>
     <string name="device_limit_message">Ha alcanzado la cantidad máxima de dispositivos permitidos para su cuenta. Para gestionarlos, visite apachiy.org/dashboard/devices.</string>
+    <string name="subscription_inactive_title">Sin suscripción activa</string>
+    <string name="subscription_inactive_message">No tiene una suscripción activa. Gestione su plan en apachiy.org/dashboard.</string>
 
     <!-- PlaybackSettingsSections -->
     <string name="playback_section_general">General</string>

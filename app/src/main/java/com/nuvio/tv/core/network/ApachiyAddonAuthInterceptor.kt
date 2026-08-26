@@ -2,6 +2,7 @@ package com.nuvio.tv.core.network
 
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.core.auth.AuthManager
+import com.nuvio.tv.data.account.AccountStatusRepository
 import io.github.jan.supabase.auth.Auth
 import kotlinx.coroutines.runBlocking
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -12,6 +13,7 @@ import okhttp3.Response
 class ApachiyAddonAuthInterceptor(
     private val auth: Auth,
     private val authManager: AuthManager,
+    private val accountStatusRepository: AccountStatusRepository,
     private val apachiyApiHost: String = apachiyHostFromBaseUrl(BuildConfig.APACHIY_API_BASE_URL)
 ) : Interceptor {
 
@@ -23,6 +25,10 @@ class ApachiyAddonAuthInterceptor(
 
         val initialRequest = withAccessToken(request, auth.currentAccessTokenOrNull())
         val response = chain.proceed(initialRequest)
+        if (response.code == 403 && response.isAccountInactive()) {
+            accountStatusRepository.markInactive()
+            return response
+        }
         if (response.code != 401) {
             return response
         }
@@ -36,7 +42,16 @@ class ApachiyAddonAuthInterceptor(
         }
 
         val retryRequest = withAccessToken(request, auth.currentAccessTokenOrNull())
-        return chain.proceed(retryRequest)
+        val retryResponse = chain.proceed(retryRequest)
+        if (retryResponse.code == 403 && retryResponse.isAccountInactive()) {
+            accountStatusRepository.markInactive()
+        }
+        return retryResponse
+    }
+
+    private fun Response.isAccountInactive(): Boolean {
+        val body = peekBody(ACCOUNT_INACTIVE_PEEK_BYTES).string()
+        return body.contains(ACCOUNT_INACTIVE_ERROR)
     }
 
     private fun shouldAttachAuth(host: String): Boolean {
@@ -52,6 +67,9 @@ class ApachiyAddonAuthInterceptor(
     }
 
     companion object {
+        private const val ACCOUNT_INACTIVE_ERROR = "account_inactive"
+        private const val ACCOUNT_INACTIVE_PEEK_BYTES = 1024L
+
         fun apachiyHostFromBaseUrl(baseUrl: String): String {
             val trimmed = baseUrl.trim().trimEnd('/')
             if (trimmed.isBlank()) return ""

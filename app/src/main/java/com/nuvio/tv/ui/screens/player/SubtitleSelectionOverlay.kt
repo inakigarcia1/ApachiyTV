@@ -1768,7 +1768,10 @@ private fun buildSubtitleOptionRailItems(
             SubtitleOptionRailItem(
                 id = "internal:${track.index}",
                 kind = SubtitleOptionKind.INTERNAL,
-                title = track.name,
+                title = internalSubtitleRailTitle(
+                    track.language,
+                    normalizeOverlayLanguageKeyForTrack(track)
+                ),
                 sourceLabel = builtInLabel,
                 meta = listOfNotNull(
                     track.codec,

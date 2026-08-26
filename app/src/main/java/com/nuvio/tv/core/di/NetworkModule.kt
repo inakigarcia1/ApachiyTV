@@ -150,8 +150,9 @@ object NetworkModule {
     @Singleton
     fun provideApachiyAddonAuthInterceptor(
         auth: Auth,
-        authManager: AuthManager
-    ): ApachiyAddonAuthInterceptor = ApachiyAddonAuthInterceptor(auth, authManager)
+        authManager: AuthManager,
+        accountStatusRepository: com.nuvio.tv.data.account.AccountStatusRepository
+    ): ApachiyAddonAuthInterceptor = ApachiyAddonAuthInterceptor(auth, authManager, accountStatusRepository)
 
     @Provides
     @Singleton

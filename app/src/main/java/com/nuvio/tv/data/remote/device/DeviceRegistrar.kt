@@ -6,6 +6,7 @@ import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.auth.DeviceLimitNotifier
 import com.nuvio.tv.core.auth.LastAuthKind
+import com.nuvio.tv.data.account.AccountStatusRepository
 import com.nuvio.tv.domain.model.AuthState
 import com.nuvio.tv.core.installation.InstallationIdProvider
 import com.nuvio.tv.data.remote.device.dto.DeviceRegistrationError
@@ -54,6 +55,7 @@ class DeviceRegistrar @Inject constructor(
     private val installationIdProvider: InstallationIdProvider,
     private val apachiyDeviceApi: ApachiyDeviceApi,
     private val deviceLimitNotifier: DeviceLimitNotifier,
+    private val accountStatusRepository: AccountStatusRepository,
     @Named("apachiy") private val json: Json
 ) {
     @Suppress("unused")
@@ -133,6 +135,7 @@ class DeviceRegistrar @Inject constructor(
                         Log.w(TAG, "device was reported revoked; signing out")
                         authManager.signOut()
                     }
+                    accountStatusRepository.refresh()
                     return
                 }
                 val errBody = resp.errorBody()?.string().orEmpty()
