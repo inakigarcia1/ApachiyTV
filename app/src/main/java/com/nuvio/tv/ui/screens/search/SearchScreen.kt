@@ -1,5 +1,6 @@
 package com.nuvio.tv.ui.screens.search
 
+import com.nuvio.tv.core.locale.AppLocalePreferences
 import com.nuvio.tv.ui.theme.NuvioTheme
 import com.nuvio.tv.ui.screens.home.HeroBackdropState
 
@@ -172,11 +173,15 @@ fun SearchScreen(
         }
     }
     val buildRecognizeIntent: () -> Intent = {
+        val voiceLocaleTag = AppLocalePreferences.effectiveLocaleTag(context)
+            ?: AppLocalePreferences.DEFAULT_LOCALE_TAG
         Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, false)
             putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 1)
             putExtra(RecognizerIntent.EXTRA_CALLING_PACKAGE, context.packageName)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE, voiceLocaleTag)
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, voiceLocaleTag)
         }
     }
     val hasRecordAudioPermission by remember(context) {

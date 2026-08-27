@@ -51,6 +51,7 @@ class AddonSyncService @Inject constructor(
             }
 
             val localUrls = addonPreferences.installedAddonUrls.first()
+                .filterNot { AddonPreferences.isDeniedAddonUrl(it) }
             val userSetNames = addonPreferences.userSetNames.first()
             val enabledStates = addonPreferences.addonEnabledStates.first()
             Log.d(TAG, "pushToRemote: localUrls count=${localUrls.size} for profile $profileId")
@@ -108,22 +109,23 @@ class AddonSyncService @Inject constructor(
                     .decodeList<SupabaseAddon>()
             }
 
+            val filteredAddons = remoteAddons.filterNot { AddonPreferences.isDeniedAddonUrl(it.url) }
             val nameMap = mutableMapOf<String, String>()
             val enabledMap = mutableMapOf<String, Boolean>()
-            remoteAddons.forEach { addon ->
+            filteredAddons.forEach { addon ->
                 val canonicalUrl = canonicalizeUrl(addon.url)
                 if (!addon.name.isNullOrBlank()) {
                     nameMap[canonicalUrl] = addon.name
                 }
                 enabledMap[canonicalUrl] = addon.enabled
             }
-            if (remoteAddons.isNotEmpty()) {
+            if (filteredAddons.isNotEmpty()) {
                 addonPreferences.setUserSetNames(nameMap)
                 addonPreferences.setAddonEnabledStates(enabledMap)
             }
 
             Result.success(
-                remoteAddons
+                filteredAddons
                 .sortedBy { it.sortOrder }
                 .map { it.url }
             )

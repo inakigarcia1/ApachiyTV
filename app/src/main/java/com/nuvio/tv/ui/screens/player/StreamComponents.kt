@@ -79,22 +79,7 @@ internal fun StreamItem(
     val unknownStreamLabel = stringResource(R.string.stream_unknown)
     val streamName = remember(stream, unknownStreamLabel) { stream.getDisplayNameOrNull() ?: unknownStreamLabel }
     val streamDescription = remember(stream) { stream.getDisplayDescription() }
-    val hasBadges = stream.badges.isNotEmpty() || (showFileSizeBadges && stream.behaviorHints?.videoSize != null)
-    // Pre-upscale: decode at 2× target pixels so the hardware compositor
-    // has enough pixel data for smooth edges inside Card RenderNodes.
-    val logoDecodeSize = remember(density) {
-        with(density) { NuvioTheme.spacing.xxl.roundToPx() } * 2
-    }
-    val addonLogoModel = remember(context, stream.addonLogo, logoDecodeSize) {
-        stream.addonLogo?.let { logo ->
-            ImageRequest.Builder(context)
-                .data(logo)
-                .size(width = logoDecodeSize, height = logoDecodeSize)
-                .memoryCacheKey("${logo}_${logoDecodeSize}x${logoDecodeSize}")
-                .crossfade(true)
-                .build()
-        }
-    }
+    val hasBadges = stream.badges.isNotEmpty()
 
     Card(
         onClick = onClick,
@@ -140,9 +125,7 @@ internal fun StreamItem(
             ) {
                 if (hasBadges && badgePlacement == StreamBadgePlacement.TOP) {
                     StreamBadgeChips(
-                        badges = stream.badges,
-                        fileSizeBytes = stream.behaviorHints?.videoSize,
-                        showFileSizeBadge = showFileSizeBadges
+                        badges = stream.badges
                     )
                     Spacer(modifier = Modifier.height(NuvioTheme.spacing.xxs))
                 }
@@ -186,36 +169,7 @@ internal fun StreamItem(
                 if (hasBadges && badgePlacement == StreamBadgePlacement.BOTTOM) {
                     StreamBadgeChips(
                         badges = stream.badges,
-                        fileSizeBytes = stream.behaviorHints?.videoSize,
-                        showFileSizeBadge = showFileSizeBadges,
                         modifier = Modifier.padding(top = NuvioTheme.spacing.xxs)
-                    )
-                }
-            }
-
-            if (showAddonLogo) {
-                Column(
-                    horizontalAlignment = Alignment.End
-                ) {
-                    if (addonLogoModel != null) {
-                        AsyncImage(
-                            model = addonLogoModel,
-                            contentDescription = stream.addonName,
-                            modifier = Modifier
-                                .size(NuvioTheme.spacing.xxl)
-                                .clip(RoundedCornerShape(NuvioTheme.radii.xs)),
-                            contentScale = ContentScale.Fit
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(NuvioTheme.spacing.xs))
-
-                    Text(
-                        text = stream.addonName,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = NuvioTheme.extendedColors.textTertiary,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }

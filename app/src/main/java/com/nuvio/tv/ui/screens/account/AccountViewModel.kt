@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.nuvio.tv.R
 import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.auth.diagnostics.AuthDiagnosticsSession
+import com.nuvio.tv.core.locale.AppLocalePreferences
 import com.nuvio.tv.core.logging.bodySnippetForLog
 import com.nuvio.tv.core.logging.diagnosticSummary
 import com.nuvio.tv.core.logging.rawForLog
@@ -86,6 +87,10 @@ class AccountViewModel @Inject constructor(
     private val serverConfiguration: ServerConfiguration,
     @dagger.hilt.android.qualifiers.ApplicationContext private val context: Context
 ) : ViewModel() {
+
+    private val localizedContext by lazy { AppLocalePreferences.createLocalizedContext(context) }
+
+    private fun localizedString(resId: Int): String = localizedContext.getString(resId)
 
     private val _uiState = MutableStateFlow(AccountUiState())
     val uiState: StateFlow<AccountUiState> = _uiState.asStateFlow()
@@ -318,7 +323,7 @@ class AccountViewModel @Inject constructor(
                     qrLoginUrl = null,
                     qrLoginNonce = nonce,
                     qrLoginBitmap = null,
-                    qrLoginStatus = context.getString(R.string.qr_login_preparing),
+                    qrLoginStatus = localizedString(R.string.qr_login_preparing),
                     qrLoginExpiresAtMillis = null
                 )
             }
@@ -351,7 +356,7 @@ class AccountViewModel @Inject constructor(
                             qrLoginCode = result.code,
                             qrLoginUrl = result.webUrl,
                             qrLoginBitmap = qrBitmap,
-                            qrLoginStatus = context.getString(R.string.qr_login_scan_prompt),
+                            qrLoginStatus = localizedString(R.string.qr_login_scan_prompt),
                             qrLoginExpiresAtMillis = expiresAtMillis,
                             qrLoginPollIntervalSeconds = result.pollIntervalSeconds.coerceAtLeast(2)
                         )
@@ -366,7 +371,7 @@ class AccountViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             error = userFriendlyError(e),
-                            qrLoginStatus = context.getString(R.string.qr_login_start_failed)
+                            qrLoginStatus = localizedString(R.string.qr_login_start_failed)
                         )
                     }
                 }
@@ -399,7 +404,7 @@ class AccountViewModel @Inject constructor(
             qrLoginExchangeInFlight = true
             val startedAtMs = SystemClock.elapsedRealtime()
             Log.d(TAG, "QR_LOGIN[${traceId ?: "-"}] exchange begin code=${code.rawForLog()} nonce=${nonce.rawForLog()} auth=${current.authState.nameForLog()}")
-            _uiState.update { it.copy(isLoading = true, error = null, qrLoginStatus = context.getString(R.string.qr_login_signing_in)) }
+            _uiState.update { it.copy(isLoading = true, error = null, qrLoginStatus = localizedString(R.string.qr_login_signing_in)) }
             try {
                 authManager.exchangeTvLoginSession(code = code, deviceNonce = nonce, traceId = traceId, diagnostics = diagnostics).fold(
                     onSuccess = {
@@ -410,7 +415,7 @@ class AccountViewModel @Inject constructor(
                             Log.e(TAG, "QR_LOGIN[${traceId ?: "-"}] exchange pullRemoteData failed, continuing error=${e.diagnosticSummary()}", e)
                         }
                         loadConnectedStats()
-                        _uiState.update { it.copy(isLoading = false, qrLoginStatus = context.getString(R.string.qr_login_success)) }
+                        _uiState.update { it.copy(isLoading = false, qrLoginStatus = localizedString(R.string.qr_login_success)) }
                     },
                     onFailure = { e ->
                         Log.e(TAG, "QR_LOGIN[${traceId ?: "-"}] exchange failed elapsedMs=${SystemClock.elapsedRealtime() - startedAtMs} error=${e.diagnosticSummary()}", e)
@@ -420,7 +425,7 @@ class AccountViewModel @Inject constructor(
                             it.copy(
                                 isLoading = false,
                                 error = userFriendlyError(e),
-                                qrLoginStatus = context.getString(R.string.qr_login_exchange_failed)
+                                qrLoginStatus = localizedString(R.string.qr_login_exchange_failed)
                             )
                         }
                     }
@@ -623,7 +628,7 @@ class AccountViewModel @Inject constructor(
             // Fallback
             else -> R.string.account_error_unexpected
         }
-        return context.getString(resId)
+        return localizedString(resId)
     }
 
     private fun startQrLoginPolling() {
@@ -676,9 +681,9 @@ class AccountViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         qrLoginStatus = when (normalizedStatus) {
-                            "approved" -> context.getString(R.string.qr_login_approved)
-                            "pending" -> context.getString(R.string.qr_login_pending)
-                            "expired" -> context.getString(R.string.qr_login_expired)
+                            "approved" -> localizedString(R.string.qr_login_approved)
+                            "pending" -> localizedString(R.string.qr_login_pending)
+                            "expired" -> localizedString(R.string.qr_login_expired)
                             else -> "Status: ${result.status}"
                         },
                         qrLoginExpiresAtMillis = expiresAtMillis ?: it.qrLoginExpiresAtMillis,

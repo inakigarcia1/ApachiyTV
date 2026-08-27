@@ -1799,7 +1799,7 @@ private fun buildSubtitleOptionRailItems(
                 kind = SubtitleOptionKind.ADDON,
                 title = Subtitle.languageCodeToName(PlayerSubtitleUtils.normalizeLanguageCode(subtitle.lang)),
                 sourceLabel = subtitle.addonName,
-                meta = subtitle.id.takeIf { it.isNotBlank() && it != subtitle.lang },
+                meta = null,
                 isSelected = optionId == selectedOptionId,
                 addonSubtitle = subtitle
             )

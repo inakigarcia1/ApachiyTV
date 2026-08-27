@@ -25,6 +25,30 @@ class AddonPreferences @Inject constructor(
 ) {
     companion object {
         private const val FEATURE = "addon_preferences"
+
+        private val DENIED_ADDON_HOSTS = setOf(
+            "v3-cinemeta.strem.io",
+            "cinemeta.strem.io",
+            "opensubtitles-v3.strem.io",
+            "opensubtitles.strem.io"
+        )
+
+        fun isDeniedAddonUrl(url: String): Boolean {
+            return try {
+                val trimmed = url.trim().trimEnd('/')
+                val queryStart = trimmed.indexOf('?')
+                val path = if (queryStart >= 0) trimmed.substring(0, queryStart) else trimmed
+                val withoutManifest = if (path.endsWith("/manifest.json", ignoreCase = true)) {
+                    path.dropLast("/manifest.json".length).trimEnd('/')
+                } else {
+                    path.trimEnd('/')
+                }
+                val host = java.net.URI(withoutManifest).host?.lowercase()
+                host != null && DENIED_ADDON_HOSTS.contains(host)
+            } catch (_: Exception) {
+                false
+            }
+        }
     }
 
     private fun effectiveProfileId(): Int {
@@ -65,13 +89,7 @@ class AddonPreferences @Inject constructor(
 
     val installedAddonUrls: Flow<List<String>> = effectiveProfileIdFlow.flatMapLatest { pid ->
         factory.get(pid, FEATURE).data.map { preferences ->
-            val json = preferences[orderedUrlsKey]
-            if (json != null) {
-                parseUrlList(json)
-            } else {
-                val legacySet = preferences[legacyUrlsKey] ?: getDefaultAddons()
-                legacySet.toList()
-            }
+            filterDeniedUrls(getCurrentList(preferences))
         }
     }
 
@@ -86,11 +104,16 @@ class AddonPreferences @Inject constructor(
     suspend fun ensureMigrated() {
         val ds = store()
         val prefs = ds.data.first()
-        if (prefs[orderedUrlsKey] == null) {
-            val legacySet = prefs[legacyUrlsKey] ?: getDefaultAddons()
-            ds.edit { preferences ->
-                preferences[orderedUrlsKey] = gson.toJson(legacySet.toList())
+        ds.edit { preferences ->
+            if (preferences[orderedUrlsKey] == null) {
+                val legacySet = prefs[legacyUrlsKey] ?: getDefaultAddons()
+                preferences[orderedUrlsKey] = gson.toJson(filterDeniedUrls(legacySet.toList()))
                 preferences.remove(legacyUrlsKey)
+            }
+            val current = getCurrentList(preferences)
+            val filtered = filterDeniedUrls(current)
+            if (filtered != current) {
+                preferences[orderedUrlsKey] = gson.toJson(filtered)
             }
         }
     }
@@ -98,6 +121,7 @@ class AddonPreferences @Inject constructor(
     suspend fun addAddon(url: String) {
            val active = profileManager.activeProfile
            if (active != null && !active.isPrimary && active.usesPrimaryAddons) return
+        if (isDeniedAddonUrl(url)) return
         store().edit { preferences ->
             val current = getCurrentList(preferences)
             val normalizedUrl = canonicalizeUrl(url)
@@ -165,12 +189,14 @@ class AddonPreferences @Inject constructor(
     private fun getCurrentList(preferences: Preferences): List<String> {
         val json = preferences[orderedUrlsKey]
         return if (json != null) {
-            parseUrlList(json)
+            filterDeniedUrls(parseUrlList(json))
         } else {
-            val legacySet = preferences[legacyUrlsKey] ?: getDefaultAddons()
-            legacySet.toList()
+            filterDeniedUrls((preferences[legacyUrlsKey] ?: getDefaultAddons()).toList())
         }
     }
+
+    private fun filterDeniedUrls(urls: List<String>): List<String> =
+        urls.filterNot { isDeniedAddonUrl(it) }
 
     private fun parseUrlList(json: String): List<String> {
         return try {

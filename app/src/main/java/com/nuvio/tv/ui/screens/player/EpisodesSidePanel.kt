@@ -207,22 +207,6 @@ private fun EpisodeStreamsView(
         )
     }
 
-    Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
-
-    AnimatedVisibility(
-        visible = !uiState.isLoadingEpisodeStreams && uiState.episodeAvailableAddons.isNotEmpty(),
-        enter = fadeIn(animationSpec = tween(200)),
-        exit = fadeOut(animationSpec = tween(120))
-    ) {
-        AddonFilterChips(
-            addons = uiState.episodeAvailableAddons,
-            selectedAddon = uiState.episodeSelectedAddonFilter,
-            onAddonSelected = onAddonFilterSelected
-        )
-    }
-
-    Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
-
     when {
         uiState.isLoadingEpisodeStreams -> {
             Box(

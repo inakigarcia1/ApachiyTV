@@ -52,10 +52,10 @@ class ProfileSettingsViewModel @Inject constructor(
             if (success) {
                 val profiles = profileManager.profiles.value
                 val newProfile = profiles.firstOrNull { it.id !in existingIds }
-                if (newProfile != null && (usesPrimaryAddons || usesPrimaryPlugins)) {
+                if (newProfile != null) {
                     profileManager.updateProfile(
                         newProfile.copy(
-                            usesPrimaryAddons = usesPrimaryAddons,
+                            usesPrimaryAddons = true,
                             usesPrimaryPlugins = usesPrimaryPlugins
                         )
                     )

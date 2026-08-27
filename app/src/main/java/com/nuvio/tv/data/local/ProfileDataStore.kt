@@ -137,6 +137,7 @@ class ProfileDataStore @Inject constructor(
 
     private fun normalizeProfiles(profiles: List<UserProfile>): List<UserProfile> {
         val nonEmpty = profiles.ifEmpty { listOf(defaultPrimaryProfile()) }
+            .map { it.copy(usesPrimaryAddons = true) }
         if (nonEmpty.any { it.id == 1 }) return nonEmpty
         return listOf(defaultPrimaryProfile()) + nonEmpty
     }
@@ -152,7 +153,7 @@ internal data class ProfileJson(
     val id: Int,
     val name: String,
     val avatarColorHex: String,
-    val usesPrimaryAddons: Boolean = false,
+    val usesPrimaryAddons: Boolean = true,
     val usesPrimaryPlugins: Boolean = false,
     val avatarId: String? = null,
     val avatarUrl: String? = null

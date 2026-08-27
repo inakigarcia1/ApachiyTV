@@ -68,16 +68,6 @@ internal fun StreamSourcesSidePanel(
         }
     }
 
-    val orderedAddonNames = remember(uiState.sourceAvailableAddons, uiState.sourceChips) {
-        buildList {
-            addAll(uiState.sourceAvailableAddons)
-            uiState.sourceChips.forEach { if (it.name !in this) add(it.name) }
-        }
-    }
-    val chipFocusRequesters = remember(orderedAddonNames.size) {
-        List(orderedAddonNames.size + 1) { FocusRequester() }
-    }
-
     Box(
         modifier = modifier
             .fillMaxHeight()
@@ -142,24 +132,6 @@ internal fun StreamSourcesSidePanel(
 
             Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
 
-            AnimatedVisibility(
-                visible = uiState.sourceChips.isNotEmpty() ||
-                    (!uiState.isLoadingSourceStreams && uiState.sourceAvailableAddons.isNotEmpty()),
-                enter = fadeIn(animationSpec = tween(200)),
-                exit = fadeOut(animationSpec = tween(120))
-            ) {
-                AddonFilterChips(
-                    addons = uiState.sourceAvailableAddons,
-                    sourceChips = uiState.sourceChips,
-                    selectedAddon = uiState.sourceSelectedAddonFilter,
-                    onAddonSelected = onAddonFilterSelected,
-                    externalFocusRequesters = chipFocusRequesters,
-                    externalOrderedNames = orderedAddonNames
-                )
-            }
-
-            Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
-
             when {
                 uiState.isLoadingSourceStreams -> {
                     Box(
@@ -213,8 +185,6 @@ internal fun StreamSourcesSidePanel(
                         }
                     }
 
-                    val lastKeyRepeatDispatchRef = remember { java.util.concurrent.atomic.AtomicLong(0L) }
-
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
                         contentPadding = PaddingValues(
@@ -223,32 +193,7 @@ internal fun StreamSourcesSidePanel(
                             end = NuvioTheme.spacing.sm,
                             bottom = NuvioTheme.spacing.sm
                         ),
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .onKeyEvent { event ->
-                                if (event.nativeKeyEvent.action != KeyEvent.ACTION_DOWN) return@onKeyEvent false
-
-                                // Throttle rapid key repeats (long-press)
-                                if (event.nativeKeyEvent.repeatCount > 0) {
-                                    val now = android.os.SystemClock.uptimeMillis()
-                                    if (now - lastKeyRepeatDispatchRef.get() < 112L) return@onKeyEvent true
-                                    lastKeyRepeatDispatchRef.set(now)
-                                }
-
-                                val addons = uiState.sourceAvailableAddons
-                                if (addons.isEmpty()) return@onKeyEvent false
-                                val allOptions = listOf<String?>(null) + addons
-                                val currentIdx = allOptions.indexOf(uiState.sourceSelectedAddonFilter)
-                                when (event.key) {
-                                    Key.DirectionLeft -> {
-                                        if (currentIdx > 0) { onAddonFilterSelected(allOptions[currentIdx - 1]); true } else false
-                                    }
-                                    Key.DirectionRight -> {
-                                        if (currentIdx < allOptions.lastIndex) { onAddonFilterSelected(allOptions[currentIdx + 1]); true } else false
-                                    }
-                                    else -> false
-                                }
-                            }
+                        modifier = Modifier.fillMaxHeight()
                     ) {
                         itemsIndexed(uiState.sourceFilteredStreams, key = { index, _ ->
                             streamKeys[index]
@@ -261,14 +206,7 @@ internal fun StreamSourcesSidePanel(
                                 showFileSizeBadges = uiState.showFileSizeBadges,
                                 showAddonLogo = uiState.showAddonLogo,
                                 badgePlacement = uiState.streamBadgePlacement,
-                                onClick = { onStreamSelected(stream) },
-                                onUpKey = if (index == 0 && chipFocusRequesters.isNotEmpty()) {{
-                                    val selected = uiState.sourceSelectedAddonFilter
-                                    val idx = if (selected == null) 0 else orderedAddonNames.indexOf(selected) + 1
-                                    if (idx >= 0 && idx < chipFocusRequesters.size) {
-                                        try { chipFocusRequesters[idx].requestFocus() } catch (_: Exception) {}
-                                    }
-                                }} else null
+                                onClick = { onStreamSelected(stream) }
                             )
                         }
                     }

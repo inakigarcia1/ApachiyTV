@@ -11,6 +11,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Box
@@ -346,9 +348,11 @@ private fun AuthQrLoginPane(
     val focusEmail = showEmailPanel && !isSignedIn
     val focusMainAction = !focusEmail && !uiState.isLoading
     Column(
-        modifier = modifier.padding(horizontal = 48.dp),
+        modifier = modifier
+            .padding(start = 48.dp, end = 48.dp, top = 48.dp, bottom = 36.dp)
+            .verticalScroll(rememberScrollState()),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+        verticalArrangement = Arrangement.Top
     ) {
         Text(
             text = stringResource(R.string.auth_qr_account_login),

@@ -72,7 +72,7 @@ class ProfileManager @Inject constructor(
     suspend fun createProfile(
         name: String,
         avatarColorHex: String,
-        usesPrimaryAddons: Boolean = false,
+        usesPrimaryAddons: Boolean = true,
         usesPrimaryPlugins: Boolean = false,
         avatarId: String? = null
     ): Boolean {
@@ -86,7 +86,7 @@ class ProfileManager @Inject constructor(
             id = nextId,
             name = name.trim().ifEmpty { context.getString(R.string.profile_default_name, nextId) },
             avatarColorHex = avatarColorHex,
-            usesPrimaryAddons = usesPrimaryAddons,
+            usesPrimaryAddons = true,
             usesPrimaryPlugins = usesPrimaryPlugins,
             avatarId = avatarId
         )
@@ -106,7 +106,7 @@ class ProfileManager @Inject constructor(
 
     suspend fun updateProfile(profile: UserProfile): Boolean {
         if (profiles.value.none { it.id == profile.id }) return false
-        profileDataStore.upsertProfile(profile)
+        profileDataStore.upsertProfile(profile.copy(usesPrimaryAddons = true))
         return true
     }
 

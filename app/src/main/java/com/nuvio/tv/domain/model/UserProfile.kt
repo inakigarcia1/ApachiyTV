@@ -4,7 +4,7 @@ data class UserProfile(
     val id: Int,
     val name: String,
     val avatarColorHex: String,
-    val usesPrimaryAddons: Boolean = false,
+    val usesPrimaryAddons: Boolean = true,
     val usesPrimaryPlugins: Boolean = false,
     val avatarId: String? = null,
     val avatarUrl: String? = null

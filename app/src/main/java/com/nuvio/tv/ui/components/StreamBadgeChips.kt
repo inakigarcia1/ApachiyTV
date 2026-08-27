@@ -101,8 +101,7 @@ fun StreamBadgeChips(
     modifier: Modifier = Modifier
 ) {
     val imageBadges = remember(badges) { badges.filter { it.imageURL.isNotBlank() } }
-    val sizeBytes = fileSizeBytes.takeIf { showFileSizeBadge }
-    if (imageBadges.isEmpty() && sizeBytes == null) return
+    if (imageBadges.isEmpty()) return
 
     val chipAlpha = if (animate) {
         val alpha = remember { androidx.compose.animation.core.Animatable(0f) }
@@ -129,9 +128,6 @@ fun StreamBadgeChips(
         ) {
             imageBadges.forEach { badge ->
                 StreamImportedBadgeChip(badge = badge)
-            }
-            if (sizeBytes != null) {
-                StreamFileSizeBadge(bytes = sizeBytes)
             }
         }
     }

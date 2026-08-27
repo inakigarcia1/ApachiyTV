@@ -55,7 +55,7 @@ class ProfileSyncService @Inject constructor(
                             put("profile_index", profile.id)
                             put("name", profile.name)
                             put("avatar_color_hex", profile.avatarColorHex)
-                            put("uses_primary_addons", profile.usesPrimaryAddons)
+                            put("uses_primary_addons", true)
                             put("uses_primary_plugins", profile.usesPrimaryPlugins)
                             put("avatar_id", if (profile.avatarUrl.isNullOrBlank()) profile.avatarId else null)
                             put("avatar_url", profile.avatarUrl?.takeIf { it.isNotBlank() })
@@ -90,7 +90,7 @@ class ProfileSyncService @Inject constructor(
                     id = entry.profileIndex,
                     name = entry.name,
                     avatarColorHex = entry.avatarColorHex,
-                    usesPrimaryAddons = entry.usesPrimaryAddons,
+                    usesPrimaryAddons = true,
                     usesPrimaryPlugins = entry.usesPrimaryPlugins,
                     avatarId = entry.avatarId,
                     avatarUrl = entry.avatarUrl
