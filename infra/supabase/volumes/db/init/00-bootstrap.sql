@@ -12,9 +12,6 @@ CREATE SCHEMA IF NOT EXISTS storage;
 CREATE SCHEMA IF NOT EXISTS _realtime;
 CREATE SCHEMA IF NOT EXISTS realtime AUTHORIZATION supabase_admin;
 
-GRANT USAGE ON SCHEMA realtime TO supabase_admin, anon, authenticated, service_role;
-GRANT ALL ON SCHEMA realtime TO supabase_admin;
-
 -- Realtime migrations GRANT to role "postgres" (expected by supabase/realtime image).
 DO $$
 BEGIN
@@ -30,6 +27,7 @@ CREATE EXTENSION IF NOT EXISTS "pgcrypto"       WITH SCHEMA extensions;
 -- are not required for GoTrue/PostgREST in this self-hosted slice.
 
 -- Roles expected by Supabase Auth + PostgREST + Storage
+-- Must exist before any GRANT ... TO anon/authenticated/service_role.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
@@ -45,6 +43,9 @@ BEGIN
     CREATE ROLE authenticator LOGIN NOINHERIT PASSWORD 'supabase_authenticator_password';
   END IF;
 END $$;
+
+GRANT USAGE ON SCHEMA realtime TO supabase_admin, anon, authenticated, service_role;
+GRANT ALL ON SCHEMA realtime TO supabase_admin;
 
 GRANT anon             TO authenticator;
 GRANT authenticated    TO authenticator;
