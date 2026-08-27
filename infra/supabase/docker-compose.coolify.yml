@@ -269,6 +269,7 @@ services:
       - "3000"
     labels:
       - traefik.docker.network=coolify
+      - traefik.http.middlewares.studio-basicauth.basicauth.users=admin:$$2y$$05$$L9rEg1F9g0kq9S92G/72YeiOJYJdcr/P8zkPdrVgZ1.vhLQs.efK6
     mem_limit: ${APACHIY_SUPABASE_STUDIO_MEM:-256m}
     cpus: ${APACHIY_SUPABASE_STUDIO_CPUS:-0.5}
 
