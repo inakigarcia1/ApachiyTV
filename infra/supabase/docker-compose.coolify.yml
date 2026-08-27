@@ -338,12 +338,6 @@ services:
           - supabase-kong
     expose:
       - "8000"
-    healthcheck:
-      test: ["CMD", "kong", "health"]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 45s
     mem_limit: ${APACHIY_SUPABASE_KONG_MEM:-256m}
     cpus: ${APACHIY_SUPABASE_KONG_CPUS:-0.5}
 
