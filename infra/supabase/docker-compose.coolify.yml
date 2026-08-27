@@ -32,7 +32,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-supabase_admin}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - supabase-db-data:/var/lib/postgresql/data
       - ./volumes/db/init:/docker-entrypoint-initdb.d:ro
@@ -64,11 +64,11 @@ services:
       supabase-rest:
         condition: service_started
     environment:
-      ANON_KEY: ${ANON_KEY:?required}
-      SERVICE_KEY: ${SERVICE_ROLE_KEY:?required}
+      ANON_KEY: ${ANON_KEY}
+      SERVICE_KEY: ${SERVICE_ROLE_KEY}
       POSTGREST_URL: http://supabase-rest:3000
-      PGRST_JWT_SECRET: ${JWT_SECRET:?required}
-      DATABASE_URL: postgres://${POSTGRES_USER:-supabase_admin}:${POSTGRES_PASSWORD:?required}@supabase-db:5432/${POSTGRES_DB:-postgres}
+      PGRST_JWT_SECRET: ${JWT_SECRET}
+      DATABASE_URL: ${DATABASE_URL}
       FILE_SIZE_LIMIT: 52428800
       STORAGE_BACKEND: file
       FILE_STORAGE_BACKEND_PATH: /var/lib/storage
@@ -98,18 +98,18 @@ services:
       GOTRUE_API_HOST: 0.0.0.0
       GOTRUE_API_PORT: 9999
       GOTRUE_DB_DRIVER: postgres
-      GOTRUE_DB_DATABASE_URL: postgres://${POSTGRES_USER:-supabase_admin}:${POSTGRES_PASSWORD:?required}@supabase-db:5432/${POSTGRES_DB:-postgres}
+      GOTRUE_DB_DATABASE_URL: ${DATABASE_URL}
       GOTRUE_TRUSTED_GOOGLE_ID_TOKEN_AUDIENCES: ""
       GOTRUE_TRUSTED_APPLE_ID_TOKEN_AUDIENCES: ""
       GOTRUE_TRUSTED_EXTERNAL_GOOGLE_ID_TOKEN_AUDIENCES: ""
       GOTRUE_ADMIN_EMAIL: ${GOTRUE_ADMIN_EMAIL:-admin@local}
-      GOTRUE_ADMIN_PASSWORD: ${GOTRUE_ADMIN_PASSWORD:?required}
+      GOTRUE_ADMIN_PASSWORD: ${GOTRUE_ADMIN_PASSWORD}
       GOTRUE_SITE_URL: ${SITE_URL:-https://apachiy.org}
       GOTRUE_URI_ALLOW_LIST: ${ADDITIONAL_REDIRECT_URLS:-https://apachiy.org}
       GOTRUE_DISABLE_SIGNUP: "false"
-      GOTRUE_JWT_SECRET: ${JWT_SECRET:?required}
+      GOTRUE_JWT_SECRET: ${JWT_SECRET}
       GOTRUE_JWT_AUD: authenticated
-      GOTRUE_JWT_ISSUER: ${GOTRUE_JWT_ISSUER:-${API_EXTERNAL_URL:-https://supabase.apachiy.org}/auth/v1}
+      GOTRUE_JWT_ISSUER: ${GOTRUE_JWT_ISSUER}
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_EXP: 3600
       GOTRUE_REFRESH_TOKEN_EXP: 2592000
@@ -129,7 +129,7 @@ services:
       GOTRUE_RATE_LIMIT_HEADER: "X-RateLimit-Limit"
       GOTRUE_RATE_LIMIT_EMAIL_SENT: 1000
       API_EXTERNAL_URL: ${API_EXTERNAL_URL:-https://supabase.apachiy.org}
-      DATABASE_URL: postgres://${POSTGRES_USER:-supabase_admin}:${POSTGRES_PASSWORD:?required}@supabase-db:5432/${POSTGRES_DB:-postgres}
+      DATABASE_URL: ${DATABASE_URL}
       PORT: 9999
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:9999/health"]
@@ -137,7 +137,7 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-    mem_limit: ${APACHIY_SUPABASE_AUTH_MEM:-256m}
+    mem_limit: ${APACHIY_SUPABASE_AUTH_MEM:-512m}
     cpus: ${APACHIY_SUPABASE_AUTH_CPUS:-0.5}
 
   supabase-rest:
@@ -147,13 +147,13 @@ services:
       supabase-db:
         condition: service_healthy
     environment:
-      PGRST_DB_URI: postgres://${POSTGRES_USER:-supabase_admin}:${POSTGRES_PASSWORD:?required}@supabase-db:5432/${POSTGRES_DB:-postgres}
+      PGRST_DB_URI: ${DATABASE_URL}
       PGRST_DB_SCHEMAS: public,storage
       PGRST_DB_ANON_ROLE: anon
-      PGRST_JWT_SECRET: ${JWT_SECRET:?required}
+      PGRST_JWT_SECRET: ${JWT_SECRET}
       PGRST_OPENAPI_MODE: disabled
       PGRST_DB_USE_LEGACY_GUCS: "false"
-      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET:?required}
+      PGRST_APP_SETTINGS_JWT_SECRET: ${JWT_SECRET}
       PGRST_APP_SETTINGS_JWT_EXP: 3600
     mem_limit: ${APACHIY_SUPABASE_REST_MEM:-256m}
     cpus: ${APACHIY_SUPABASE_REST_CPUS:-0.25}
@@ -174,17 +174,17 @@ services:
       DB_PORT: 5432
       DB_NAME: ${POSTGRES_DB:-postgres}
       DB_USER: ${POSTGRES_USER:-supabase_admin}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
       DB_SSL: "false"
       DB_AFTER_CONNECT_QUERY: "SET search_path TO _realtime"
       DB_ENC_KEY: ${REALTIME_DB_ENC_KEY:-supabaserealtime}
-      API_JWT_SECRET: ${JWT_SECRET:?required}
+      API_JWT_SECRET: ${JWT_SECRET}
       APP_NAME: realtime
       SEED_SELF_HOST: "true"
       RUN_JANITOR: "true"
       RLIMIT_NOFILE: "10000"
-      SECRET_KEY_BASE: ${SECRET_KEY_BASE:?required}
-      METRICS_JWT_SECRET: ${JWT_SECRET:?required}
+      SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+      METRICS_JWT_SECRET: ${JWT_SECRET}
       DNS_NODES: "''"
       DISABLE_HEALTHCHECK_LOGGING: "true"
     healthcheck:
@@ -208,7 +208,7 @@ services:
       PG_META_DB_PORT: ${POSTGRES_PORT:-5432}
       PG_META_DB_NAME: ${POSTGRES_DB:-postgres}
       PG_META_DB_USER: ${POSTGRES_USER:-supabase_admin}
-      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      PG_META_DB_PASSWORD: ${POSTGRES_PASSWORD}
     mem_limit: ${APACHIY_SUPABASE_META_MEM:-128m}
     cpus: ${APACHIY_SUPABASE_META_CPUS:-0.25}
 
@@ -234,12 +234,12 @@ services:
       POSTGRES_HOST: ${POSTGRES_HOST:-db}
       POSTGRES_PORT: ${POSTGRES_PORT:-5432}
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       DEFAULT_PROJECT: apachiy
       SUPABASE_URL: http://supabase-kong:8000
       SUPABASE_PUBLIC_URL: ${STUDIO_PUBLIC_URL:-https://studio.apachiy.org}
-      SUPABASE_ANON_KEY: ${ANON_KEY:?required}
-      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY:?required}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_KEY: ${SERVICE_ROLE_KEY}
       AUTH_ENABLED: "true"
       AUTH_SITE_URL: ${SITE_URL:-https://apachiy.org}
       AUTH_EXTERNAL_GITHUB_ENABLED: "false"
@@ -284,11 +284,11 @@ services:
       supabase-kong:
         condition: service_started
     environment:
-      JWT_SECRET: ${JWT_SECRET:?required}
+      JWT_SECRET: ${JWT_SECRET}
       SUPABASE_URL: http://supabase-kong:8000
-      SUPABASE_ANON_KEY: ${ANON_KEY:?required}
-      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY:?required}
-      SUPABASE_DB_URL: postgres://${POSTGRES_USER:-supabase_admin}:${POSTGRES_PASSWORD:?required}@supabase-db:5432/${POSTGRES_DB:-postgres}
+      SUPABASE_ANON_KEY: ${ANON_KEY}
+      SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
+      SUPABASE_DB_URL: ${DATABASE_URL}
       VERIFY_JWT: "false"
     volumes:
       - ./volumes/functions:/home/deno/functions:ro
@@ -316,7 +316,7 @@ services:
     restart: unless-stopped
     depends_on:
       supabase-auth:
-        condition: service_healthy
+        condition: service_started
     environment:
       KONG_DATABASE: "off"
       KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
