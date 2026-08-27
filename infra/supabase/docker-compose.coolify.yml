@@ -268,6 +268,8 @@ services:
       - coolify
     expose:
       - "3000"
+    labels:
+      - traefik.docker.network=coolify
     mem_limit: ${APACHIY_SUPABASE_STUDIO_MEM:-256m}
     cpus: ${APACHIY_SUPABASE_STUDIO_CPUS:-0.5}
 
@@ -338,6 +340,8 @@ services:
           - supabase-kong
     expose:
       - "8000"
+    labels:
+      - traefik.docker.network=coolify
     mem_limit: ${APACHIY_SUPABASE_KONG_MEM:-256m}
     cpus: ${APACHIY_SUPABASE_KONG_CPUS:-0.5}
 
