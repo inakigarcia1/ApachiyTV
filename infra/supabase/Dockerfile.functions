@@ -1,0 +1,4 @@
+# Bake edge functions into the image so Coolify does not remap ./volumes/functions
+# to an empty host directory.
+FROM supabase/edge-runtime:v1.62.4
+COPY volumes/functions /home/deno/functions

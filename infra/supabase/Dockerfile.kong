@@ -1,0 +1,8 @@
+# Bake kong.yml into the image. Coolify rewrites ./volumes bind mounts to
+# /data/coolify/applications/<uuid>/volumes/... which is not the git tree, so a
+# host file mount becomes an empty directory and Kong never starts.
+FROM kong:2.8.1
+USER root
+COPY volumes/api/kong.yml /kong.yml
+RUN chown kong:kong /kong.yml
+USER kong

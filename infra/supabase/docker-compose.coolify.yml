@@ -35,7 +35,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - supabase-db-data:/var/lib/postgresql/data
-      - ./volumes/db/init:/docker-entrypoint-initdb.d:ro
     networks:
       apachiy_net:
         aliases:
@@ -274,7 +273,10 @@ services:
     cpus: ${APACHIY_SUPABASE_STUDIO_CPUS:-0.5}
 
   supabase-edge-functions:
-    image: supabase/edge-runtime:v1.62.4
+    build:
+      context: .
+      dockerfile: Dockerfile.functions
+    image: apachiy-supabase-functions:1
     restart: unless-stopped
     command:
       [
@@ -292,8 +294,6 @@ services:
       SUPABASE_SERVICE_ROLE_KEY: ${SERVICE_ROLE_KEY}
       SUPABASE_DB_URL: ${DATABASE_URL}
       VERIFY_JWT: "false"
-    volumes:
-      - ./volumes/functions:/home/deno/functions:ro
     networks:
       - apachiy_net
     mem_limit: ${APACHIY_SUPABASE_FUNCTIONS_MEM:-256m}
@@ -314,14 +314,17 @@ services:
     cpus: ${APACHIY_SUPABASE_IMGPROXY_CPUS:-0.25}
 
   supabase-kong:
-    image: kong:2.8.1
+    build:
+      context: .
+      dockerfile: Dockerfile.kong
+    image: apachiy-supabase-kong:2.8.1
     restart: unless-stopped
     depends_on:
       supabase-auth:
         condition: service_started
     environment:
       KONG_DATABASE: "off"
-      KONG_DECLARATIVE_CONFIG: /var/lib/kong/kong.yml
+      KONG_DECLARATIVE_CONFIG: /kong.yml
       KONG_PLUGINS: request-transformer,cors
       KONG_NGINX_PROXY_PROXY_BUFFER_SIZE: 160k
       KONG_NGINX_PROXY_PROXY_BUFFERS: 64 160k
@@ -330,59 +333,6 @@ services:
       KONG_NGINX_WORKER_PROCESSES: "1"
       SERVICE_URL_SUPABASEKONG: ${SERVICE_URL_SUPABASEKONG:-https://supabase.apachiy.org}
       SERVICE_FQDN_SUPABASEKONG: ${SERVICE_FQDN_SUPABASEKONG:-supabase.apachiy.org}
-    volumes:
-      - type: bind
-        source: ./volumes/api/kong.yml
-        target: /var/lib/kong/kong.yml
-        content: |
-          _format_version: "2.1"
-          _transform: true
-          services:
-            - name: auth
-              url: http://supabase-auth:9999/
-              routes:
-                - name: auth-all
-                  strip_path: true
-                  paths:
-                    - /auth/v1/
-              plugins:
-                - name: cors
-            - name: rest
-              url: http://supabase-rest:3000/
-              routes:
-                - name: rest-all
-                  strip_path: true
-                  paths:
-                    - /rest/v1/
-              plugins:
-                - name: cors
-            - name: realtime
-              url: http://realtime-dev.supabase-realtime:4000/socket
-              routes:
-                - name: realtime-all
-                  strip_path: true
-                  paths:
-                    - /realtime/v1/
-              plugins:
-                - name: cors
-            - name: storage
-              url: http://supabase-storage:5000/
-              routes:
-                - name: storage-all
-                  strip_path: true
-                  paths:
-                    - /storage/v1/
-              plugins:
-                - name: cors
-            - name: functions
-              url: http://supabase-edge-functions:9000/
-              routes:
-                - name: functions-v1-all
-                  strip_path: true
-                  paths:
-                    - /functions/v1/
-              plugins:
-                - name: cors
     networks:
       apachiy_net:
         aliases:
