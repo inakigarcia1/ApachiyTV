@@ -101,9 +101,6 @@ import com.nuvio.tv.ui.components.PosterCardDefaults
 import com.nuvio.tv.ui.components.PosterCardStyle
 import com.nuvio.tv.domain.model.DiscoverLocation
 import com.nuvio.tv.domain.model.stableKey
-import android.view.inputmethod.CompletionInfo
-import android.view.inputmethod.InputMethodManager
-import androidx.compose.ui.platform.LocalView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
@@ -125,7 +122,6 @@ fun SearchScreen(
     val watchedMovieIds by viewModel.watchedMovieIds.collectAsState()
     val watchedSeriesIds by viewModel.watchedSeriesIds.collectAsState()
     val context = LocalContext.current
-    val view = LocalView.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val strVoiceNoSpeech = stringResource(R.string.search_voice_no_speech)
     val strVoiceMicPermission = stringResource(R.string.search_voice_mic_permission)
@@ -332,16 +328,11 @@ fun SearchScreen(
     LaunchedEffect(isDiscoverMode) {
         if (isDiscoverMode) viewModel.ensureDiscoverLoaded()
     }
-    val hasPendingUnsubmittedQuery = remember(isDiscoverMode, trimmedQuery, trimmedSubmittedQuery) {
-        !isDiscoverMode &&
-            trimmedQuery.length >= MIN_SEARCH_QUERY_LENGTH &&
-            trimmedQuery != trimmedSubmittedQuery
-    }
     val showRecentSearches = remember(
-        trimmedQuery,
+        trimmedSubmittedQuery,
         uiState.recentSearches
     ) {
-        trimmedQuery.isEmpty() &&
+        trimmedSubmittedQuery.isBlank() &&
             uiState.recentSearches.isNotEmpty()
     }
     val canMoveToResults = remember(
@@ -373,22 +364,11 @@ fun SearchScreen(
         }
     }
     val handleQueryChanged: (String) -> Unit = { nextQuery ->
-        val previousQuery = uiState.query.trim()
-        val trimmedNextQuery = nextQuery.trim()
-        val selectedSuggestion = trimmedNextQuery.length >= MIN_SEARCH_QUERY_LENGTH &&
-            trimmedNextQuery != trimmedSubmittedQuery &&
-            uiState.suggestions.any { it.equals(trimmedNextQuery, ignoreCase = true) } &&
-            trimmedNextQuery.startsWith(previousQuery, ignoreCase = true) &&
-            trimmedNextQuery.length - previousQuery.length > 1
-
         focusResults = false
         pendingFocusMoveToResultsQuery = null
         pendingFocusMoveSawSearching = false
         pendingFocusMoveHadExistingSearchRows = false
         viewModel.onEvent(SearchEvent.QueryChanged(nextQuery))
-        if (selectedSuggestion) {
-            submitCurrentQuery(trimmedNextQuery)
-        }
     }
     val submitRecentSearch: (String) -> Unit = { recentQuery ->
         val trimmedRecentQuery = recentQuery.trim()
@@ -448,16 +428,6 @@ fun SearchScreen(
         if (viewModel.hasSavedSearchFocus) return@LaunchedEffect
         repeat(2) { withFrameNanos { } }
         runCatching { topInputFocusRequester.requestFocus() }
-    }
-
-    // Push search suggestions to the native keyboard suggestion bar
-    LaunchedEffect(uiState.suggestions) {
-        val imm = context.getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-            ?: return@LaunchedEffect
-        val completions = uiState.suggestions.mapIndexed { index, name ->
-            CompletionInfo(index.toLong(), index, name)
-        }.toTypedArray()
-        imm.displayCompletions(view, completions)
     }
 
     var isScreenActive by remember { mutableStateOf(true) }
@@ -571,12 +541,8 @@ fun SearchScreen(
                     }
                 }
             } else {
-                // The "press Done to search" hint is gone: search now runs as you type, so the
-                // instruction is wrong, and it was re-appearing on every keystroke. Neither the
-                // mobile nor the desktop client shows an equivalent message.
-
                 when {
-                    trimmedSubmittedQuery.length < MIN_SEARCH_QUERY_LENGTH && !hasPendingUnsubmittedQuery -> {
+                    trimmedSubmittedQuery.length < MIN_SEARCH_QUERY_LENGTH -> {
                         item {
                             if (showRecentSearches) {
                                 RecentSearchesSection(
@@ -610,7 +576,7 @@ fun SearchScreen(
                     // mobile it only applies with an empty screen: mobile swaps results out for
                     // skeletons on every keystroke, which on a remote reads as flicker because each
                     // letter outlasts the debounce, so existing results are kept instead.
-                    (hasPendingUnsubmittedQuery || uiState.isSearching) && visibleCatalogRows.isEmpty() -> {
+                    uiState.isSearching && visibleCatalogRows.isEmpty() -> {
                         items(SEARCH_SKELETON_ROW_COUNT, key = { "search_skeleton_$it" }) { index ->
                             val skeletonRow = remember(index) {
                                 com.nuvio.tv.domain.model.CatalogRow(
@@ -657,7 +623,7 @@ fun SearchScreen(
                         }
                     }
 
-                    !uiState.isSearching && !hasPendingUnsubmittedQuery && visibleCatalogRows.isEmpty() -> {
+                    !uiState.isSearching && visibleCatalogRows.isEmpty() -> {
                         item {
                             EmptyScreenState(
                                 title = stringResource(R.string.search_no_results_title),
@@ -763,7 +729,7 @@ fun SearchScreen(
                         }
 
                         // Results are up but more catalogs are still answering, as on mobile.
-                        if (uiState.isSearching || hasPendingUnsubmittedQuery) {
+                        if (uiState.isSearching) {
                             item(key = "search_loading_more") {
                                 val skeletonRow = remember {
                                     com.nuvio.tv.domain.model.CatalogRow(
@@ -1124,6 +1090,30 @@ private fun SearchInputField(
                 cursorColor = NuvioTheme.colors.FocusRing
             )
         )
+
+        Spacer(modifier = Modifier.width(NuvioTheme.spacing.md))
+        var isSearchButtonFocused by remember { mutableStateOf(false) }
+        IconButton(
+            onClick = onSubmit,
+            modifier = Modifier
+                .onFocusChanged { isSearchButtonFocused = it.isFocused }
+                .size(NuvioTheme.spacing.huge)
+                .border(
+                    width = if (isSearchButtonFocused) NuvioTheme.spacing.xxs else NuvioTheme.spacing.hairline,
+                    color = if (isSearchButtonFocused) NuvioTheme.colors.FocusRing else NuvioTheme.colors.Border,
+                    shape = RoundedCornerShape(NuvioTheme.radii.md)
+                )
+                .background(
+                    color = NuvioTheme.colors.BackgroundCard,
+                    shape = RoundedCornerShape(NuvioTheme.radii.md)
+                )
+        ) {
+            Icon(
+                imageVector = Icons.Default.Search,
+                contentDescription = stringResource(R.string.cd_submit_search),
+                tint = NuvioTheme.colors.TextPrimary
+            )
+        }
 
         // Clear button, requested in review. Placed beside the field rather than as a trailing
         // icon so it is reachable with the D-pad, matching the voice button's treatment.

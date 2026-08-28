@@ -249,33 +249,17 @@ class SearchViewModel @Inject constructor(
                 query = query,
                 error = null,
                 isSearching = false,
-                // Keep whatever is on screen while a keystroke waits to run. Clearing here flashed
-                // the no-results state on every letter, because on a remote each letter outlasts the
-                // debounce. The screen renders skeleton rows for this window instead.
+                suggestions = emptyList(),
                 catalogRows = if (trimmedInput.length < MIN_SEARCH_QUERY_LENGTH) emptyList() else it.catalogRows
             )
         }
 
-        // Drop in-flight requests for the previous keystroke before scheduling the next run.
-        cancelSearchRun()
-
-        // Live search: results follow what you type, like mobile. Debounced because each run hits
-        // every enabled addon catalog.
-        liveSearchJob?.cancel()
         val trimmed = query.trim()
-        if (trimmed.length >= MIN_SEARCH_QUERY_LENGTH) {
-            liveSearchJob = viewModelScope.launch {
-                kotlinx.coroutines.delay(LIVE_SEARCH_DEBOUNCE_MS)
-                performSearch(query)
-            }
-        } else {
-            // Emptying the field has to retire the submitted query too. Leaving it set kept the
-            // screen in its results state with nothing to show, instead of falling back to recent
-            // searches, until the screen was rebuilt by navigating away and back.
+        if (trimmed.length < MIN_SEARCH_QUERY_LENGTH) {
+            cancelSearchRun()
+            // Clearing the field must also retire the submitted query so discover/recents return.
             performSearch(query)
         }
-
-        fetchSuggestions(trimmed)
     }
 
     private fun fetchSuggestions(query: String) {
@@ -354,8 +338,6 @@ class SearchViewModel @Inject constructor(
     }
 
     private fun submitSearch() {
-        // An explicit submit just skips the remaining debounce; the live run would land anyway.
-        liveSearchJob?.cancel()
         performSearch(_uiState.value.query, rememberToHistory = true)
     }
 

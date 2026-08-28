@@ -128,13 +128,14 @@
     <string name="error_meta_not_found">Meta no encontrado</string>
     <string name="error_meta_no_supported_addon">Ningún addon instalado soporta metadatos para \"%1$s\".</string>
     <string name="error_meta_no_addon_for_id">Ningún addon instalado pudo proporcionar metadatos para el id=%1$s (tipo=%2$s).</string>
+    <string name="error_meta_load_failed">Error al buscar metadatos.</string>
     <string name="error_meta_tried_none">Addons de meta probados: %1$s. Ninguno de ellos proporcionó metadatos para el id=%2$s (tipo=%3$s).</string>
     <string name="error_meta_tried_generic">Addons de meta probados: %1$s. No se pudieron cargar los metadatos para el id=%2$s (tipo=%3$s).</string>
     <string name="error_meta_tried_issues">Addons de meta probados: %1$s. No se pudieron cargar los metadatos para el id=%2$s (tipo=%3$s). Problemas: %4$s.</string>
     <string name="error_stream_no_supported_addon">Ningún addon instalado soporta streams para \"%1$s\".</string>
-    <string name="error_stream_tried_none">Addons de stream probados: %1$s. Ninguno de ellos devolvió streams para el id=%2$s (tipo=%3$s).</string>
-    <string name="error_stream_tried_generic">Addons de stream probados: %1$s. No se pudieron cargar los streams para el id=%2$s (tipo=%3$s).</string>
-    <string name="error_stream_tried_issues">Addons de stream probados: %1$s. No se pudieron cargar los streams para el id=%2$s (tipo=%3$s). Problemas: %4$s.</string>
+    <string name="error_stream_tried_none">No se encontraron opciones de reproducción.</string>
+    <string name="error_stream_tried_generic">No se encontraron opciones de reproducción.</string>
+    <string name="error_stream_tried_issues">No se encontraron opciones de reproducción.</string>
     
     <string name="continue_watching">Seguir Viendo</string>
     <string name="cw_upcoming">Próximos</string>
@@ -1715,7 +1716,7 @@
     <string name="search_voice_unavailable">La búsqueda por voz no está disponible en este dispositivo.</string>
     <string name="search_no_results_title">Sin resultados</string>
     <string name="search_no_results_subtitle">Intenta buscar con palabras clave diferentes</string>
-    <string name="search_error_no_catalogs">No se encontraron catálogos con búsqueda disponibles en los addons instalados</string>
+    <string name="search_error_no_catalogs">No hay catálogos para buscar.</string>
 
     <string name="library_syncing">Sincronizando biblioteca de Trakt\u2026</string>
     <string name="library_title">Biblioteca</string>
@@ -2174,6 +2175,7 @@
     <string name="cd_imdb">IMDb</string>
     <string name="cd_open_discover">Abrir Discover</string>
     <string name="cd_clear_search">Borrar búsqueda</string>
+    <string name="cd_submit_search">Buscar</string>
     <string name="cd_voice_search">Búsqueda por voz</string>
     <string name="cd_donation_qr">Código QR de donación</string>
     <string name="cd_contributor_qr">Código QR de apoyo al desarrollador</string>

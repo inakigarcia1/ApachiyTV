@@ -39,13 +39,14 @@
     <string name="error_meta_not_found">Metadatos no encontrados</string>
     <string name="error_meta_no_supported_addon">Ningún complemento instalado admite metadatos para \"%1$s\".</string>
     <string name="error_meta_no_addon_for_id">Ningún complemento instalado pudo proporcionar metadatos para id=%1$s (tipo=%2$s).</string>
+    <string name="error_meta_load_failed">Error al buscar metadatos.</string>
     <string name="error_meta_tried_none">Complementos de metadatos probados: %1$s. Ninguno de ellos proporcionó metadatos para id=%2$s (tipo=%3$s).</string>
     <string name="error_meta_tried_generic">Complementos de metadatos probados: %1$s. No se pudo cargar metadatos para id=%2$s (tipo=%3$s).</string>
     <string name="error_meta_tried_issues">Complementos de metadatos probados: %1$s. No se pudo cargar metadatos para id=%2$s (tipo=%3$s). Problemas: %4$s.</string>
     <string name="error_stream_no_supported_addon">Ningún complemento instalado admite transmisiones para \"%1$s\".</string>
-    <string name="error_stream_tried_none">Complementos de transmisión probados: %1$s. Ninguno de ellos devolvió transmisiones para id=%2$s (tipo=%3$s).</string>
-    <string name="error_stream_tried_generic">Complementos de transmisión probados: %1$s. No se pudo cargar transmisiones para id=%2$s (tipo=%3$s).</string>
-    <string name="error_stream_tried_issues">Complementos de transmisión probados: %1$s. No se pudo cargar transmisiones para id=%2$s (tipo=%3$s). Problemas: %4$s.</string>
+    <string name="error_stream_tried_none">No se encontraron opciones de reproducción.</string>
+    <string name="error_stream_tried_generic">No se encontraron opciones de reproducción.</string>
+    <string name="error_stream_tried_issues">No se encontraron opciones de reproducción.</string>
 
     <!-- ContinueWatchingSection -->
     <string name="continue_watching">Continuar viendo</string>
@@ -721,6 +722,9 @@
     <string name="search_start_title">Empezar a buscar</string>
     <string name="search_start_subtitle">Introduce al menos 2 caracteres</string>
     <string name="search_start_subtitle_no_discover">El descubrimiento está desactivado. Introduce al menos 2 caracteres</string>
+    <string name="search_error_no_catalogs">No hay catálogos para buscar.</string>
+    <string name="profile_default_name">Perfil %1$d</string>
+    <string name="cd_submit_search">Buscar</string>
 
     <!-- LibraryScreen -->
     <string name="library_syncing">Sincronizando biblioteca de Trakt\u2026</string>

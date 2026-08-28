@@ -91,22 +91,37 @@ class SearchViewModelConcurrencyTest {
     }
 
     @Test
-    fun `moving from text input to live-search results remembers the query`() = runTest {
+    fun `explicit submit saves query to history`() = runTest {
         val addon = searchableAddon()
         val history = mockk<SearchHistoryDataStore>(relaxed = true)
         every { history.recentSearches } returns flowOf(emptyList())
         val viewModel = newViewModel(
-            addonRepository = GatedAddonRepository(addon, CompletableDeferred(Unit)),
+            addonRepository = GatedAddonRepository(addon, CompletableDeferred(Unit).apply { complete(Unit) }),
             catalogRepository = ImmediateCatalogRepository(addon),
             history = history
         )
 
         viewModel.onEvent(SearchEvent.QueryChanged("Deep Cover"))
-        advanceUntilIdle()
-        viewModel.onEvent(SearchEvent.RememberSearchFromTextInput)
+        viewModel.onEvent(SearchEvent.SubmitSearch)
         advanceUntilIdle()
 
         coVerify(exactly = 1) { history.saveRecentSearch("Deep Cover", 8) }
+    }
+
+    @Test
+    fun `typing without submit does not search`() = runTest {
+        val addon = searchableAddon()
+        val catalogRepository = ImmediateCatalogRepository(addon)
+        val viewModel = newViewModel(
+            addonRepository = GatedAddonRepository(addon, CompletableDeferred(Unit)),
+            catalogRepository = catalogRepository
+        )
+
+        viewModel.onEvent(SearchEvent.QueryChanged("Deep Cover"))
+        advanceUntilIdle()
+
+        assertTrue(catalogRepository.queries.isEmpty())
+        assertEquals("", viewModel.uiState.value.submittedQuery)
     }
 
     private fun newViewModel(

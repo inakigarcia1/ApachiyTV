@@ -19,7 +19,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import androidx.tv.material3.Button
+import androidx.tv.material3.ButtonDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -39,6 +40,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import com.nuvio.tv.R
@@ -53,7 +55,7 @@ class TrailerSeekOverlayState {
     var durationMs by mutableLongStateOf(0L)
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalTvMaterial3Api::class)
 @Composable
 fun SharedTrailerOverlay(
     title: String,
@@ -230,7 +232,16 @@ fun SharedTrailerOverlay(
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White
                     )
-                    Button(onClick = onRetry) {
+                    Button(
+                        onClick = onRetry,
+                        colors = ButtonDefaults.colors(
+                            containerColor = NuvioTheme.colors.Secondary,
+                            contentColor = NuvioTheme.colors.OnSecondary,
+                            focusedContainerColor = NuvioTheme.colors.FocusRing,
+                            focusedContentColor = NuvioTheme.colors.OnSecondary
+                        ),
+                        shape = ButtonDefaults.shape(RoundedCornerShape(NuvioTheme.radii.md))
+                    ) {
                         Text(text = stringResource(R.string.action_retry))
                     }
                 }

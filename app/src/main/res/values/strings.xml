@@ -128,13 +128,14 @@
     <string name="error_meta_not_found">Meta not found</string>
     <string name="error_meta_no_supported_addon">No installed addon supports metadata for \"%1$s\".</string>
     <string name="error_meta_no_addon_for_id">No installed addon could provide metadata for id=%1$s (type=%2$s).</string>
+    <string name="error_meta_load_failed">Error al buscar metadatos.</string>
     <string name="error_meta_tried_none">Tried meta addons: %1$s. None of them provided metadata for id=%2$s (type=%3$s).</string>
     <string name="error_meta_tried_generic">Tried meta addons: %1$s. Metadata could not be loaded for id=%2$s (type=%3$s).</string>
     <string name="error_meta_tried_issues">Tried meta addons: %1$s. Metadata could not be loaded for id=%2$s (type=%3$s). Issues: %4$s.</string>
     <string name="error_stream_no_supported_addon">No installed addon supports streams for \"%1$s\".</string>
-    <string name="error_stream_tried_none">Tried stream addons: %1$s. None of them returned streams for id=%2$s (type=%3$s).</string>
-    <string name="error_stream_tried_generic">Tried stream addons: %1$s. Streams could not be loaded for id=%2$s (type=%3$s).</string>
-    <string name="error_stream_tried_issues">Tried stream addons: %1$s. Streams could not be loaded for id=%2$s (type=%3$s). Issues: %4$s.</string>
+    <string name="error_stream_tried_none">No se encontraron opciones de reproducción.</string>
+    <string name="error_stream_tried_generic">No se encontraron opciones de reproducción.</string>
+    <string name="error_stream_tried_issues">No se encontraron opciones de reproducción.</string>
 
     <string name="continue_watching">Continue Watching</string>
     <string name="cw_upcoming">Upcoming</string>
@@ -1741,7 +1742,7 @@
     <string name="search_voice_unavailable">Voice search is unavailable on this device.</string>
     <string name="search_no_results_title">No Results</string>
     <string name="search_no_results_subtitle">Try searching with different keywords</string>
-    <string name="search_error_no_catalogs">No searchable catalogs found in installed addons</string>
+    <string name="search_error_no_catalogs">No hay catálogos para buscar.</string>
 
     <string name="library_syncing">Syncing Trakt library\u2026</string>
     <string name="library_title">Library</string>
@@ -2249,6 +2250,7 @@
     <string name="cd_imdb">IMDb</string>
     <string name="cd_open_discover">Open discover</string>
     <string name="cd_clear_search">Clear search</string>
+    <string name="cd_submit_search">Buscar</string>
     <string name="cd_voice_search">Voice search</string>
     <string name="cd_donation_qr">Donation QR code</string>
     <string name="cd_contributor_qr">Contributor support QR code</string>
@@ -3015,7 +3017,7 @@
 
     <!-- Misc fallbacks -->
     <string name="playback_estimated_memory_usage">Estimated memory usage: %1$d / %2$d MB</string>
-    <string name="profile_default_name">Profile %1$d</string>
+    <string name="profile_default_name">Perfil %1$d</string>
     <string name="detail_tmdb_fallback_title">TMDB %1$d</string>
     <string name="collections_editor_tmdb_collection_fallback">TMDB Collection %1$d</string>
 

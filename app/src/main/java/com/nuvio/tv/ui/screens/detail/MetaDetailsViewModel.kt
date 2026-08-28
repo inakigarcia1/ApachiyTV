@@ -687,7 +687,7 @@ class MetaDetailsViewModel @Inject constructor(
                             } else if (tryApplyTmdbFallbackMeta()) {
                                 Unit
                             } else {
-                                val errorMsg = buildMetaLoadErrorMessage(result.message, metaLookupId)
+                                val errorMsg = localizedContext.getString(R.string.error_meta_load_failed)
                                 _uiState.update { it.copy(isLoading = false, error = errorMsg) }
                             }
                         }
@@ -717,7 +717,7 @@ class MetaDetailsViewModel @Inject constructor(
                             }
                             is NetworkResult.Error -> {
                                 if (!tryApplyTmdbFallbackMeta()) {
-                                    val errorMsg = buildMetaLoadErrorMessage(result.message, metaLookupId)
+                                    val errorMsg = localizedContext.getString(R.string.error_meta_load_failed)
                                     _uiState.update { it.copy(isLoading = false, error = errorMsg) }
                                 }
                             }
@@ -800,11 +800,6 @@ class MetaDetailsViewModel @Inject constructor(
         }
             ?.takeIf { it.isNotBlank() }
             ?: raw
-    }
-
-    private fun buildMetaLoadErrorMessage(originalMessage: String?, lookupId: String): String {
-        val base = originalMessage ?: "Failed to load metadata"
-        return "$base\n\nID: $lookupId"
     }
 
     private fun syncEffectiveContentId(meta: Meta) {
