@@ -8,6 +8,7 @@ interface AddonRepository {
     fun getInstalledAddons(): Flow<List<Addon>>
     fun getInstalledAddonUrls(): Flow<List<String>>
     val isRemoteSyncInProgress: Boolean
+    var hasCompletedInitialAddonReconciliation: Boolean
     suspend fun fetchAddon(baseUrl: String): NetworkResult<Addon>
     suspend fun addAddon(url: String)
     suspend fun removeAddon(url: String)

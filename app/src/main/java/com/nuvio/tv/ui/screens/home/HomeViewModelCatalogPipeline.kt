@@ -136,6 +136,11 @@ internal fun HomeViewModel.observeInstalledAddonsPipeline() {
             .distinctUntilChanged()
             .collectLatest { (urls, installedAddons) ->
                 val addons = installedAddons.enabledAddons()
+                _uiState.update {
+                    it.copy(
+                        pendingAddonReconciliation = !addonRepository.hasCompletedInitialAddonReconciliation
+                    )
+                }
 
                 // URLs synced but manifests still loading — keep Home in loading,
                 // never flash the empty/no-catalogs error.
@@ -153,7 +158,10 @@ internal fun HomeViewModel.observeInstalledAddonsPipeline() {
                 }
 
                 if (addons.isEmpty()) {
-                    if (addonRepository.isRemoteSyncInProgress) {
+                    if (
+                        addonRepository.isRemoteSyncInProgress ||
+                        !addonRepository.hasCompletedInitialAddonReconciliation
+                    ) {
                         _uiState.update {
                             it.copy(isLoading = true, isNoAddons = false, error = null)
                         }

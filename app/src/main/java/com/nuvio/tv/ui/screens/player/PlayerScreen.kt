@@ -2901,15 +2901,9 @@ private fun ErrorOverlay(
             verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.lg)
         ) {
             Text(
-                text = stringResource(R.string.player_error_title),
-                style = MaterialTheme.typography.headlineMedium,
-                color = Color.White
-            )
-
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.7f),
+                text = stringResource(R.string.player_error_try_another_option),
+                style = MaterialTheme.typography.headlineSmall,
+                color = Color.White,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(horizontal = NuvioTheme.spacing.xxl)
             )

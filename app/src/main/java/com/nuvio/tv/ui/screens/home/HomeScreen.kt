@@ -99,6 +99,7 @@ fun HomeScreen(
     val hasCatalogContent = uiState.catalogRows.any { it.items.isNotEmpty() }
     val hasCollectionContent = uiState.homeRows.any { it is HomeRow.CollectionRow }
     val hasHeroContent = uiState.heroItems.isNotEmpty()
+    val addonReconciliationComplete = !uiState.pendingAddonReconciliation
     val modernPresentationReady =
         uiState.homeLayout != HomeLayout.MODERN ||
             modernPresentation.rows.list.isNotEmpty() ||
@@ -155,7 +156,8 @@ fun HomeScreen(
         hasCollectionContent,
         hasHeroContent,
         initialCwResolved,
-        modernPresentationReady
+        modernPresentationReady,
+        addonReconciliationComplete
     ) {
         // Track that addons are known (even if isLoading flipped too fast to catch).
         if (uiState.installedAddonsCount > 0) {
@@ -169,7 +171,8 @@ fun HomeScreen(
             initialCwResolved &&
             modernPresentationReady &&
             // When addons are installed, require at least one catalog row.
-            (hasCatalogContent || uiState.installedAddonsCount == 0)
+            // When reconciliation is still running, keep the startup loader.
+            (hasCatalogContent || (uiState.installedAddonsCount == 0 && addonReconciliationComplete))
         ) {
             Log.d("HomeGate", "RELEASE: catalogs=$hasCatalogContent cwResolved=$initialCwResolved cwItems=${uiState.continueWatchingItems.size} addons=${uiState.installedAddonsCount}")
             homeStableGateReleased = true
@@ -210,8 +213,8 @@ fun HomeScreen(
     val showStartupLoader = when {
         !uiState.layoutPreferencesReady -> true
         uiState.isLoading && !hasAnyContent -> true
-        uiState.isNoAddons && uiState.catalogRows.isEmpty() -> !homeStableGateReleased
-        uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> !homeStableGateReleased
+        uiState.isNoAddons && uiState.catalogRows.isEmpty() -> !homeStableGateReleased || uiState.pendingAddonReconciliation
+        uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> !homeStableGateReleased || uiState.pendingAddonReconciliation
         uiState.error != null && uiState.catalogRows.isEmpty() -> false
         !uiState.isLoading && !hasAnyContent -> !homeStableGateReleased
         else -> !homeStableGateReleased || !modernPresentationReady || !showHomeContentWithAnimation
@@ -233,7 +236,7 @@ fun HomeScreen(
             }
 
             uiState.isNoAddons && uiState.catalogRows.isEmpty() -> {
-                if (!homeStableGateReleased) {
+                if (!homeStableGateReleased || uiState.pendingAddonReconciliation) {
                     Unit
                 } else {
                     ErrorState(
@@ -244,7 +247,7 @@ fun HomeScreen(
             }
 
             uiState.error == noCatalogAddonsError && uiState.catalogRows.isEmpty() && !hasCollectionContent && !hasHeroContent -> {
-                if (!homeStableGateReleased) {
+                if (!homeStableGateReleased || uiState.pendingAddonReconciliation) {
                     Unit
                 } else {
                     ErrorState(

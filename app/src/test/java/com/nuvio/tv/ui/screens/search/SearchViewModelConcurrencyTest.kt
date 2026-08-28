@@ -176,6 +176,7 @@ class SearchViewModelConcurrencyTest {
         override fun getInstalledAddonUrls(): Flow<List<String>> = flowOf(listOf(addon.baseUrl))
 
         override val isRemoteSyncInProgress: Boolean = false
+        override var hasCompletedInitialAddonReconciliation: Boolean = true
 
         override suspend fun fetchAddon(baseUrl: String): NetworkResult<Addon> = error("unused")
         override suspend fun addAddon(url: String) = error("unused")

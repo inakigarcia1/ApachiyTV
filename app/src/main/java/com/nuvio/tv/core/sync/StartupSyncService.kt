@@ -86,6 +86,8 @@ class StartupSyncService @Inject constructor(
                     is AuthState.SignedOut -> {
                         startupPullJob?.cancel()
                         startupPullJob = null
+                        addonRepository.hasCompletedInitialAddonReconciliation = true
+                        addonRepository.isSyncingFromRemote = false
                         lastPulledKey = null
                         lastPulledIncludedProfileSettings = false
                         lastPulledAtMs = 0L
@@ -175,6 +177,7 @@ class StartupSyncService @Inject constructor(
             Log.d(TAG, "Manual addon sync starting for profile $profileId")
 
             addonRepository.isSyncingFromRemote = true
+            addonRepository.hasCompletedInitialAddonReconciliation = false
             try {
                 val remoteAddonUrls = addonSyncService.getRemoteAddonUrls().getOrElse { throw it }
 
@@ -188,6 +191,7 @@ class StartupSyncService @Inject constructor(
                 Log.e(TAG, "Manual addon sync failed for profile $profileId", e)
             } finally {
                 addonRepository.isSyncingFromRemote = false
+                addonRepository.hasCompletedInitialAddonReconciliation = true
             }
         }
     }
@@ -344,6 +348,7 @@ class StartupSyncService @Inject constructor(
         }
 
         startupPullJob = scope.launch {
+            addonRepository.hasCompletedInitialAddonReconciliation = false
             val maxAttempts = 3
             var syncCompleted = false
             for (attempt in 1..maxAttempts) {
@@ -559,6 +564,7 @@ class StartupSyncService @Inject constructor(
 
             val addonJob = async {
                 addonRepository.isSyncingFromRemote = true
+                addonRepository.hasCompletedInitialAddonReconciliation = false
                 try {
                     val remoteAddonUrls = addonSyncService.getRemoteAddonUrls().getOrElse { throw it }
                     addonRepository.reconcileWithRemoteAddonUrls(
@@ -570,6 +576,7 @@ class StartupSyncService @Inject constructor(
                     Log.e(TAG, "Failed to pull addons from remote, keeping local cache", e)
                 } finally {
                     addonRepository.isSyncingFromRemote = false
+                    addonRepository.hasCompletedInitialAddonReconciliation = true
                 }
             }
 
@@ -653,6 +660,7 @@ class StartupSyncService @Inject constructor(
 
     private suspend fun pullRealtimeAddons(profileId: Int) {
         addonRepository.isSyncingFromRemote = true
+        addonRepository.hasCompletedInitialAddonReconciliation = false
         try {
             val remoteAddonUrls = addonSyncService.getRemoteAddonUrls().getOrElse { throw it }
             addonRepository.reconcileWithRemoteAddonUrls(
@@ -664,6 +672,7 @@ class StartupSyncService @Inject constructor(
             Log.e(TAG, "Realtime addons pull failed profile=$profileId", e)
         } finally {
             addonRepository.isSyncingFromRemote = false
+            addonRepository.hasCompletedInitialAddonReconciliation = true
         }
     }
 

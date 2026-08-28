@@ -22,6 +22,7 @@ data class HomeUiState(
     val layoutPreferencesReady: Boolean = false,
     val isNoAddons: Boolean = false,
     val error: String? = null,
+    val pendingAddonReconciliation: Boolean = false,
     val selectedItemId: String? = null,
     val installedAddonsCount: Int = 0,
     val homeLayout: HomeLayout = HomeLayout.MODERN,

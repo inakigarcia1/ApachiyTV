@@ -627,6 +627,7 @@
     <string name="player_via">vía %1$s</string>
     <string name="player_subtitle_delay">Retraso de subtítulos</string>
     <string name="player_error_title">Error de reproducción</string>
+    <string name="player_error_try_another_option">Ocurrió un error al reproducir. Por favor, pruebe con otra opción</string>
     <string name="player_go_back">Volver</string>
     <string name="player_speed_title">Velocidad de reproducción</string>
     <string name="player_more_actions_title">Más acciones</string>

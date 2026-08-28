@@ -55,6 +55,8 @@ class AddonRepositoryImpl @Inject constructor(
     private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var syncJob: Job? = null
     var isSyncingFromRemote = false
+    @Volatile
+    override var hasCompletedInitialAddonReconciliation = true
 
     override val isRemoteSyncInProgress: Boolean
         get() = isSyncingFromRemote

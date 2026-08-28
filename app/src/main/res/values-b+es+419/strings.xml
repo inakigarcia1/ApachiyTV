@@ -2522,6 +2522,7 @@
     <string name="player_error_mpv_playback_failed">No se pudo inicializar la reproducción de libmpv</string>
     <string name="player_error_torrent">Error de torrent: %1$s</string>
     <string name="player_error_playback_fallback">Error de reproducción</string>
+    <string name="player_error_try_another_option">Ocurrió un error al reproducir. Por favor, pruebe con otra opción</string>
     <!-- Subtitle timing recovery -->
     <string name="subtitle_timing_file_no_lines">No se encontraron líneas de subtítulos en este archivo.</string>
     <string name="subtitle_timing_load_lines_failed">No se pudieron cargar las líneas de subtítulos.</string>
