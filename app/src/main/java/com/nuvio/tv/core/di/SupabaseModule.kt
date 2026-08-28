@@ -3,6 +3,7 @@ package com.nuvio.tv.core.di
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.core.auth.TransientAuthRefreshException
 import com.nuvio.tv.core.auth.shouldRetryAuthRefreshResponse
+import com.nuvio.tv.core.network.IPv4FirstDns
 import com.nuvio.tv.data.local.ServerConfigurationStore
 import com.nuvio.tv.domain.model.ServerConfiguration
 import dagger.Module
@@ -18,6 +19,7 @@ import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.realtime.Realtime
 import io.github.jan.supabase.realtime.realtime
+import io.ktor.client.engine.okhttp.OkHttp
 import io.ktor.client.plugins.HttpResponseValidator
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.statement.request
@@ -47,6 +49,12 @@ object SupabaseModule {
             supabaseUrl = serverConfiguration.backendUrl,
             supabaseKey = serverConfiguration.publishableKey
         ) {
+            httpEngine = OkHttp.create {
+                config {
+                    dns(IPv4FirstDns())
+                    retryOnConnectionFailure(true)
+                }
+            }
             httpConfig {
                 defaultRequest {
                     headers.append(HttpHeaders.UserAgent, userAgent)
