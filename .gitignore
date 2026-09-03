@@ -2,12 +2,16 @@
 .gradle
 /local.properties
 /local.dev.properties
+/local.CLOUD.properties
+/local.LOCAL.properties
 /.idea/caches
 /.idea/libraries
 /.idea/modules.xml
 /.idea/workspace.xml
 /.idea/navEditor.xml
 /.idea/assetWizardSettings.xml
+/infra/supabase/.env
+/infra/supabase/.env.old
 .DS_Store
 __pycache__/
 *.py[cod]
