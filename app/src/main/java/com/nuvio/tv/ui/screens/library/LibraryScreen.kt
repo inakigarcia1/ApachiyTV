@@ -287,32 +287,13 @@ fun LibraryScreen(
         verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.lg)
     ) {
         item(span = { GridItemSpan(maxLineSpan) }) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
-            ) {
-                Text(
-                    text = stringResource(R.string.library_title),
-                    style = MaterialTheme.typography.headlineMedium,
-                    color = if (showBuiltInHeader) NuvioTheme.colors.TextPrimary else Color.Transparent,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.5.sp
-                )
-                Text(
-                    text = when {
-                        viewMode == LibraryViewMode.Cloud -> stringResource(R.string.library_source_cloud).uppercase()
-                        uiState.sourceMode == LibrarySourceMode.TRAKT -> "TRAKT"
-                        uiState.sourceMode == LibrarySourceMode.SIMKL -> "SIMKL"
-                        uiState.isNuvioAccount -> "NUVIO"
-                        else -> stringResource(R.string.library_source_local)
-                    },
-                    style = MaterialTheme.typography.labelLarge,
-                    color = if (showBuiltInHeader) NuvioTheme.colors.TextTertiary else Color.Transparent,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = 2.sp
-                )
-            }
+            Text(
+                text = stringResource(R.string.library_title),
+                style = MaterialTheme.typography.headlineMedium,
+                color = if (showBuiltInHeader) NuvioTheme.colors.TextPrimary else Color.Transparent,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.5.sp
+            )
         }
 
         item(span = { GridItemSpan(maxLineSpan) }) {

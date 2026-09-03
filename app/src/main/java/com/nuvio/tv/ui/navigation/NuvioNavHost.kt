@@ -150,7 +150,8 @@ fun NuvioNavHost(
             fun createContinueWatchingRoute(
                 item: ContinueWatchingItem,
                 manualSelection: Boolean = false,
-                startFromBeginning: Boolean = false
+                startFromBeginning: Boolean = false,
+                returnToHomeOnBack: Boolean = false
             ): String {
                 return when (item) {
                     is ContinueWatchingItem.InProgress -> Screen.Stream.createRoute(
@@ -169,8 +170,8 @@ fun NuvioNavHost(
                         contentName = item.progress.name,
                         runtime = null,
                         manualSelection = manualSelection,
-                        returnToDetailOnBack = item.progress.contentType.equals("series", ignoreCase = true),
-                        returnToHomeOnBack = true,
+                        returnToDetailOnBack = true,
+                        returnToHomeOnBack = returnToHomeOnBack,
                         startFromBeginning = startFromBeginning,
                         contentLanguage = item.contentLanguage
                     )
@@ -190,12 +191,60 @@ fun NuvioNavHost(
                         contentName = item.info.name,
                         runtime = null,
                         manualSelection = manualSelection,
-                        returnToDetailOnBack = item.info.contentType.equals("series", ignoreCase = true),
-                        returnToHomeOnBack = true,
+                        returnToDetailOnBack = true,
+                        returnToHomeOnBack = returnToHomeOnBack,
                         startFromBeginning = startFromBeginning,
                         contentLanguage = item.info.contentLanguage
                     )
                 }
+            }
+
+            fun navigateFromContinueWatching(
+                item: ContinueWatchingItem,
+                manualSelection: Boolean = false,
+                startFromBeginning: Boolean = false
+            ) {
+                val contentId: String
+                val contentType: String
+                val season: Int?
+                val episode: Int?
+                val backdrop: String?
+                when (item) {
+                    is ContinueWatchingItem.InProgress -> {
+                        contentId = item.progress.contentId
+                        contentType = item.progress.contentType
+                        season = item.progress.season
+                        episode = item.progress.episode
+                        backdrop = item.progress.backdrop
+                    }
+                    is ContinueWatchingItem.NextUp -> {
+                        contentId = item.info.contentId
+                        contentType = item.info.contentType
+                        season = item.info.season
+                        episode = item.info.episode
+                        backdrop = item.info.backdrop
+                    }
+                }
+                if (contentId.isNotBlank()) {
+                    navController.navigate(
+                        Screen.Detail.createRoute(
+                            itemId = contentId,
+                            itemType = contentType,
+                            addonBaseUrl = null,
+                            returnFocusSeason = season,
+                            returnFocusEpisode = episode,
+                            returnToHomeOnBack = true,
+                            heroBackdropUrl = backdrop
+                        )
+                    )
+                }
+                navigateToStream(
+                    createContinueWatchingRoute(
+                        item = item,
+                        manualSelection = manualSelection,
+                        startFromBeginning = startFromBeginning
+                    )
+                )
             }
 
             HomeScreen(
@@ -211,17 +260,13 @@ fun NuvioNavHost(
                     )
                 },
                 onContinueWatchingClick = { item ->
-                    navigateToStream(createContinueWatchingRoute(item))
+                    navigateFromContinueWatching(item)
                 },
                 onContinueWatchingStartFromBeginning = { item ->
-                    navigateToStream(
-                        createContinueWatchingRoute(item, startFromBeginning = true)
-                    )
+                    navigateFromContinueWatching(item, startFromBeginning = true)
                 },
                 onContinueWatchingPlayManually = { item ->
-                    navigateToStream(
-                        createContinueWatchingRoute(item, manualSelection = true)
-                    )
+                    navigateFromContinueWatching(item, manualSelection = true)
                 },
                 onNavigateToCatalogSeeAll = { catalogId, addonId, type ->
                     navController.navigate(Screen.CatalogSeeAll.createRoute(catalogId, addonId, type))
@@ -491,7 +536,7 @@ fun NuvioNavHost(
                     val streamContentId = streamArgs?.getString("contentId").orEmpty()
                     val season = streamArgs?.getString("season")?.toIntOrNull()
                     val episode = streamArgs?.getString("episode")?.toIntOrNull()
-                    if (streamContentType.equals("series", ignoreCase = true) && streamContentId.isNotBlank()) {
+                    if (streamContentId.isNotBlank()) {
                         val detailEntry = runCatching { navController.getBackStackEntry(Screen.Detail.route) }.getOrNull()
                         if (detailEntry != null) {
                             detailEntry.savedStateHandle["returnFocusSeason"] = season
