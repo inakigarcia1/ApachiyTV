@@ -133,6 +133,42 @@ internal object PlayerSubtitleUtils {
         "es-es", "es_es", "castilian", "castellano", "spain", "españa", "espana", "iberian"
     )
 
+    private val SPANISH_TRACK_CODES = setOf(
+        "spa", "es", "es-es", "spl", "es-419", "es-la", "es-lat",
+    )
+
+    fun isEmbeddedSpanishTrack(track: TrackInfo): Boolean =
+        isEmbeddedSpanishLanguage(track.language, track.name, track.trackId)
+
+    fun hasEmbeddedSpanishTrack(tracks: Collection<TrackInfo>): Boolean =
+        tracks.any { isEmbeddedSpanishTrack(it) }
+
+    fun isEmbeddedSpanishLanguage(
+        language: String?,
+        name: String? = null,
+        trackId: String? = null,
+    ): Boolean {
+        val fields = listOfNotNull(language, name, trackId)
+        if (fields.isEmpty()) return false
+        for (field in fields) {
+            val code = field.trim().lowercase().replace('_', '-')
+            if (code in SPANISH_TRACK_CODES || code == "es" || code.startsWith("es-")) {
+                return true
+            }
+            val normalized = normalizeLanguageCode(field)
+            if (normalized == "es" || normalized == "es-419") {
+                return true
+            }
+        }
+        val haystack = fields.joinToString(" ").lowercase()
+        if (LATINO_TAGS.any { haystack.contains(it) }) return true
+        if (CASTILIAN_TAGS.any { haystack.contains(it) }) return true
+        return haystack.contains("spanish") ||
+            haystack.contains("espanol") ||
+            haystack.contains("español") ||
+            haystack.contains("castellano")
+    }
+
     fun mimeTypeFromUrl(url: String): String {
         val normalizedPath = url
             .substringBefore('#')

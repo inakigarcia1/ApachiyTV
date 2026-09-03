@@ -30,7 +30,7 @@ class SubtitleRepositoryImpl @Inject constructor(
 
     companion object {
         private const val TAG = "SubtitleRepository"
-        private const val PER_ADDON_TIMEOUT_MS = 20_000L
+        private const val PER_ADDON_TIMEOUT_MS = 30_000L
     }
 
     override suspend fun getSubtitles(
@@ -40,9 +40,13 @@ class SubtitleRepositoryImpl @Inject constructor(
         videoHash: String?,
         videoSize: Long?,
         filename: String?,
+        hasEmbeddedSpanish: Boolean,
         onProgress: ((completed: Int, total: Int, addonName: String?) -> Unit)?,
         onSubtitlesEmitted: ((List<Subtitle>) -> Unit)?
     ): List<Subtitle> = withContext(Dispatchers.IO) {
+        if (hasEmbeddedSpanish) {
+            return@withContext emptyList()
+        }
         val requestType = canonicalSubtitleType(type)
         val startedAtMs = System.currentTimeMillis()
         Log.d(TAG, "Fetching subtitles for type=$requestType, id=$id, videoId=$videoId")
@@ -81,7 +85,16 @@ class SubtitleRepositoryImpl @Inject constructor(
                     val addonStartMs = System.currentTimeMillis()
                     val subtitles = try {
                         withTimeoutOrNull(PER_ADDON_TIMEOUT_MS) {
-                            fetchSubtitlesFromAddon(addon, type, id, videoId, videoHash, videoSize, filename)
+                            fetchSubtitlesFromAddon(
+                                addon,
+                                type,
+                                id,
+                                videoId,
+                                videoHash,
+                                videoSize,
+                                filename,
+                                hasEmbeddedSpanish = false,
+                            )
                         }
                     } catch (e: CancellationException) {
                         throw e
@@ -160,7 +173,8 @@ class SubtitleRepositoryImpl @Inject constructor(
         videoId: String?,
         videoHash: String?,
         videoSize: Long?,
-        filename: String?
+        filename: String?,
+        hasEmbeddedSpanish: Boolean,
     ): List<Subtitle> {
         val normalizedType = canonicalSubtitleType(type)
         val actualId: String = if (normalizedType == "series" && !videoId.isNullOrEmpty()) {
@@ -177,7 +191,7 @@ class SubtitleRepositoryImpl @Inject constructor(
         val queryStart = rawBaseUrl.indexOf('?')
         val basePath = if (queryStart >= 0) rawBaseUrl.substring(0, queryStart).trimEnd('/') else rawBaseUrl
         val baseQuery = if (queryStart >= 0) rawBaseUrl.substring(queryStart) else ""
-        val extraParams = buildExtraParams(videoHash, videoSize, filename)
+        val extraParams = buildExtraParams(videoHash, videoSize, filename, hasEmbeddedSpanish)
         val subtitleUrl = if (extraParams.isNotEmpty()) {
             "$basePath/subtitles/$encodedType/$encodedActualId/$extraParams.json$baseQuery"
         } else {
@@ -220,7 +234,8 @@ class SubtitleRepositoryImpl @Inject constructor(
     private fun buildExtraParams(
         videoHash: String?,
         videoSize: Long?,
-        filename: String?
+        filename: String?,
+        hasEmbeddedSpanish: Boolean = false,
     ): String {
         val params = mutableListOf<String>()
         
@@ -229,12 +244,9 @@ class SubtitleRepositoryImpl @Inject constructor(
         filename?.let {
             params.add("filename=${encodePathSegment(it)}")
         }
+        params.add("hasEmbeddedSpanish=$hasEmbeddedSpanish")
         
-        return if (params.isNotEmpty()) {
-            params.joinToString("&")
-        } else {
-            ""
-        }
+        return params.joinToString("&")
     }
 
     private fun encodePathSegment(value: String): String {

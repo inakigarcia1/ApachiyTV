@@ -99,6 +99,7 @@ internal suspend fun PlayerRuntimeController.fetchAddonSubtitlesNow(
         videoHash = currentVideoHash,
         videoSize = currentVideoSize,
         filename = currentFilename,
+        hasEmbeddedSpanish = PlayerSubtitleUtils.hasEmbeddedSpanishTrack(_uiState.value.subtitleTracks),
         onProgress = onProgress,
         onSubtitlesEmitted = onSubtitlesEmitted
     )
@@ -106,6 +107,16 @@ internal suspend fun PlayerRuntimeController.fetchAddonSubtitlesNow(
 
 internal fun PlayerRuntimeController.fetchAddonSubtitles() {
     if (buildSubtitleFetchRequest() == null) return
+    if (PlayerSubtitleUtils.hasEmbeddedSpanishTrack(_uiState.value.subtitleTracks)) {
+        _uiState.update {
+            it.copy(
+                addonSubtitles = emptyList(),
+                isLoadingAddonSubtitles = false,
+                addonSubtitlesError = null,
+            )
+        }
+        return
+    }
 
     scope.launch {
         _uiState.update { it.copy(isLoadingAddonSubtitles = true, addonSubtitlesError = null) }
