@@ -12,6 +12,7 @@
 /.idea/assetWizardSettings.xml
 /infra/supabase/.env
 /infra/supabase/.env.old
+/.cursor
 .DS_Store
 __pycache__/
 *.py[cod]
