@@ -1931,6 +1931,8 @@ internal fun PlayerRuntimeController.resetAddonSubtitleStateForNewStream() {
     explicitSubtitleSelectionForEngineSwitch = null
     effectiveSubtitleSelectionForEngineSwitch = null
     attachedAddonSubtitleKeys = emptySet()
+    addonSubtitleFetchJob?.cancel()
+    addonSubtitleFetchJob = null
     stopSidecarAddonSubtitle(clearView = true)
     _uiState.update {
         it.copy(

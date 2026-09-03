@@ -15,11 +15,53 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.yield
+
+private const val ADDON_SUBTITLE_FETCH_DEFER_TIMEOUT_MS = 20_000L
+private const val ADDON_SUBTITLE_FETCH_POLL_MS = 100L
+private const val ADDON_SUBTITLE_POST_FIRST_FRAME_GRACE_MS = 3_000L
+
+internal fun PlayerRuntimeController.clearAddonSubtitlesForEmbeddedSpanish() {
+    _uiState.update {
+        it.copy(
+            addonSubtitles = emptyList(),
+            isLoadingAddonSubtitles = false,
+            addonSubtitlesError = null,
+        )
+    }
+}
+
+internal fun PlayerRuntimeController.handleEmbeddedSpanishSubtitleTracks(subtitleTracks: List<TrackInfo>) {
+    if (!PlayerSubtitleUtils.hasEmbeddedSpanishTrack(subtitleTracks)) return
+    addonSubtitleFetchJob?.cancel()
+    addonSubtitleFetchJob = null
+    if (_uiState.value.isLoadingAddonSubtitles || _uiState.value.addonSubtitles.isNotEmpty()) {
+        clearAddonSubtitlesForEmbeddedSpanish()
+    }
+}
+
+private suspend fun PlayerRuntimeController.awaitSubtitleTracksBeforeAddonFetch() {
+    val deadline = System.currentTimeMillis() + ADDON_SUBTITLE_FETCH_DEFER_TIMEOUT_MS
+    var firstFrameSeenAt: Long? = null
+    while (currentCoroutineContext().isActive && System.currentTimeMillis() < deadline) {
+        val tracks = _uiState.value.subtitleTracks
+        if (PlayerSubtitleUtils.hasEmbeddedSpanishTrack(tracks)) return
+        if (tracks.isNotEmpty()) return
+        if (hasRenderedFirstFrame) {
+            if (firstFrameSeenAt == null) {
+                firstFrameSeenAt = System.currentTimeMillis()
+            } else if (System.currentTimeMillis() - firstFrameSeenAt >= ADDON_SUBTITLE_POST_FIRST_FRAME_GRACE_MS) {
+                return
+            }
+        }
+        delay(ADDON_SUBTITLE_FETCH_POLL_MS)
+    }
+}
 
 internal data class SubtitleFetchRequest(
     val type: String,
@@ -92,6 +134,7 @@ internal suspend fun PlayerRuntimeController.fetchAddonSubtitlesNow(
         }
     }
 
+    val hasEmbeddedSpanish = PlayerSubtitleUtils.hasEmbeddedSpanishTrack(_uiState.value.subtitleTracks)
     return subtitleRepository.getSubtitles(
         type = request.type,
         id = request.id,
@@ -99,7 +142,7 @@ internal suspend fun PlayerRuntimeController.fetchAddonSubtitlesNow(
         videoHash = currentVideoHash,
         videoSize = currentVideoSize,
         filename = currentFilename,
-        hasEmbeddedSpanish = PlayerSubtitleUtils.hasEmbeddedSpanishTrack(_uiState.value.subtitleTracks),
+        hasEmbeddedSpanish = hasEmbeddedSpanish,
         onProgress = onProgress,
         onSubtitlesEmitted = onSubtitlesEmitted
     )
@@ -107,18 +150,23 @@ internal suspend fun PlayerRuntimeController.fetchAddonSubtitlesNow(
 
 internal fun PlayerRuntimeController.fetchAddonSubtitles() {
     if (buildSubtitleFetchRequest() == null) return
-    if (PlayerSubtitleUtils.hasEmbeddedSpanishTrack(_uiState.value.subtitleTracks)) {
-        _uiState.update {
-            it.copy(
-                addonSubtitles = emptyList(),
-                isLoadingAddonSubtitles = false,
-                addonSubtitlesError = null,
-            )
+    addonSubtitleFetchJob?.cancel()
+    addonSubtitleFetchJob = scope.launch {
+        val tracksAtFetchStart = _uiState.value.subtitleTracks
+        if (PlayerSubtitleUtils.hasEmbeddedSpanishTrack(tracksAtFetchStart)) {
+            clearAddonSubtitlesForEmbeddedSpanish()
+            return@launch
         }
-        return
-    }
 
-    scope.launch {
+        awaitSubtitleTracksBeforeAddonFetch()
+        if (!isActive) return@launch
+
+        val tracksAfterWait = _uiState.value.subtitleTracks
+        if (PlayerSubtitleUtils.hasEmbeddedSpanishTrack(tracksAfterWait)) {
+            clearAddonSubtitlesForEmbeddedSpanish()
+            return@launch
+        }
+
         _uiState.update { it.copy(isLoadingAddonSubtitles = true, addonSubtitlesError = null) }
 
         try {

@@ -248,7 +248,9 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
         lastLoggedVideoTrackSignature = null
     }
 
-    hasScannedTextTracksOnce = true
+    if (subtitleTracks.isNotEmpty() || hasRenderedFirstFrame) {
+        hasScannedTextTracksOnce = true
+    }
     Log.d(
         PlayerRuntimeController.TAG,
         "TRACKS updated: internalSubs=${subtitleTracks.size}, selectedInternalIndex=$selectedSubtitleIndex, " +
@@ -326,6 +328,7 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
     }
     tryAutoSelectPreferredSubtitleFromAvailableTracks()
     maybeAdjustLibassPipelineForTracks(tracks)
+    handleEmbeddedSpanishSubtitleTracks(subtitleTracks)
 }
 
 private fun formatSupportRank(@C.FormatSupport formatSupport: Int): Int {

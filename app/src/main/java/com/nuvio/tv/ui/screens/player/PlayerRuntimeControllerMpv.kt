@@ -397,6 +397,7 @@ private fun PlayerRuntimeController.applyMpvTrackSnapshot(snapshot: MpvTrackSnap
             "uiSubtitleIndex=${_uiState.value.selectedSubtitleTrackIndex} " +
             "uiAddonSelected=${_uiState.value.selectedAddonSubtitle?.let { "${it.lang}/${it.addonName}/${it.id}" } ?: "none"}"
     )
+    handleEmbeddedSpanishSubtitleTracks(internalSubtitleTracks)
 }
 
 private fun PlayerRuntimeController.performPendingMpvHardRestartIfNeeded(view: NuvioMpvSurfaceView): Boolean {
