@@ -231,6 +231,9 @@ class ExternalPlaybackTracker @Inject constructor(
     // Set when the loader is released on a routine screen settle, so a later onStart can't re-raise a
     // loader that no longer has a job behind it (which would leave it stuck). Reset on a fresh launch.
     private var autoNextOverlaySuppressed = false
+    // After the user picks a profile to start a new session, leftover auto-next from a previous
+    // playback must not resume. Cleared on the next explicit launch.
+    private var suppressHandoffUntilNextLaunch = false
     // Resolve the successor while the current episode is playing. Besides making auto-next
     // immediate on return, this lets us avoid showing a loader after a known series finale.
     private var nextEpisodePrefetchJob: Job? = null
@@ -243,8 +246,13 @@ class ExternalPlaybackTracker @Inject constructor(
     )
     val autoPlayNext = autoPlayNextNavigationEvents.events
 
-    fun claimAutoPlayNextNavigation(event: ExternalAutoNextEpisode): Boolean =
-        autoPlayNextNavigationEvents.claim(event)
+    fun claimAutoPlayNextNavigation(event: ExternalAutoNextEpisode): Boolean {
+        if (suppressHandoffUntilNextLaunch) {
+            autoPlayNextNavigationEvents.clear()
+            return false
+        }
+        return autoPlayNextNavigationEvents.claim(event)
+    }
 
     // Non-null while auto-advancing: MainActivity shows a loader covering the
     // cold-start/source-resolution window. Cleared on the next launch, failure, or timeout.
@@ -294,6 +302,7 @@ class ExternalPlaybackTracker @Inject constructor(
         // A fresh launch supersedes any dead-session recovery still being watched for.
         staleReturnWatchdogJob?.cancel()
         staleReturnWatchdogJob = null
+        suppressHandoffUntilNextLaunch = false
         pendingMetadata = metadata
         pendingCloudSessionToken = cloudSessionToken
         isAutoLaunch = autoLaunch
@@ -879,6 +888,11 @@ class ExternalPlaybackTracker @Inject constructor(
      * [metadata] is captured by value so it survives stopTracking() clearing it.
      */
     private fun maybeTriggerAutoNextEpisode(metadata: ExternalPlaybackMetadata) {
+        if (suppressHandoffUntilNextLaunch) {
+            Log.d(AUTO_NEXT_TAG, "Auto-next skipped: new profile session")
+            _autoNextOverlay.value = null
+            return
+        }
         val season = metadata.season
         val episode = metadata.episode
         // Season may be null (absolute-numbered anime); only the episode and a series/tv type are
@@ -1002,7 +1016,9 @@ class ExternalPlaybackTracker @Inject constructor(
     ) {
         val playbackContext = cloudPlaybackSessionStore.load(sessionToken)
         val nextFile = playbackContext?.nextFile
-        if (playbackContext == null || nextFile == null || autoNextCancelled || autoNextChainAborted) {
+        if (playbackContext == null || nextFile == null || autoNextCancelled || autoNextChainAborted ||
+            suppressHandoffUntilNextLaunch
+        ) {
             _autoNextOverlay.value = null
             return
         }
@@ -1070,6 +1086,32 @@ class ExternalPlaybackTracker @Inject constructor(
     // second full-screen cover to mask the gap — a competing overlay caused flicker and hid this
     // loader's text. Cancellation: backing out sets autoNextCancelled (reset per launch in
     // startTracking) so neither the loader nor the advance re-fires for the current return.
+
+    /**
+     * Profile selection starts a new session at Home. Drop any leftover loader, persisted
+     * external session, or queued auto-next so the last title cannot resume by itself.
+     */
+    fun discardPendingHandoffForNewSession() {
+        Log.d(AUTO_NEXT_TAG, "discardPendingHandoffForNewSession")
+        suppressHandoffUntilNextLaunch = true
+        autoNextCancelled = true
+        autoNextChainAborted = true
+        autoNextNavigationPending = false
+        lastAutoNextEmitMs = 0L
+        autoNextJob?.cancel()
+        autoNextJob = null
+        nextEpisodePrefetchJob?.cancel()
+        nextEpisodePrefetchJob = null
+        staleReturnWatchdogJob?.cancel()
+        staleReturnWatchdogJob = null
+        nextEpisodeSnapshot = ExternalNextEpisodeSnapshot.Unknown
+        autoNextEnabledForPendingLaunch = null
+        autoNextOverlaySuppressed = true
+        autoPlayNextNavigationEvents.clear()
+        _autoNextOverlay.value = null
+        clearPersistedMetadata()
+        stopTracking()
+    }
 
     /** Hide the loader and cancel the pending auto-next, so backing out actually stops it instead
      *  of advancing anyway. Sets the durable chain abort too, so one Back press stops a runaway
@@ -1169,6 +1211,7 @@ class ExternalPlaybackTracker @Inject constructor(
      *  parsed and the window repaints) so there's no episode-list flash. No-op for non-episodes;
      *  idempotent. Kept for a completion, dismissed by onActivityResult otherwise. */
     fun raiseAutoNextOverlayOnReturn() {
+        if (suppressHandoffUntilNextLaunch) return
         val recoveredFromDisk = pendingMetadata == null
         val metadata = pendingMetadata ?: loadPersistedMetadata() ?: return
         if (recoveredFromDisk) {

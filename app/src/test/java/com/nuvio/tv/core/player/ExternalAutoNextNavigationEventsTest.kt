@@ -38,6 +38,25 @@ class ExternalAutoNextNavigationEventsTest {
         assertTrue(events.claim(second))
     }
 
+    @OptIn(ExperimentalCoroutinesApi::class)
+    @Test
+    fun `clear drops a pending event so a later collector is not replayed`() = runTest {
+        var now = 1_000L
+        val events = ExternalAutoNextNavigationEvents(maxAgeMs = 65_000L) { now }
+        events.publish(event(requestedAtMs = now, episode = 2))
+        events.clear()
+
+        val waiting = async { events.events.first() }
+        runCurrent()
+        assertFalse(waiting.isCompleted)
+
+        now = 2_000L
+        val next = event(requestedAtMs = now, episode = 3)
+        events.publish(next)
+        assertSame(next, waiting.await())
+        assertTrue(events.claim(next))
+    }
+
     @Test
     fun `event older than the handoff window is discarded`() = runTest {
         var now = 1_000L

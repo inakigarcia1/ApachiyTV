@@ -24,4 +24,9 @@ internal class ExternalAutoNextNavigationEvents(
         val ageMs = nowMs() - event.requestedAtMs
         return ageMs in 0..maxAgeMs
     }
+
+    @Synchronized
+    fun clear() {
+        pending.value = null
+    }
 }

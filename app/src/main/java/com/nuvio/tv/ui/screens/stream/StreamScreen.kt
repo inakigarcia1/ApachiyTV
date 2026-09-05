@@ -238,6 +238,7 @@ fun StreamScreen(
                 }
                 else -> {
                     viewModel.onInternalPlayerLaunching()
+                    viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
                     onAutoPlayResolved(playbackInfo)
                 }
             }
@@ -250,6 +251,7 @@ fun StreamScreen(
     }
 
     BackHandler {
+        viewModel.onEvent(StreamScreenEvent.OnAutoPlayConsumed)
         onBackPress()
     }
 

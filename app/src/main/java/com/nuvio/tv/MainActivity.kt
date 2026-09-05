@@ -275,6 +275,9 @@ class MainActivity : ComponentActivity() {
 
     private val pendingDeepLinkUrl = MutableStateFlow<String?>(null)
 
+    /** After the profile picker, land on Home instead of restoring a leftover player/stream. */
+    private var resetNavToHomeAfterProfileSelection = false
+
     private lateinit var jankStats: JankStats
 
     /** Activity-level launcher for external video players. Survives all navigation changes. */
@@ -613,6 +616,8 @@ class MainActivity : ComponentActivity() {
                         ProfileSelectionScreen(
                             onProfileSelected = {
                                 hasSelectedProfileThisSession = true
+                                resetNavToHomeAfterProfileSelection = true
+                                externalPlaybackTracker.discardPendingHandoffForNewSession()
                                 if (authManager.authState.value is AuthState.FullAccount) {
                                     startupSyncService.requestSyncNow()
                                 }
@@ -666,6 +671,17 @@ class MainActivity : ComponentActivity() {
 
                     val startDestination = Screen.Home.route
                     val navController = rememberNavController()
+                    val resetToHomeAfterProfile = resetNavToHomeAfterProfileSelection
+                    LaunchedEffect(navController, resetToHomeAfterProfile) {
+                        if (!resetToHomeAfterProfile) return@LaunchedEffect
+                        resetNavToHomeAfterProfileSelection = false
+                        val popped = navController.popBackStack(Screen.Home.route, inclusive = false)
+                        if (!popped) {
+                            navController.navigate(Screen.Home.route) {
+                                launchSingleTop = true
+                            }
+                        }
+                    }
                     val accountIsActive by accountStatusRepository.isActive.collectAsState()
                     val gatePlaybackNavigation = remember(accountIsActive) {
                         { navigate: () -> Unit ->
