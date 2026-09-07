@@ -86,14 +86,10 @@ internal class AuthSessionValidator(
                     )
                 }
                 AuthSessionValidationOutcome(
-                    result = when {
-                        error.isJwtExpiredAuthError() ->
-                            AuthSessionValidationResult.EXPIRED_ACCESS_TOKEN
-                        error.isInvalidRemoteSessionError() ->
-                            AuthSessionValidationResult.INVALID_SESSION
-                        else ->
-                            AuthSessionValidationResult.TRANSIENT_FAILURE
-                    },
+                    result = classifyAuthValidationFailure(
+                        statusCode = error.authFailureStatusCode(),
+                        message = error.authFailureMessage()
+                    ),
                     error = error
                 )
             }
@@ -108,33 +104,17 @@ internal class AuthSessionValidator(
     }
 }
 
-private fun Throwable.isInvalidRemoteSessionError(): Boolean {
+private fun Throwable.authFailureStatusCode(): Int? {
+    findCause<RestException>()?.statusCode?.let { return it }
+    findCause<ClientRequestException>()?.response?.status?.value?.let { return it }
+    return null
+}
+
+private fun Throwable.authFailureMessage(): String {
     findCause<RestException>()?.let { error ->
-        if (
-            isInvalidRemoteSessionResponse(
-                statusCode = error.statusCode,
-                message = "${error.error} ${error.description} ${error.message.orEmpty()}"
-            )
-        ) {
-            return true
-        }
+        return "${error.error} ${error.description} ${causeMessages()}"
     }
-
-    findCause<ClientRequestException>()?.let { error ->
-        if (
-            isInvalidRemoteSessionResponse(
-                statusCode = error.response.status.value,
-                message = error.message.orEmpty()
-            )
-        ) {
-            return true
-        }
-    }
-
-    return isInvalidRemoteSessionResponse(
-        statusCode = null,
-        message = causeMessages()
-    )
+    return causeMessages()
 }
 
 private inline fun <reified T : Throwable> Throwable.findCause(): T? {

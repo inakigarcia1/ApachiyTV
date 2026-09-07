@@ -77,6 +77,9 @@ object SupabaseModule {
                 }
             }
             install(Auth) {
+                // Session refresh must go through this client only. AuthManager calls
+                // refreshCurrentSession() on the same Auth instance so it cannot race a
+                // second HTTP refresh against GoTrue token rotation.
                 alwaysAutoRefresh = true
                 autoLoadFromStorage = true
                 autoSaveToStorage = true

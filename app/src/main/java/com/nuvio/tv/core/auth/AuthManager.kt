@@ -455,17 +455,29 @@ class AuthManager @Inject constructor(
             when (outcome.result) {
                 AuthSessionValidationResult.VALID -> true
                 AuthSessionValidationResult.EXPIRED_ACCESS_TOKEN -> {
-                    val error = outcome.error
-                    if (error == null) {
-                        clearInvalidRemoteSession()
+                    val refreshToken = auth.currentSessionOrNull()?.refreshToken?.takeIf { it.isNotBlank() }
+                    if (refreshToken == null) {
+                        Log.w(TAG, "Access token expired but no refresh token available; clearing session")
+                        clearInvalidRemoteSession(outcome.error)
                         false
                     } else {
-                        val refreshed = refreshSessionIfJwtExpired(error)
-                        if (refreshed) {
-                            sessionValidator.markCurrentSessionValidated()
-                            true
-                        } else {
-                            _authState.value !is AuthState.SignedOut
+                        val refreshOutcome = refreshCurrentSessionSerialized(
+                            observedRefreshToken = refreshToken,
+                            reason = "Access token expired"
+                        )
+                        when (refreshOutcome.result) {
+                            SessionRefreshResult.REFRESHED -> {
+                                sessionValidator.markCurrentSessionValidated()
+                                true
+                            }
+                            SessionRefreshResult.INVALID_SESSION -> {
+                                clearInvalidRemoteSession(refreshOutcome.error)
+                                false
+                            }
+                            SessionRefreshResult.TRANSIENT_FAILURE -> {
+                                Log.w(TAG, "Unable to refresh expired access token; keeping cached authentication", refreshOutcome.error)
+                                true
+                            }
                         }
                     }
                 }
@@ -518,19 +530,7 @@ class AuthManager @Inject constructor(
         val ownsDiagnostics = diagnostics == null
         return@withLock try {
             Log.w(TAG, "$reason; refreshing Supabase session")
-            val payload = buildJsonObject {
-                put("refresh_token", currentRefreshToken)
-            }.toString()
-            val body = executeSupabaseJsonRequest(
-                diagnostics = refreshDiagnostics,
-                endpoint = AUTH_ENDPOINT_REFRESH,
-                url = supabaseUrl(AUTH_ENDPOINT_REFRESH),
-                headers = supabaseHeaders(),
-                body = payload
-            ).body
-            val result = json.decodeFromString<TvLoginExchangeResult>(body)
-            Log.d(TAG, "Supabase session refresh token response tokenType=${result.tokenType ?: "-"} expiresIn=${result.expiresIn ?: "-"} accessTokenPresent=${result.accessToken.isNotBlank()} refreshTokenPresent=${result.refreshToken.isNotBlank()}")
-            auth.importTokenResponse(result)
+            auth.refreshCurrentSession()
             if (ownsDiagnostics) {
                 refreshDiagnostics.finishSuccess("refresh_token_completed")
             } else {
@@ -538,6 +538,16 @@ class AuthManager @Inject constructor(
             }
             SessionRefreshOutcome(SessionRefreshResult.REFRESHED)
         } catch (refreshError: Exception) {
+            val latestRefreshToken = auth.currentSessionOrNull()?.refreshToken?.takeIf { it.isNotBlank() }
+            if (latestRefreshToken != null && latestRefreshToken != currentRefreshToken) {
+                Log.d(TAG, "$reason; session was already refreshed by the Auth client")
+                if (ownsDiagnostics) {
+                    refreshDiagnostics.finishSuccess("refresh_token_completed")
+                } else {
+                    refreshDiagnostics.recordState("refresh_token_already_rotated")
+                }
+                return@withLock SessionRefreshOutcome(SessionRefreshResult.REFRESHED)
+            }
             val result = refreshError.toSessionRefreshResult()
             if (ownsDiagnostics) {
                 refreshDiagnostics.finishFailure("refresh_token_failed", AUTH_ENDPOINT_REFRESH, refreshError.authHttpStatus(), refreshError)
