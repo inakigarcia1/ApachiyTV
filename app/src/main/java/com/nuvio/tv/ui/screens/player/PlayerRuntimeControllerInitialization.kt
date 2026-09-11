@@ -1171,8 +1171,8 @@ internal fun PlayerRuntimeController.initializePlayer(
                                     currentDiagnostics = recordFirstFrameDiagnostics(this@apply, currentDiagnostics, playerSettings)
                                     _uiState.update {
                                         it.copy(
-                                            showLoadingOverlay = false,
-                                            loadingMessage = null,
+                                            showLoadingOverlay = resolvedOpeningOverlayVisible(it.loadingOverlayEnabled),
+                                            loadingMessage = if (resolvedOpeningOverlayVisible(it.loadingOverlayEnabled)) it.loadingMessage else null,
                                             loadingProgress = if (it.loadingProgress != null) 1f else null,
                                             showPlayerEngineSwitchInfo = false
                                         )
@@ -1316,10 +1316,10 @@ internal fun PlayerRuntimeController.initializePlayer(
                         }
                         refreshStableProgressResetGate()
                         cancelFirstFrameWatchdog()
+                        tryCompleteOpeningOverlay()
                         _uiState.update {
                             it.copy(
-                                showLoadingOverlay = false,
-                                loadingMessage = null,
+                                loadingMessage = if (it.showLoadingOverlay) it.loadingMessage else null,
                                 loadingProgress = if (it.loadingProgress != null) 1f else null,
                                 loadingIssueReportVisible = false,
                                 loadingIssueElapsedMs = 0L,
@@ -1979,6 +1979,7 @@ internal fun PlayerRuntimeController.resetLoadingOverlayForNewStream() {
         progress = null
     )
     hasRenderedFirstFrame = false
+    resetOpeningOverlayForNewSource()
     hasMarkedCurrentEpisodeCompleted = false
     shouldEnforceAutoplayOnFirstReady = true
     userPausedManually = false

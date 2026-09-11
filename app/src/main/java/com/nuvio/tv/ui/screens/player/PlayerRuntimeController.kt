@@ -306,6 +306,9 @@ class PlayerRuntimeController(
     internal var hideSubtitleDelayOverlayJob: Job? = null
     internal var subtitleAutoSyncLoadJob: Job? = null
     internal var addonSubtitleFetchJob: Job? = null
+    internal var openingOverlayTickerJob: Job? = null
+    internal var subtitlePipelineDone: Boolean = false
+    internal var openingOverlayStartedAtMs: Long = System.currentTimeMillis()
     /** ExoPlayer sidecar path: external addon cues without setMediaSource (preserves buffer). */
     internal var sidecarSubtitleJob: Job? = null
     internal var activeSidecarSubtitleKey: String? = null

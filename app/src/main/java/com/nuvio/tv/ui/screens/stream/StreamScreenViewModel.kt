@@ -1676,6 +1676,15 @@ class StreamScreenViewModel @Inject constructor(
         }
 
         return try {
+            val extract = playbackInfo.url?.takeIf { it.isNotBlank() }?.let { url ->
+                runCatching {
+                    com.nuvio.tv.ui.screens.player.embedded.EmbeddedSubtitleExtractor()
+                        .extract(url, playbackInfo.headers.orEmpty())
+                }.getOrNull()
+            }
+            if (extract?.hasEmbeddedSpanish == true) {
+                return emptyList()
+            }
             val allSubtitles = subtitleRepository.getSubtitles(
                 type = metadata.contentType,
                 id = metadata.contentId,
@@ -1683,6 +1692,7 @@ class StreamScreenViewModel @Inject constructor(
                 videoHash = playbackInfo.videoHash,
                 videoSize = playbackInfo.videoSize,
                 filename = playbackInfo.filename,
+                reference = extract?.reference,
                 onProgress = { completed, total, addonName ->
                     val msg = if (completed == 0) {
                         context.getString(R.string.player_loading_subtitles_from, total)

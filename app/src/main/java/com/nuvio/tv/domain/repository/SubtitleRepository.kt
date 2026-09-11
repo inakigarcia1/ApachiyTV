@@ -21,6 +21,7 @@ interface SubtitleRepository {
         videoSize: Long? = null,
         filename: String? = null,
         hasEmbeddedSpanish: Boolean = false,
+        reference: com.nuvio.tv.ui.screens.player.embedded.EmbeddedSubtitleReference? = null,
         onProgress: ((completed: Int, total: Int, addonName: String?) -> Unit)? = null,
         onSubtitlesEmitted: ((List<Subtitle>) -> Unit)? = null
     ): List<Subtitle>

@@ -10,21 +10,16 @@ import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.domain.model.Subtitle
 import com.nuvio.tv.domain.model.WatchProgress
 import com.nuvio.tv.domain.model.enabledAddons
-import kotlinx.coroutines.Job
+import com.nuvio.tv.ui.screens.player.embedded.EmbeddedSubtitleExtractor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.yield
-
-private const val ADDON_SUBTITLE_FETCH_DEFER_TIMEOUT_MS = 20_000L
-private const val ADDON_SUBTITLE_FETCH_POLL_MS = 100L
-private const val ADDON_SUBTITLE_POST_FIRST_FRAME_GRACE_MS = 3_000L
 
 internal fun PlayerRuntimeController.clearAddonSubtitlesForEmbeddedSpanish() {
     _uiState.update {
@@ -43,24 +38,7 @@ internal fun PlayerRuntimeController.handleEmbeddedSpanishSubtitleTracks(subtitl
     if (_uiState.value.isLoadingAddonSubtitles || _uiState.value.addonSubtitles.isNotEmpty()) {
         clearAddonSubtitlesForEmbeddedSpanish()
     }
-}
-
-private suspend fun PlayerRuntimeController.awaitSubtitleTracksBeforeAddonFetch() {
-    val deadline = System.currentTimeMillis() + ADDON_SUBTITLE_FETCH_DEFER_TIMEOUT_MS
-    var firstFrameSeenAt: Long? = null
-    while (currentCoroutineContext().isActive && System.currentTimeMillis() < deadline) {
-        val tracks = _uiState.value.subtitleTracks
-        if (PlayerSubtitleUtils.hasEmbeddedSpanishTrack(tracks)) return
-        if (tracks.isNotEmpty()) return
-        if (hasRenderedFirstFrame) {
-            if (firstFrameSeenAt == null) {
-                firstFrameSeenAt = System.currentTimeMillis()
-            } else if (System.currentTimeMillis() - firstFrameSeenAt >= ADDON_SUBTITLE_POST_FIRST_FRAME_GRACE_MS) {
-                return
-            }
-        }
-        delay(ADDON_SUBTITLE_FETCH_POLL_MS)
-    }
+    markSubtitlePipelineDone()
 }
 
 internal data class SubtitleFetchRequest(
@@ -81,7 +59,8 @@ internal fun PlayerRuntimeController.buildSubtitleFetchRequest(): SubtitleFetchR
 
 internal suspend fun PlayerRuntimeController.fetchAddonSubtitlesNow(
     onProgress: ((completed: Int, total: Int, addonName: String?) -> Unit)? = null,
-    onSubtitlesEmitted: ((List<Subtitle>) -> Unit)? = null
+    onSubtitlesEmitted: ((List<Subtitle>) -> Unit)? = null,
+    reference: com.nuvio.tv.ui.screens.player.embedded.EmbeddedSubtitleReference? = null,
 ): List<Subtitle> {
     val request = buildSubtitleFetchRequest() ?: return emptyList()
     val installedAddonOrder = addonRepository.getInstalledAddons().firstOrNull()
@@ -143,27 +122,37 @@ internal suspend fun PlayerRuntimeController.fetchAddonSubtitlesNow(
         videoSize = currentVideoSize,
         filename = currentFilename,
         hasEmbeddedSpanish = hasEmbeddedSpanish,
+        reference = reference,
         onProgress = onProgress,
         onSubtitlesEmitted = onSubtitlesEmitted
     )
 }
 
 internal fun PlayerRuntimeController.fetchAddonSubtitles() {
-    if (buildSubtitleFetchRequest() == null) return
+    if (buildSubtitleFetchRequest() == null) {
+        markSubtitlePipelineDone()
+        return
+    }
     addonSubtitleFetchJob?.cancel()
     addonSubtitleFetchJob = scope.launch {
         val tracksAtFetchStart = _uiState.value.subtitleTracks
         if (PlayerSubtitleUtils.hasEmbeddedSpanishTrack(tracksAtFetchStart)) {
             clearAddonSubtitlesForEmbeddedSpanish()
+            markSubtitlePipelineDone()
             return@launch
         }
 
-        awaitSubtitleTracksBeforeAddonFetch()
-        if (!isActive) return@launch
-
-        val tracksAfterWait = _uiState.value.subtitleTracks
-        if (PlayerSubtitleUtils.hasEmbeddedSpanishTrack(tracksAfterWait)) {
+        val extract = runCatching {
+            EmbeddedSubtitleExtractor().extract(currentStreamUrl, currentHeaders)
+        }.getOrNull()
+        if (extract?.hasEmbeddedSpanish == true) {
             clearAddonSubtitlesForEmbeddedSpanish()
+            markSubtitlePipelineDone()
+            return@launch
+        }
+        if (PlayerSubtitleUtils.hasEmbeddedSpanishTrack(_uiState.value.subtitleTracks)) {
+            clearAddonSubtitlesForEmbeddedSpanish()
+            markSubtitlePipelineDone()
             return@launch
         }
 
@@ -171,6 +160,7 @@ internal fun PlayerRuntimeController.fetchAddonSubtitles() {
 
         try {
             val subtitles = fetchAddonSubtitlesNow(
+                reference = extract?.reference,
                 onSubtitlesEmitted = { currentList ->
                     val visibleSubtitles = filterToVisibleAddonSubtitles(currentList)
                     _uiState.update { it.copy(addonSubtitles = visibleSubtitles) }
@@ -207,6 +197,8 @@ internal fun PlayerRuntimeController.fetchAddonSubtitles() {
                     addonSubtitlesError = e.message
                 )
             }
+        } finally {
+            markSubtitlePipelineDone()
         }
     }
 }
