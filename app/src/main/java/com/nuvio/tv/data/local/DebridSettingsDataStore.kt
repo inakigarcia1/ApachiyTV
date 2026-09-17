@@ -24,7 +24,6 @@ import com.nuvio.tv.domain.model.normalizeDebridInstantPlaybackPreparationLimit
 import com.nuvio.tv.domain.model.normalizeDebridStreamMaxResults
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -60,58 +59,58 @@ class DebridSettingsDataStore @Inject constructor(
     private val streamDescriptionTemplateKey = stringPreferencesKey("debrid_stream_description_template")
 
     val settings: Flow<DebridSettings> = profileManager.activeProfileId.flatMapLatest { pid ->
-        factory.get(pid, FEATURE).data.map { prefs ->
+        factory.get(pid, FEATURE).data.mapPreferencesSafely("DebridSettingsDS") { prefs ->
             val storedStreamSortMode = enumValueOrDefault(
-                prefs[streamSortModeKey],
+                prefs.stringOrNull(streamSortModeKey),
                 DebridStreamSortMode.DEFAULT
             )
-            val streamPreferences = parseStreamPreferences(prefs[streamPreferencesKey])
+            val streamPreferences = parseStreamPreferences(prefs.stringOrNull(streamPreferencesKey))
                 ?: legacyStreamPreferences(
-                    maxResults = prefs[streamMaxResultsKey] ?: 0,
+                    maxResults = prefs.intOrDefault(streamMaxResultsKey, 0),
                     sortMode = storedStreamSortMode,
-                    minimumQuality = enumValueOrDefault(prefs[streamMinimumQualityKey], DebridStreamMinimumQuality.ANY),
-                    dolbyVisionFilter = enumValueOrDefault(prefs[streamDolbyVisionFilterKey], DebridStreamFeatureFilter.ANY),
-                    hdrFilter = enumValueOrDefault(prefs[streamHdrFilterKey], DebridStreamFeatureFilter.ANY),
-                    codecFilter = enumValueOrDefault(prefs[streamCodecFilterKey], DebridStreamCodecFilter.ANY)
+                    minimumQuality = enumValueOrDefault(prefs.stringOrNull(streamMinimumQualityKey), DebridStreamMinimumQuality.ANY),
+                    dolbyVisionFilter = enumValueOrDefault(prefs.stringOrNull(streamDolbyVisionFilterKey), DebridStreamFeatureFilter.ANY),
+                    hdrFilter = enumValueOrDefault(prefs.stringOrNull(streamHdrFilterKey), DebridStreamFeatureFilter.ANY),
+                    codecFilter = enumValueOrDefault(prefs.stringOrNull(streamCodecFilterKey), DebridStreamCodecFilter.ANY)
                 )
             val streamSortMode = legacyModeForSortCriteria(streamPreferences.sortCriteria)
             DebridSettings(
-                enabled = prefs[enabledKey] ?: false,
-                cloudLibraryEnabled = prefs[cloudLibraryEnabledKey] ?: true,
-                torboxApiKey = prefs[torboxApiKeyKey] ?: "",
-                premiumizeApiKey = prefs[premiumizeApiKeyKey] ?: "",
-                realDebridApiKey = prefs[realDebridApiKeyKey] ?: "",
+                enabled = prefs.booleanOrDefault(enabledKey, false),
+                cloudLibraryEnabled = prefs.booleanOrDefault(cloudLibraryEnabledKey, true),
+                torboxApiKey = prefs.stringOrNull(torboxApiKeyKey) ?: "",
+                premiumizeApiKey = prefs.stringOrNull(premiumizeApiKeyKey) ?: "",
+                realDebridApiKey = prefs.stringOrNull(realDebridApiKeyKey) ?: "",
                 preferredResolverProviderId = preferredResolverProviderId(
-                    stored = prefs[preferredResolverProviderIdKey],
-                    torboxApiKey = prefs[torboxApiKeyKey] ?: "",
-                    premiumizeApiKey = prefs[premiumizeApiKeyKey] ?: "",
-                    realDebridApiKey = prefs[realDebridApiKeyKey] ?: ""
+                    stored = prefs.stringOrNull(preferredResolverProviderIdKey),
+                    torboxApiKey = prefs.stringOrNull(torboxApiKeyKey) ?: "",
+                    premiumizeApiKey = prefs.stringOrNull(premiumizeApiKeyKey) ?: "",
+                    realDebridApiKey = prefs.stringOrNull(realDebridApiKeyKey) ?: ""
                 ),
                 instantPlaybackPreparationLimit = normalizeDebridInstantPlaybackPreparationLimit(
-                    prefs[instantPlaybackPreparationLimitKey] ?: 0
+                    prefs.intOrDefault(instantPlaybackPreparationLimitKey, 0)
                 ),
-                streamMaxResults = normalizeDebridStreamMaxResults(prefs[streamMaxResultsKey] ?: 0),
+                streamMaxResults = normalizeDebridStreamMaxResults(prefs.intOrDefault(streamMaxResultsKey, 0)),
                 streamSortMode = streamSortMode,
                 streamMinimumQuality = enumValueOrDefault(
-                    prefs[streamMinimumQualityKey],
+                    prefs.stringOrNull(streamMinimumQualityKey),
                     DebridStreamMinimumQuality.ANY
                 ),
                 streamDolbyVisionFilter = enumValueOrDefault(
-                    prefs[streamDolbyVisionFilterKey],
+                    prefs.stringOrNull(streamDolbyVisionFilterKey),
                     DebridStreamFeatureFilter.ANY
                 ),
                 streamHdrFilter = enumValueOrDefault(
-                    prefs[streamHdrFilterKey],
+                    prefs.stringOrNull(streamHdrFilterKey),
                     DebridStreamFeatureFilter.ANY
                 ),
                 streamCodecFilter = enumValueOrDefault(
-                    prefs[streamCodecFilterKey],
+                    prefs.stringOrNull(streamCodecFilterKey),
                     DebridStreamCodecFilter.ANY
                 ),
                 streamPreferences = streamPreferences,
-                streamNameTemplate = prefs[streamNameTemplateKey]
+                streamNameTemplate = prefs.stringOrNull(streamNameTemplateKey)
                     ?: DebridStreamFormatterDefaults.NAME_TEMPLATE,
-                streamDescriptionTemplate = prefs[streamDescriptionTemplateKey]
+                streamDescriptionTemplate = prefs.stringOrNull(streamDescriptionTemplateKey)
                     ?: DebridStreamFormatterDefaults.DESCRIPTION_TEMPLATE
             )
         }

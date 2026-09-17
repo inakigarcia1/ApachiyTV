@@ -40,19 +40,12 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.doubleOrNull
-import kotlinx.serialization.json.floatOrNull
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -608,44 +601,4 @@ class ProfileSettingsSyncService @Inject constructor(
         }
     }
 
-    private fun applyEncodedPreference(
-        mutablePrefs: androidx.datastore.preferences.core.MutablePreferences,
-        keyName: String,
-        encodedValue: JsonElement
-    ) {
-        val obj = encodedValue as? JsonObject ?: return
-        val type = obj["type"]?.jsonPrimitive?.contentOrNull ?: return
-        val value = obj["value"] ?: JsonNull
-
-        when (type) {
-            "string" -> {
-                val parsed = value.jsonPrimitive.contentOrNull ?: return
-                mutablePrefs[stringPreferencesKey(keyName)] = parsed
-            }
-            "boolean" -> {
-                val parsed = value.jsonPrimitive.contentOrNull?.toBooleanStrictOrNull() ?: return
-                mutablePrefs[booleanPreferencesKey(keyName)] = parsed
-            }
-            "int" -> {
-                val parsed = value.jsonPrimitive.intOrNull ?: return
-                mutablePrefs[intPreferencesKey(keyName)] = parsed
-            }
-            "long" -> {
-                val parsed = value.jsonPrimitive.longOrNull ?: return
-                mutablePrefs[longPreferencesKey(keyName)] = parsed
-            }
-            "float" -> {
-                val parsed = value.jsonPrimitive.floatOrNull ?: return
-                mutablePrefs[floatPreferencesKey(keyName)] = parsed
-            }
-            "double" -> {
-                val parsed = value.jsonPrimitive.doubleOrNull ?: return
-                mutablePrefs[doublePreferencesKey(keyName)] = parsed
-            }
-            "string_set" -> {
-                val parsed = value.jsonArray.mapNotNull { it.jsonPrimitive.contentOrNull }.toSet()
-                mutablePrefs[stringSetPreferencesKey(keyName)] = parsed
-            }
-        }
-    }
 }

@@ -35,9 +35,9 @@ internal val discoverLocationMigration = object : DataMigration<Preferences> {
 
     override suspend fun migrate(currentData: Preferences): Preferences {
         val mutable = currentData.toMutablePreferences()
-        val legacy = mutable[legacySearchDiscoverEnabledKey]
-        if (legacy != null && mutable[discoverLocationKey] == null) {
-            val rememberedLocation = mutable[lastNonOffDiscoverLocationKey]?.let {
+        val legacy = mutable.booleanOrNull(legacySearchDiscoverEnabledKey)
+        if (legacy != null && mutable.stringOrNull(discoverLocationKey) == null) {
+            val rememberedLocation = mutable.stringOrNull(lastNonOffDiscoverLocationKey)?.let {
                 runCatching { DiscoverLocation.valueOf(it) }.getOrNull()
             }?.takeIf { it != DiscoverLocation.OFF }
             val resolved = if (legacy && rememberedLocation != null) {

@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.nuvio.tv.core.profile.ProfileManager
@@ -119,22 +118,19 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     private fun <T> profileFlow(extract: (prefs: androidx.datastore.preferences.core.Preferences) -> T): Flow<T> =
         profileManager.activeProfileId.flatMapLatest { pid ->
-            factory.get(pid, FEATURE).data.map { prefs -> extract(prefs) }
+            factory.get(pid, FEATURE).data.mapPreferencesSafely(TAG, extract)
         }
 
     private fun Preferences.getStringOrMigrateSet(key: Preferences.Key<String>): String? {
-        return try {
-            this[key]
-        } catch (e: ClassCastException) {
-            val setKey = stringSetPreferencesKey(key.name)
-            val legacySet = try { this[setKey] } catch (_: Exception) { null }
-            if (legacySet != null) {
-                Log.w(TAG, "Key '${key.name}' stored as Set instead of String (${legacySet.size} items), converting")
-                gson.toJson(legacySet.toList())
-            } else {
-                Log.e(TAG, "ClassCastException for key '${key.name}' but no Set value found", e)
-                null
+        return when (val raw = rawOrNull(key)) {
+            null -> null
+            is String -> raw
+            is Set<*> -> {
+                val strings = raw.mapNotNull { it as? String }
+                Log.w(TAG, "Key '${key.name}' stored as Set instead of String (${strings.size} items), converting")
+                gson.toJson(strings)
             }
+            else -> raw.toString()
         }
     }
 
@@ -142,7 +138,7 @@ class LayoutPreferenceDataStore @Inject constructor(
         value?.takeIf { it > 0 } ?: defaultValue
 
     val selectedLayout: Flow<HomeLayout> = profileFlow { prefs ->
-        val layoutName = prefs[layoutKey] ?: HomeLayout.MODERN.name
+        val layoutName = prefs.stringOrNull(layoutKey) ?: HomeLayout.MODERN.name
         try {
             HomeLayout.valueOf(layoutName)
         } catch (e: IllegalArgumentException) {
@@ -151,11 +147,11 @@ class LayoutPreferenceDataStore @Inject constructor(
     }
 
     val continueWatchingEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[continueWatchingEnabledKey] ?: true
+        prefs.booleanOrDefault(continueWatchingEnabledKey, true)
     }
 
     val continueWatchingCardStyle: Flow<ContinueWatchingCardStyle> = profileFlow { prefs ->
-        val styleName = prefs[continueWatchingCardStyleKey] ?: ContinueWatchingCardStyle.CARD.name
+        val styleName = prefs.stringOrNull(continueWatchingCardStyleKey) ?: ContinueWatchingCardStyle.CARD.name
         try {
             ContinueWatchingCardStyle.valueOf(styleName)
         } catch (e: IllegalArgumentException) {
@@ -164,7 +160,7 @@ class LayoutPreferenceDataStore @Inject constructor(
     }
 
     val hasChosenLayout: Flow<Boolean> = profileFlow { prefs ->
-        prefs[hasChosenKey] ?: false
+        prefs.booleanOrDefault(hasChosenKey, false)
     }
 
     val heroCatalogSelections: Flow<List<String>> = profileFlow { prefs ->
@@ -188,7 +184,7 @@ class LayoutPreferenceDataStore @Inject constructor(
         val profile = profileManager.profiles.value.find { it.id == pid }
         val usePrimary = profile != null && !profile.isPrimary && profile.usesPrimaryAddons
         val effectivePid = if (usePrimary) 1 else pid
-        factory.get(effectivePid, FEATURE).data.map { prefs ->
+        factory.get(effectivePid, FEATURE).data.mapPreferencesSafely(TAG) { prefs ->
             parseCatalogKeys(prefs.getStringOrMigrateSet(homeCatalogOrderKeysKey))
         }
     }
@@ -197,7 +193,7 @@ class LayoutPreferenceDataStore @Inject constructor(
         val profile = profileManager.profiles.value.find { it.id == pid }
         val usePrimary = profile != null && !profile.isPrimary && profile.usesPrimaryAddons
         val effectivePid = if (usePrimary) 1 else pid
-        factory.get(effectivePid, FEATURE).data.map { prefs ->
+        factory.get(effectivePid, FEATURE).data.mapPreferencesSafely(TAG) { prefs ->
             parseCatalogKeys(prefs.getStringOrMigrateSet(disabledHomeCatalogKeysKey))
         }
     }
@@ -206,51 +202,53 @@ class LayoutPreferenceDataStore @Inject constructor(
         val profile = profileManager.profiles.value.find { it.id == pid }
         val usePrimary = profile != null && !profile.isPrimary && profile.usesPrimaryAddons
         val effectivePid = if (usePrimary) 1 else pid
-        factory.get(effectivePid, FEATURE).data.map { prefs ->
+        factory.get(effectivePid, FEATURE).data.mapPreferencesSafely(TAG) { prefs ->
             parseCustomTitles(prefs.getStringOrMigrateSet(customCatalogTitlesKey))
         }
     }
 
     val sidebarCollapsedByDefault: Flow<Boolean> = profileFlow { prefs ->
         val modernSidebarEnabled =
-            prefs[modernSidebarEnabledKey] ?: prefs[legacyModernSidebarEnabledKey] ?: false
+            prefs.booleanOrNull(modernSidebarEnabledKey)
+                ?: prefs.booleanOrDefault(legacyModernSidebarEnabledKey, false)
         if (modernSidebarEnabled) {
             false
         } else {
-            prefs[sidebarCollapsedKey] ?: false
+            prefs.booleanOrDefault(sidebarCollapsedKey, false)
         }
     }
 
     val modernSidebarEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[modernSidebarEnabledKey] ?: prefs[legacyModernSidebarEnabledKey] ?: false
+        prefs.booleanOrNull(modernSidebarEnabledKey)
+            ?: prefs.booleanOrDefault(legacyModernSidebarEnabledKey, false)
     }
 
     val modernSidebarBlurEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[modernSidebarBlurEnabledKey] ?: false
+        prefs.booleanOrDefault(modernSidebarBlurEnabledKey, false)
     }
 
     val modernLandscapePostersEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[modernLandscapePostersEnabledKey] ?: false
+        prefs.booleanOrDefault(modernLandscapePostersEnabledKey, false)
     }
 
     val modernHeroFullScreenBackdropEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[modernHeroFullScreenBackdropKey] ?: false
+        prefs.booleanOrDefault(modernHeroFullScreenBackdropKey, false)
     }
 
     val heroSectionEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[heroSectionEnabledKey] ?: true
+        prefs.booleanOrDefault(heroSectionEnabledKey, true)
     }
 
     val discoverLocation: Flow<DiscoverLocation> = profileFlow { prefs ->
-        val stored = prefs[discoverLocationKey] ?: DiscoverLocation.IN_SEARCH.name
+        val stored = prefs.stringOrNull(discoverLocationKey) ?: DiscoverLocation.IN_SEARCH.name
         runCatching { DiscoverLocation.valueOf(stored) }
             .getOrDefault(DiscoverLocation.IN_SEARCH)
     }
 
     val lastNonOffDiscoverLocation: Flow<DiscoverLocation> = profileFlow { prefs ->
-        val stored = prefs[lastNonOffDiscoverLocationKey]
+        val stored = prefs.stringOrNull(lastNonOffDiscoverLocationKey)
             ?.takeIf { it != DiscoverLocation.OFF.name }
-        val fallback = prefs[discoverLocationKey]
+        val fallback = prefs.stringOrNull(discoverLocationKey)
             ?.takeIf { it != DiscoverLocation.OFF.name }
         val source = stored ?: fallback ?: DiscoverLocation.IN_SEARCH.name
         runCatching { DiscoverLocation.valueOf(source) }
@@ -258,136 +256,137 @@ class LayoutPreferenceDataStore @Inject constructor(
     }
 
     val posterLabelsEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[posterLabelsEnabledKey] ?: true
+        prefs.booleanOrDefault(posterLabelsEnabledKey, true)
     }
 
     val catalogAddonNameEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[catalogAddonNameEnabledKey] ?: true
+        prefs.booleanOrDefault(catalogAddonNameEnabledKey, true)
     }
 
     val catalogTypeSuffixEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[catalogTypeSuffixEnabledKey] ?: true
+        prefs.booleanOrDefault(catalogTypeSuffixEnabledKey, true)
     }
 
     val classicFocusGradientEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[classicFocusGradientEnabledKey] ?: false
+        prefs.booleanOrDefault(classicFocusGradientEnabledKey, false)
     }
 
     val focusedPosterBackdropExpandEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[focusedPosterBackdropExpandEnabledKey] ?: true
+        prefs.booleanOrDefault(focusedPosterBackdropExpandEnabledKey, true)
     }
 
     val focusedPosterBackdropExpandDelaySeconds: Flow<Int> = profileFlow { prefs ->
-        (prefs[focusedPosterBackdropExpandDelaySecondsKey]
-            ?: DEFAULT_FOCUSED_POSTER_BACKDROP_EXPAND_DELAY_SECONDS)
-            .coerceAtLeast(MIN_FOCUSED_POSTER_BACKDROP_EXPAND_DELAY_SECONDS)
+        prefs.intOrDefault(
+            focusedPosterBackdropExpandDelaySecondsKey,
+            DEFAULT_FOCUSED_POSTER_BACKDROP_EXPAND_DELAY_SECONDS
+        ).coerceAtLeast(MIN_FOCUSED_POSTER_BACKDROP_EXPAND_DELAY_SECONDS)
     }
 
     val focusedPosterBackdropTrailerEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[focusedPosterBackdropTrailerEnabledKey] ?: false
+        prefs.booleanOrDefault(focusedPosterBackdropTrailerEnabledKey, false)
     }
 
     val focusedPosterBackdropTrailerMuted: Flow<Boolean> = profileFlow { prefs ->
-        prefs[focusedPosterBackdropTrailerMutedKey] ?: true
+        prefs.booleanOrDefault(focusedPosterBackdropTrailerMutedKey, true)
     }
 
     val focusedPosterBackdropTrailerPlaybackTarget: Flow<FocusedPosterTrailerPlaybackTarget> =
         profileFlow { prefs ->
-            val stored = prefs[focusedPosterBackdropTrailerPlaybackTargetKey]
+            val stored = prefs.stringOrNull(focusedPosterBackdropTrailerPlaybackTargetKey)
                 ?: FocusedPosterTrailerPlaybackTarget.HERO_MEDIA.name
             runCatching { FocusedPosterTrailerPlaybackTarget.valueOf(stored) }
                 .getOrDefault(FocusedPosterTrailerPlaybackTarget.HERO_MEDIA)
         }
 
     val posterCardWidthDp: Flow<Int> = profileFlow { prefs ->
-        positiveOrDefault(prefs[posterCardWidthDpKey], DEFAULT_POSTER_CARD_WIDTH_DP)
+        positiveOrDefault(prefs.intOrNull(posterCardWidthDpKey), DEFAULT_POSTER_CARD_WIDTH_DP)
     }
 
     val posterCardHeightDp: Flow<Int> = profileFlow { prefs ->
-        positiveOrDefault(prefs[posterCardHeightDpKey], DEFAULT_POSTER_CARD_HEIGHT_DP)
+        positiveOrDefault(prefs.intOrNull(posterCardHeightDpKey), DEFAULT_POSTER_CARD_HEIGHT_DP)
     }
 
     val posterCardCornerRadiusDp: Flow<Int> = profileFlow { prefs ->
-        prefs[posterCardCornerRadiusDpKey] ?: DEFAULT_POSTER_CARD_CORNER_RADIUS_DP
+        prefs.intOrDefault(posterCardCornerRadiusDpKey, DEFAULT_POSTER_CARD_CORNER_RADIUS_DP)
     }
 
     val cardDepthStyle: Flow<CardDepthStyle> = profileFlow { prefs ->
         CardDepthStyle(
-            enabled = prefs[cardDepthEnabledKey] ?: false,
-            edgeStrength = (prefs[cardDepthEdgeStrengthKey]
-                ?: DEFAULT_CARD_DEPTH_EDGE_STRENGTH).coerceIn(0, 100),
-            sheenStrength = (prefs[cardDepthSheenStrengthKey]
-                ?: DEFAULT_CARD_DEPTH_SHEEN_STRENGTH).coerceIn(0, 100),
-            edgeCoverage = (prefs[cardDepthEdgeCoverageKey]
-                ?: DEFAULT_CARD_DEPTH_EDGE_COVERAGE).coerceIn(0, 100),
-            postersEnabled = prefs[cardDepthPostersEnabledKey] ?: true,
-            continueWatchingEnabled = prefs[cardDepthContinueWatchingEnabledKey] ?: true,
-            episodeCardsEnabled = prefs[cardDepthEpisodeCardsEnabledKey] ?: true,
-            castEnabled = prefs[cardDepthCastEnabledKey] ?: true,
-            trailersEnabled = prefs[cardDepthTrailersEnabledKey] ?: true
+            enabled = prefs.booleanOrDefault(cardDepthEnabledKey, false),
+            edgeStrength = prefs.intOrDefault(cardDepthEdgeStrengthKey, DEFAULT_CARD_DEPTH_EDGE_STRENGTH)
+                .coerceIn(0, 100),
+            sheenStrength = prefs.intOrDefault(cardDepthSheenStrengthKey, DEFAULT_CARD_DEPTH_SHEEN_STRENGTH)
+                .coerceIn(0, 100),
+            edgeCoverage = prefs.intOrDefault(cardDepthEdgeCoverageKey, DEFAULT_CARD_DEPTH_EDGE_COVERAGE)
+                .coerceIn(0, 100),
+            postersEnabled = prefs.booleanOrDefault(cardDepthPostersEnabledKey, true),
+            continueWatchingEnabled = prefs.booleanOrDefault(cardDepthContinueWatchingEnabledKey, true),
+            episodeCardsEnabled = prefs.booleanOrDefault(cardDepthEpisodeCardsEnabledKey, true),
+            castEnabled = prefs.booleanOrDefault(cardDepthCastEnabledKey, true),
+            trailersEnabled = prefs.booleanOrDefault(cardDepthTrailersEnabledKey, true)
         )
     }
 
     val blurUnwatchedEpisodes: Flow<Boolean> = profileFlow { prefs ->
-        prefs[blurUnwatchedEpisodesKey] ?: false
+        prefs.booleanOrDefault(blurUnwatchedEpisodesKey, false)
     }
 
     val useEpisodeThumbnailsInCw: Flow<Boolean> = profileFlow { prefs ->
-        prefs[useEpisodeThumbnailsInCwKey] ?: true
+        prefs.booleanOrDefault(useEpisodeThumbnailsInCwKey, true)
     }
 
     val showUnairedNextUp: Flow<Boolean> = profileFlow { prefs ->
-        prefs[showUnairedNextUpKey] ?: true
+        prefs.booleanOrDefault(showUnairedNextUpKey, true)
     }
 
     val nextUpFromFurthestEpisode: StateFlow<Boolean> = profileFlow { prefs ->
-        prefs[nextUpFromFurthestEpisodeKey] ?: true
+        prefs.booleanOrDefault(nextUpFromFurthestEpisodeKey, true)
     }.stateIn(scope, SharingStarted.Eagerly, true)
 
     val blurContinueWatchingNextUp: Flow<Boolean> = profileFlow { prefs ->
-        prefs[blurContinueWatchingNextUpKey] ?: false
+        prefs.booleanOrDefault(blurContinueWatchingNextUpKey, false)
     }
 
     val continueWatchingSortMode: Flow<ContinueWatchingSortMode> = profileFlow { prefs ->
-        val stored = prefs[continueWatchingSortModeKey] ?: ContinueWatchingSortMode.DEFAULT.name
+        val stored = prefs.stringOrNull(continueWatchingSortModeKey) ?: ContinueWatchingSortMode.DEFAULT.name
         runCatching { ContinueWatchingSortMode.valueOf(stored) }
             .getOrDefault(ContinueWatchingSortMode.DEFAULT)
     }
 
     val detailPageTrailerButtonEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[detailPageTrailerButtonEnabledKey] ?: true
+        prefs.booleanOrDefault(detailPageTrailerButtonEnabledKey, true)
     }
 
     val preferExternalMetaAddonDetail: StateFlow<Boolean> = profileFlow { prefs ->
-        prefs[preferExternalMetaAddonDetailKey] ?: true
+        prefs.booleanOrDefault(preferExternalMetaAddonDetailKey, true)
     }.stateIn(scope, SharingStarted.Eagerly, true)
 
     val hideUnreleasedContent: Flow<Boolean> = profileFlow { prefs ->
-        prefs[hideUnreleasedContentKey] ?: false
+        prefs.booleanOrDefault(hideUnreleasedContentKey, false)
     }
 
     val showFullReleaseDate: Flow<Boolean> = profileFlow { prefs ->
-        prefs[showFullReleaseDateKey] ?: true
+        prefs.booleanOrDefault(showFullReleaseDateKey, true)
     }
 
     val memoryOnlyVerticalScroll: Flow<Boolean> = profileFlow { prefs ->
-        prefs[memoryOnlyVerticalScrollKey] ?: true
+        prefs.booleanOrDefault(memoryOnlyVerticalScrollKey, true)
     }
 
     val smoothBringIntoViewEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[smoothBringIntoViewEnabledKey] ?: true
+        prefs.booleanOrDefault(smoothBringIntoViewEnabledKey, true)
     }
 
     val fastHorizontalNavigationEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[fastHorizontalNavigationEnabledKey] ?: false
+        prefs.booleanOrDefault(fastHorizontalNavigationEnabledKey, false)
     }
 
     val followAddonsOrder: Flow<Boolean> = profileFlow { prefs ->
-        prefs[followAddonsOrderKey] ?: false
+        prefs.booleanOrDefault(followAddonsOrderKey, false)
     }
 
     val composeHighlighterEnabled: Flow<Boolean> = profileFlow { prefs ->
-        prefs[composeHighlighterEnabledKey] ?: false
+        prefs.booleanOrDefault(composeHighlighterEnabledKey, false)
     }
 
     suspend fun setMemoryOnlyVerticalScroll(enabled: Boolean) {
@@ -422,12 +421,12 @@ class LayoutPreferenceDataStore @Inject constructor(
 
     suspend fun setLayout(layout: HomeLayout) {
         store().edit { prefs ->
-            val hadChosenLayout = prefs[hasChosenKey] ?: false
+            val hadChosenLayout = prefs.booleanOrDefault(hasChosenKey, false)
             prefs[layoutKey] = layout.name
             if (
                 layout == HomeLayout.MODERN &&
                 !hadChosenLayout &&
-                prefs[focusedPosterBackdropTrailerPlaybackTargetKey] == null
+                prefs.stringOrNull(focusedPosterBackdropTrailerPlaybackTargetKey) == null
             ) {
                 prefs[focusedPosterBackdropTrailerPlaybackTargetKey] =
                     FocusedPosterTrailerPlaybackTarget.HERO_MEDIA.name
@@ -478,7 +477,8 @@ class LayoutPreferenceDataStore @Inject constructor(
     suspend fun setSidebarCollapsedByDefault(collapsed: Boolean) {
         store().edit { prefs ->
             val modernSidebarEnabled =
-                prefs[modernSidebarEnabledKey] ?: prefs[legacyModernSidebarEnabledKey] ?: false
+                prefs.booleanOrNull(modernSidebarEnabledKey)
+                    ?: prefs.booleanOrDefault(legacyModernSidebarEnabledKey, false)
             prefs[sidebarCollapsedKey] = if (modernSidebarEnabled) false else collapsed
         }
     }
@@ -828,7 +828,7 @@ class LayoutPreferenceDataStore @Inject constructor(
             orderKeys = parseCatalogKeys(prefs.getStringOrMigrateSet(homeCatalogOrderKeysKey)),
             disabledKeys = parseCatalogKeys(prefs.getStringOrMigrateSet(disabledHomeCatalogKeysKey)).toSet(),
             customTitles = parseCustomTitles(prefs.getStringOrMigrateSet(customCatalogTitlesKey)),
-            hideUnreleasedContent = prefs[hideUnreleasedContentKey] ?: false
+            hideUnreleasedContent = prefs.booleanOrDefault(hideUnreleasedContentKey, false)
         )
     }
 }

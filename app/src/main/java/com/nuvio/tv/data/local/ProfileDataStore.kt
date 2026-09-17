@@ -16,7 +16,6 @@ import com.squareup.moshi.Moshi
 import com.squareup.moshi.Types
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -42,8 +41,8 @@ class ProfileDataStore @Inject constructor(
 
     private val profileListType = Types.newParameterizedType(List::class.java, ProfileJson::class.java)
 
-    val profilesList: Flow<List<UserProfile>> = dataStore.data.map { prefs ->
-        val json = prefs[profilesJsonKey]
+    val profilesList: Flow<List<UserProfile>> = dataStore.data.mapPreferencesSafely("ProfileDataStore") { prefs ->
+        val json = prefs.stringOrNull(profilesJsonKey)
         if (json != null) {
             parseProfiles(json)
         } else {
@@ -51,16 +50,16 @@ class ProfileDataStore @Inject constructor(
         }
     }
 
-    val activeProfileId: Flow<Int> = dataStore.data.map { prefs ->
-        prefs[activeProfileIdKey] ?: 1
+    val activeProfileId: Flow<Int> = dataStore.data.mapPreferencesSafely("ProfileDataStore") { prefs ->
+        prefs.intOrDefault(activeProfileIdKey, 1)
     }
 
-    val hasEverSelectedProfile: Flow<Boolean> = dataStore.data.map { prefs ->
-        prefs[hasEverSelectedProfileKey] ?: false
+    val hasEverSelectedProfile: Flow<Boolean> = dataStore.data.mapPreferencesSafely("ProfileDataStore") { prefs ->
+        prefs.booleanOrDefault(hasEverSelectedProfileKey, false)
     }
 
-    val rememberLastProfileEnabled: Flow<Boolean> = dataStore.data.map { prefs ->
-        prefs[rememberLastProfileEnabledKey] ?: false
+    val rememberLastProfileEnabled: Flow<Boolean> = dataStore.data.mapPreferencesSafely("ProfileDataStore") { prefs ->
+        prefs.booleanOrDefault(rememberLastProfileEnabledKey, false)
     }
 
     suspend fun setActiveProfile(id: Int) {
@@ -78,7 +77,7 @@ class ProfileDataStore @Inject constructor(
 
     suspend fun upsertProfile(profile: UserProfile) {
         dataStore.edit { prefs ->
-            val current = parseProfiles(prefs[profilesJsonKey]).toMutableList()
+            val current = parseProfiles(prefs.stringOrNull(profilesJsonKey)).toMutableList()
             val index = current.indexOfFirst { it.id == profile.id }
             if (index >= 0) {
                 current[index] = profile
@@ -92,10 +91,10 @@ class ProfileDataStore @Inject constructor(
     suspend fun deleteProfile(id: Int) {
         if (id == 1) return
         dataStore.edit { prefs ->
-            val current = parseProfiles(prefs[profilesJsonKey]).toMutableList()
+            val current = parseProfiles(prefs.stringOrNull(profilesJsonKey)).toMutableList()
             current.removeAll { it.id == id }
             prefs[profilesJsonKey] = serializeProfiles(current)
-            if ((prefs[activeProfileIdKey] ?: 1) == id) {
+            if ((prefs.intOrDefault(activeProfileIdKey, 1)) == id) {
                 prefs[activeProfileIdKey] = 1
             }
         }
@@ -105,7 +104,7 @@ class ProfileDataStore @Inject constructor(
         dataStore.edit { prefs ->
             val normalizedProfiles = normalizeProfiles(profiles)
             prefs[profilesJsonKey] = serializeProfiles(normalizedProfiles)
-            val activeId = prefs[activeProfileIdKey] ?: 1
+            val activeId = prefs.intOrDefault(activeProfileIdKey, 1)
             if (normalizedProfiles.none { it.id == activeId }) {
                 prefs[activeProfileIdKey] = 1
             }

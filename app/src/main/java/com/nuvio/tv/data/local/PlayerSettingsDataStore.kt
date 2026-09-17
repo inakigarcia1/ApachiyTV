@@ -599,8 +599,9 @@ class PlayerSettingsDataStore @Inject constructor(
     }
 
     private suspend fun migrateProfile(profileId: Int) {
-        factory.get(profileId, FEATURE).edit { prefs ->
-                val loadControlMigrated = prefs[migrationLoadControlDefaultsAlignedDoneKey] ?: false
+        try {
+            factory.get(profileId, FEATURE).edit { prefs ->
+                val loadControlMigrated = prefs.booleanOrDefault(migrationLoadControlDefaultsAlignedDoneKey, false)
                 if (!loadControlMigrated) {
                     val currentMin = prefs[minBufferMsKey]
                     val currentMax = prefs[maxBufferMsKey]
@@ -785,6 +786,9 @@ class PlayerSettingsDataStore @Inject constructor(
                     prefs.remove(subtitleSecondaryLanguageKey)
                 }
             }
+            }
+        } catch (e: ClassCastException) {
+            android.util.Log.e("PlayerSettingsDS", "Skipping player settings migration due to type mismatch", e)
         }
     }
 
@@ -793,7 +797,7 @@ class PlayerSettingsDataStore @Inject constructor(
      */
     val playerSettings: Flow<PlayerSettings> = profileManager.activeProfileId.flatMapLatest { pid ->
         factory.get(pid, FEATURE).data.onStart { migrateProfile(pid) }
-    }.map { prefs ->
+    }.mapPreferencesSafely("PlayerSettingsDS") { prefs ->
             PlayerSettings(
                 playerPreference = prefs[playerPreferenceKey]?.let {
                     runCatching { PlayerPreference.valueOf(it) }.getOrDefault(PlayerPreference.INTERNAL)
@@ -1625,7 +1629,10 @@ class PlayerSettingsDataStore @Inject constructor(
     }
 
     private fun isNativeMemoryActive(prefs: androidx.datastore.preferences.core.Preferences): Boolean {
-        val isEnabled = prefs[nuvioPerformanceModeEnabledKey] ?: PlayerSettings.DEFAULT_NUVIO_PERFORMANCE_MODE_ENABLED
+        val isEnabled = prefs.booleanOrDefault(
+            nuvioPerformanceModeEnabledKey,
+            PlayerSettings.DEFAULT_NUVIO_PERFORMANCE_MODE_ENABLED
+        )
         return isEnabled && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
     }
 }

@@ -6,7 +6,6 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import com.nuvio.tv.core.profile.ProfileManager
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -26,10 +25,10 @@ class TrailerSettingsDataStore @Inject constructor(
     private val delaySecondsKey = intPreferencesKey("trailer_delay_seconds")
 
     val settings: Flow<TrailerSettings> = profileManager.activeProfileId.flatMapLatest { pid ->
-        factory.get(pid, FEATURE).data.map { prefs ->
+        factory.get(pid, FEATURE).data.mapPreferencesSafely("TrailerSettingsDS") { prefs ->
             TrailerSettings(
-                enabled = prefs[enabledKey] ?: true,
-                delaySeconds = prefs[delaySecondsKey] ?: 7
+                enabled = prefs.booleanOrDefault(enabledKey, true),
+                delaySeconds = prefs.intOrDefault(delaySecondsKey, 7)
             )
         }
     }

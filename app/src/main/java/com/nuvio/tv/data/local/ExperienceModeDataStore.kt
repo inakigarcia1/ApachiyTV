@@ -8,7 +8,6 @@ import com.nuvio.tv.domain.model.ExperienceMode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -30,17 +29,17 @@ class ExperienceModeDataStore @Inject constructor(
     @OptIn(ExperimentalCoroutinesApi::class)
     private fun <T> profileFlow(extract: (androidx.datastore.preferences.core.Preferences) -> T): Flow<T> =
         profileManager.activeProfileId.flatMapLatest { pid ->
-            factory.get(pid, FEATURE).data.map { prefs -> extract(prefs) }
+            factory.get(pid, FEATURE).data.mapPreferencesSafely("ExperienceModeDS", extract)
         }
 
     val mode: Flow<ExperienceMode?> = profileFlow { prefs ->
-        prefs[modeKey]?.let { value ->
+        prefs.stringOrNull(modeKey)?.let { value ->
             runCatching { ExperienceMode.valueOf(value) }.getOrNull()
         }
     }
 
     val addonSetupSkipped: Flow<Boolean> = profileFlow { prefs ->
-        prefs[addonSetupSkippedKey] ?: false
+        prefs.booleanOrDefault(addonSetupSkippedKey, false)
     }
 
     suspend fun setMode(mode: ExperienceMode) {

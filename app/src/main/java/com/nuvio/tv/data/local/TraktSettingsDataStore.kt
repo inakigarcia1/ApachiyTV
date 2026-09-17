@@ -73,9 +73,9 @@ class TraktSettingsDataStore @Inject constructor(
     private val simklAnimeIdPreferenceKey = stringPreferencesKey("simkl_anime_id_preference")
 
     val continueWatchingDaysCap: Flow<Int> = profileManager.activeProfileId.flatMapLatest { pid ->
-        factory.get(pid, FEATURE).data.map { prefs ->
+        factory.get(pid, FEATURE).data.mapPreferencesSafely("TraktSettingsDS") { prefs ->
             normalizeContinueWatchingDaysCap(
-                prefs[continueWatchingDaysCapKey] ?: DEFAULT_CONTINUE_WATCHING_DAYS_CAP
+                prefs.intOrDefault(continueWatchingDaysCapKey, DEFAULT_CONTINUE_WATCHING_DAYS_CAP)
             )
         }
     }
@@ -90,14 +90,14 @@ class TraktSettingsDataStore @Inject constructor(
     }
 
     val showUnairedNextUp: Flow<Boolean> = profileManager.activeProfileId.flatMapLatest { pid ->
-        factory.get(pid, FEATURE).data.map { prefs ->
-            prefs[showUnairedNextUpKey] ?: DEFAULT_SHOW_UNAIRED_NEXT_UP
+        factory.get(pid, FEATURE).data.mapPreferencesSafely("TraktSettingsDS") { prefs ->
+            prefs.booleanOrDefault(showUnairedNextUpKey, DEFAULT_SHOW_UNAIRED_NEXT_UP)
         }
     }
 
     val nextUpFromFurthestEpisode: Flow<Boolean> = profileManager.activeProfileId.flatMapLatest { pid ->
-        factory.get(pid, FEATURE).data.map { prefs ->
-            prefs[nextUpFromFurthestEpisodeKey] ?: true
+        factory.get(pid, FEATURE).data.mapPreferencesSafely("TraktSettingsDS") { prefs ->
+            prefs.booleanOrDefault(nextUpFromFurthestEpisodeKey, true)
         }
     }
 
@@ -108,8 +108,8 @@ class TraktSettingsDataStore @Inject constructor(
     }
 
     val watchProgressSource: StateFlow<WatchProgressSource> = profileManager.activeProfileId.flatMapLatest { pid ->
-        factory.get(pid, FEATURE).data.map { prefs ->
-            WatchProgressSource.fromStorage(prefs[watchProgressSourceKey])
+        factory.get(pid, FEATURE).data.mapPreferencesSafely("TraktSettingsDS") { prefs ->
+            WatchProgressSource.fromStorage(prefs.stringOrNull(watchProgressSourceKey))
         }
     }.stateIn(scope, SharingStarted.Eagerly, DEFAULT_WATCH_PROGRESS_SOURCE)
 

@@ -9,7 +9,6 @@ import com.nuvio.tv.domain.model.AppTheme
 import com.nuvio.tv.domain.model.SettingsUiStyle
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -32,8 +31,8 @@ class ThemeDataStore @Inject constructor(
     private val settingsUiStyleKey = stringPreferencesKey("settings_ui_style")
 
     val selectedTheme: Flow<AppTheme> = profileManager.activeProfileId.flatMapLatest { pid ->
-        factory.get(pid, FEATURE).data.map { prefs ->
-            val themeName = prefs[themeKey] ?: AppTheme.WHITE.name
+        factory.get(pid, FEATURE).data.mapPreferencesSafely("ThemeDataStore") { prefs ->
+            val themeName = prefs.stringOrNull(themeKey) ?: AppTheme.WHITE.name
             try {
                 AppTheme.valueOf(themeName)
             } catch (e: IllegalArgumentException) {
@@ -43,8 +42,8 @@ class ThemeDataStore @Inject constructor(
     }
 
     val selectedFont: Flow<AppFont> = profileManager.activeProfileId.flatMapLatest { pid ->
-        factory.get(pid, FEATURE).data.map { prefs ->
-            val fontName = prefs[fontKey] ?: AppFont.BRICOLAGE_GROTESQUE.name
+        factory.get(pid, FEATURE).data.mapPreferencesSafely("ThemeDataStore") { prefs ->
+            val fontName = prefs.stringOrNull(fontKey) ?: AppFont.BRICOLAGE_GROTESQUE.name
             try {
                 AppFont.valueOf(fontName)
             } catch (e: IllegalArgumentException) {
@@ -54,20 +53,20 @@ class ThemeDataStore @Inject constructor(
     }
 
     val amoledMode: Flow<Boolean> = profileManager.activeProfileId.flatMapLatest { pid ->
-        factory.get(pid, FEATURE).data.map { prefs ->
-            prefs[amoledModeKey] ?: false
+        factory.get(pid, FEATURE).data.mapPreferencesSafely("ThemeDataStore") { prefs ->
+            prefs.booleanOrDefault(amoledModeKey, false)
         }
     }
 
     val amoledSurfacesMode: Flow<Boolean> = profileManager.activeProfileId.flatMapLatest { pid ->
-        factory.get(pid, FEATURE).data.map { prefs ->
-            prefs[amoledSurfacesModeKey] ?: false
+        factory.get(pid, FEATURE).data.mapPreferencesSafely("ThemeDataStore") { prefs ->
+            prefs.booleanOrDefault(amoledSurfacesModeKey, false)
         }
     }
 
     val settingsUiStyle: Flow<SettingsUiStyle> = profileManager.activeProfileId.flatMapLatest { pid ->
-        factory.get(pid, FEATURE).data.map { prefs ->
-            val styleName = prefs[settingsUiStyleKey] ?: SettingsUiStyle.CLASSIC.name
+        factory.get(pid, FEATURE).data.mapPreferencesSafely("ThemeDataStore") { prefs ->
+            val styleName = prefs.stringOrNull(settingsUiStyleKey) ?: SettingsUiStyle.CLASSIC.name
             try {
                 SettingsUiStyle.valueOf(styleName)
             } catch (e: IllegalArgumentException) {
