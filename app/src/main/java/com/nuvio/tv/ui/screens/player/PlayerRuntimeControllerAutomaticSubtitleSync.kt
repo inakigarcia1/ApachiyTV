@@ -8,9 +8,12 @@ import androidx.media3.common.C
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.domain.model.Subtitle
 import com.nuvio.tv.ui.screens.player.autosync.AutoSyncPreferences
+import com.nuvio.tv.ui.screens.player.autosync.AutoSyncResolvedTimeline
 import com.nuvio.tv.ui.screens.player.autosync.AutomaticSubtitleSync
 import com.nuvio.tv.ui.screens.player.autosync.applyAutoSyncSidecarTimeline
 import com.nuvio.tv.ui.screens.player.autosync.effectiveAutoSyncEnabled
+import com.nuvio.tv.ui.screens.player.autosync.effectiveSyncToleranceMs
+import com.nuvio.tv.ui.screens.player.autosync.maxAlignmentShiftMs
 import com.nuvio.tv.ui.screens.player.autosync.renderRetimedSrt
 import com.nuvio.tv.ui.screens.player.autosync.replaceAutoSyncSidecarSubtitle
 import kotlinx.coroutines.launch
@@ -71,6 +74,12 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
             if (currentStreamUrl != sourceUrlAtStart) return@launch
             if (_uiState.value.selectedAddonSubtitle?.url != selectedUrl) return@launch
             if (resolved.subtitleUrl != selectedUrl) return@launch
+            val withinToleranceMs = withinAutoSyncToleranceMs(selectedUrl, resolved)
+            if (withinToleranceMs != null) {
+                setSubtitleDelayMs(targetMs = 0, showOverlay = false)
+                showAutoSyncNotice(withinToleranceToast(withinToleranceMs))
+                return@launch
+            }
             val body = resolved.subtitleBody ?: return@launch
             val cues = PlayerSubtitleCueParser.parseFromText(body, selectedUrl)
             val rewritten = renderRetimedSrt(cues, resolved.timeline)
@@ -152,7 +161,9 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
             return@launch
         }
 
+        val withinToleranceMs = withinAutoSyncToleranceMs(selectedUrl, resolved)
         val applied = when {
+            withinToleranceMs != null -> activeSidecarSubtitleKey == selectedUrl
             resolved.subtitleUrl == selectedUrl -> {
                 applyAutoSyncSidecarTimeline(
                     sidecar = this@maybeRunAutomaticSubtitleSync,
@@ -192,15 +203,34 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
         }
         setSubtitleDelayMs(targetMs = 0, showOverlay = false)
         showAutoSyncNotice(
-            buildAutoSyncSuccessToast(
-                replacedSubtitle = resolved.subtitleUrl != selectedUrl,
-                scale = resolved.timeline.alignmentScale,
-                interceptMs = resolved.timeline.alignmentInterceptMs,
-            ),
+            if (withinToleranceMs != null) {
+                withinToleranceToast(withinToleranceMs)
+            } else {
+                buildAutoSyncSuccessToast(
+                    replacedSubtitle = resolved.subtitleUrl != selectedUrl,
+                    scale = resolved.timeline.alignmentScale,
+                    interceptMs = resolved.timeline.alignmentInterceptMs,
+                )
+            },
         )
     }
     return true
 }
+
+private fun withinAutoSyncToleranceMs(
+    selectedUrl: String,
+    resolved: AutoSyncResolvedTimeline,
+): Int? {
+    val toleranceMs = effectiveSyncToleranceMs(
+        developerSettingsVisible = BuildConfig.IS_DEBUG_BUILD,
+        storedToleranceMs = AutoSyncPreferences.syncToleranceMs.value,
+    )
+    if (toleranceMs <= 0 || resolved.subtitleUrl != selectedUrl) return null
+    return toleranceMs.takeIf { resolved.timeline.maxAlignmentShiftMs() <= it }
+}
+
+private fun withinToleranceToast(toleranceMs: Int): String =
+    "Auto Sync V2 • in sync (within $toleranceMs ms tolerance)"
 
 private fun buildAutoSyncSuccessToast(
     replacedSubtitle: Boolean,
