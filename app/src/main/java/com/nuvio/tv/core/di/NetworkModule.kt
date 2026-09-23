@@ -45,6 +45,7 @@ import retrofit2.converter.moshi.MoshiConverterFactory
 import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.network.ApachiyAddonAuthInterceptor
 import com.nuvio.tv.core.network.IPv4FirstDns
+import com.nuvio.tv.core.network.useEmulatorPlaintext
 import com.nuvio.tv.core.diagnostics.SentryNetworkBreadcrumbInterceptor
 import java.io.File
 import java.security.SecureRandom
@@ -113,6 +114,7 @@ object NetworkModule {
             init(null, arrayOf<TrustManager>(trustAllManager), SecureRandom())
         }
         return OkHttpClient.Builder()
+            .useEmulatorPlaintext()
             .dns(IPv4FirstDns())
             .sslSocketFactory(sslContext.socketFactory, trustAllManager)
             .hostnameVerifier { _, _ -> true }

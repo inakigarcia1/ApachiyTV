@@ -49,8 +49,6 @@ class AvatarRepository @Inject constructor(
     }
 
     private fun avatarImageUrl(storagePath: String): String {
-        if (storagePath.startsWith("http://") || storagePath.startsWith("https://")) return storagePath
-        val baseUrl = serverConfiguration.avatarPublicBaseUrl.orEmpty().trimEnd('/')
-        return if (baseUrl.isNotEmpty()) "$baseUrl/$storagePath" else storagePath
+        return resolveAvatarPublicObjectUrl(serverConfiguration.avatarPublicBaseUrl, storagePath)
     }
 }

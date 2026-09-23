@@ -90,10 +90,12 @@ class ProfileSelectionViewModel @Inject constructor(
         if (_isCreating.value) return
         viewModelScope.launch {
             _isCreating.value = true
+            val resolvedAvatarUrl = avatarId?.let { getAvatarImageUrl(it) }
             val success = profileManager.createProfile(
                 name = name,
                 avatarColorHex = avatarColorHex,
-                avatarId = avatarId
+                avatarId = avatarId,
+                avatarUrl = resolvedAvatarUrl
             )
             if (success) {
                 profileSyncService.pushToRemote()

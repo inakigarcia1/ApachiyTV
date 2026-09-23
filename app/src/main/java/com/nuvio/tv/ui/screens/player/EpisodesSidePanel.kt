@@ -236,20 +236,61 @@ private fun EpisodeStreamsView(
         }
 
         else -> {
+            val streamKeys = remember(uiState.episodeFilteredStreams) {
+                val seen = mutableMapOf<String, Int>()
+                uiState.episodeFilteredStreams.map { stream ->
+                    val base = stream.stableKey(0)
+                    val count = seen.getOrDefault(base, 0)
+                    seen[base] = count + 1
+                    stream.stableKey(count)
+                }
+            }
+            val initialFocusStream = uiState.episodeFilteredStreams.firstOrNull()
+            val initialFocusKey = streamKeys.firstOrNull()
+            val streamFocusRequesters = remember { mutableMapOf<String, FocusRequester>() }
+            streamKeys.forEach { key ->
+                streamFocusRequesters.getOrPut(key) { FocusRequester() }
+            }
+            if (initialFocusKey != null) {
+                streamFocusRequesters[initialFocusKey] = streamsFocusRequester
+            }
+            var focusedStreamKey by remember(initialFocusKey) { mutableStateOf(initialFocusKey) }
+            var initialRowHasFocus by remember(initialFocusKey) { mutableStateOf(false) }
+
+            LaunchedEffect(uiState.isLoadingEpisodeStreams, initialFocusKey, streamKeys) {
+                if (uiState.isLoadingEpisodeStreams || initialFocusKey == null) return@LaunchedEffect
+                initialRowHasFocus = false
+                repeat(40) {
+                    androidx.compose.runtime.withFrameNanos { }
+                    if (initialRowHasFocus) return@LaunchedEffect
+                    runCatching { streamFocusRequesters[initialFocusKey]?.requestFocus() }
+                }
+            }
+
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
                 contentPadding = PaddingValues(top = NuvioTheme.spacing.xs),
-                modifier = Modifier.fillMaxHeight()
+                modifier = Modifier
+                    .fillMaxHeight()
+                    .focusRestorer {
+                        val key = focusedStreamKey ?: initialFocusKey ?: streamKeys.firstOrNull()
+                        key?.let { streamFocusRequesters[it] } ?: streamsFocusRequester
+                    }
             ) {
-                items(uiState.episodeFilteredStreams) { stream ->
+                itemsIndexed(uiState.episodeFilteredStreams, key = { index, _ -> streamKeys[index] }) { index, stream ->
+                    val rowKey = streamKeys[index]
                     StreamItem(
                         stream = stream,
-                        focusRequester = streamsFocusRequester,
-                        requestInitialFocus = stream == uiState.episodeFilteredStreams.firstOrNull(),
+                        focusRequester = streamFocusRequesters.getValue(rowKey),
+                        requestInitialFocus = stream == initialFocusStream,
                         showFileSizeBadges = uiState.showFileSizeBadges,
                         showAddonLogo = uiState.showAddonLogo,
                         badgePlacement = uiState.streamBadgePlacement,
-                        onClick = { onStreamSelected(stream) }
+                        onClick = { onStreamSelected(stream) },
+                        onFocusChanged = { focused ->
+                            if (focused) focusedStreamKey = rowKey
+                            if (stream == initialFocusStream) initialRowHasFocus = focused
+                        },
                     )
                 }
             }

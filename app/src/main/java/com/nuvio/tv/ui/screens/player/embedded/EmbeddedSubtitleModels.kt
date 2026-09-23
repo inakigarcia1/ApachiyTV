@@ -41,7 +41,8 @@ internal object AddonSubtitleLoadingGate {
         pipelineDone: Boolean,
         elapsedMs: Long,
     ): Boolean {
-        if (playerIsLoading) return false
-        return pipelineDone || elapsedMs >= TIMEOUT_MS
+        // Playback starts when the first frame is ready. Subtitle fetch and ffsubsync
+        // keep running behind that; the overlay no longer waits for them.
+        return !playerIsLoading
     }
 }

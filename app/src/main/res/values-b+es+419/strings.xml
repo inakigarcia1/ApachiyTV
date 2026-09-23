@@ -1528,6 +1528,11 @@
     <string name="subtitle_timing_select_addon_first">Primero selecciona una pista de subtítulos del addon.</string>
     <string name="subtitle_auto_sync_select_addon_track">Selecciona una pista de subtítulos del addon para usar Sincronización automática.</string>
     <string name="subtitle_auto_sync_applied">Sincronización aplicada: %1$s</string>
+    <string name="playback_autosync">Sincronizar subtítulos</string>
+    <string name="playback_autosync_sub">Ajusta el subtítulo elegido para que coincida con el audio.</string>
+    <string name="playback_autosync_needs_language">Elegí un idioma de subtítulos para poder activarlo.</string>
+    <string name="playback_autosync_aggressive">Modo agresivo</string>
+    <string name="playback_autosync_aggressive_sub">Acepta coincidencias más débiles para sincronizar igual.</string>
     <string name="subtitle_timing_loading">Cargando líneas de subtítulos…</string>
     <string name="subtitle_timing_no_lines_found">No se encontraron líneas de subtítulos alrededor de este momento.</string>
     <string name="subtitle_timing_press_back_cancel">Presiona Atrás para cancelar</string>

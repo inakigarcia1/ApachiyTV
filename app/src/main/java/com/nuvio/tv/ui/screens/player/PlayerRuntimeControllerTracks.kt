@@ -126,7 +126,8 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
                             codec = codecName,
                             channelCount = format.channelCount.takeIf { it > 0 },
                             isSelected = isSelected,
-                            sampleRate = format.sampleRate.takeIf { it > 0 }
+                            sampleRate = format.sampleRate.takeIf { it > 0 },
+                            isCommentary = isAudioCommentaryTrack(displayName, format.roleFlags)
                         )
                     )
                 }
@@ -152,7 +153,10 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
                             name = format.label ?: format.language ?: context.getString(com.nuvio.tv.R.string.player_track_subtitle_fallback, subtitleTracks.size + 1),
                             language = format.language,
                             trackId = format.id,
-                            codec = CustomDefaultTrackNameProvider.formatNameFromMime(format.sampleMimeType),
+                            codec = CustomDefaultTrackNameProvider.subtitleFormatDisplayName(
+                                format.sampleMimeType,
+                                format.codecs,
+                            ),
                             isForced = hasForcedFlag || nameHintForced || isSongsAndSigns,
                             isSelected = isSelected
                         )
@@ -292,6 +296,10 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
 
     maybeRestorePendingAudioSelectionAfterSubtitleRefresh(audioTracks)?.let { restoredIndex ->
         selectedAudioIndex = restoredIndex
+    }
+
+    tryAutoSelectOriginalAudioTrack(audioTracks)?.let { autoIndex ->
+        selectedAudioIndex = autoIndex
     }
 
     _uiState.update { state ->
@@ -561,7 +569,7 @@ internal fun PlayerRuntimeController.maybeRestorePendingAudioSelectionAfterSubti
         PlayerRuntimeController.TAG,
         "Restoring audio after subtitle refresh index=$index lang=${restoredTrack.language} name=${restoredTrack.name}"
     )
-    selectAudioTrack(index)
+    selectAudioTrack(index, fromUser = false)
     return index
 }
 
@@ -954,7 +962,7 @@ internal fun PlayerRuntimeController.applyPersistedTrackPreference(
                 )
                 if (!alreadySelected) {
                     Log.d(PlayerRuntimeController.TAG, "TRACK_PREF restore: audio index=$index lang=${audioTracks[index].language} name=${audioTracks[index].name}")
-                    selectAudioTrack(index)
+                    selectAudioTrack(index, fromUser = false)
                     _uiState.update { it.copy(selectedAudioTrackIndex = index) }
                 } else {
                     Log.d(PlayerRuntimeController.TAG, "TRACK_PREF restore: audio index=$index already selected, clearing")

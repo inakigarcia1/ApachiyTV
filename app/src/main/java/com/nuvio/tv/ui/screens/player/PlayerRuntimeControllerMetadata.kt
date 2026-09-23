@@ -60,8 +60,12 @@ internal fun PlayerRuntimeController.applyMetaDetails(meta: Meta) {
     metaGenres = meta.genres
     metaCountry = meta.country
     // Fill in content language from meta if not provided via navigation args.
+    val previousLanguage = contentLanguage
     if (contentLanguage == null) {
         contentLanguage = meta.resolveContentLanguage()
+    }
+    if (contentLanguage != null && contentLanguage != previousLanguage) {
+        reapplyOriginalAudioLanguagePreferences()
     }
     val description = resolveDescription(meta)
 

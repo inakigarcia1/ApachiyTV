@@ -26,11 +26,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,16 +63,6 @@ internal fun StreamSourcesSidePanel(
     onStreamSelected: (Stream) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Request focus when loading finishes OR when the list content updates
-    // (ensures higher-priority addons get focus if they load later)
-    LaunchedEffect(uiState.isLoadingSourceStreams, uiState.sourceFilteredStreams.size) {
-        if (!uiState.isLoadingSourceStreams && uiState.sourceFilteredStreams.isNotEmpty()) {
-            try {
-                streamsFocusRequester.requestFocus()
-            } catch (_: Exception) {}
-        }
-    }
-
     Box(
         modifier = modifier
             .fillMaxHeight()
@@ -184,6 +179,35 @@ internal fun StreamSourcesSidePanel(
                             stream.stableKey(count)
                         }
                     }
+                    val initialFocusKey = initialFocusStream?.let { stream ->
+                        val idx = uiState.sourceFilteredStreams.indexOf(stream)
+                        streamKeys.getOrNull(idx)
+                    } ?: streamKeys.firstOrNull()
+                    val streamFocusRequesters = remember { mutableMapOf<String, FocusRequester>() }
+                    streamKeys.forEach { key ->
+                        streamFocusRequesters.getOrPut(key) { FocusRequester() }
+                    }
+                    if (initialFocusKey != null) {
+                        streamFocusRequesters[initialFocusKey] = streamsFocusRequester
+                    }
+                    var focusedStreamKey by remember(initialFocusKey) { mutableStateOf(initialFocusKey) }
+                    var initialRowHasFocus by remember(initialFocusKey) { mutableStateOf(false) }
+
+                    LaunchedEffect(
+                        uiState.isLoadingSourceStreams,
+                        initialFocusKey,
+                        streamKeys,
+                    ) {
+                        if (uiState.isLoadingSourceStreams || initialFocusKey == null) return@LaunchedEffect
+                        initialRowHasFocus = false
+                        repeat(40) {
+                            withFrameNanos { }
+                            if (initialRowHasFocus) return@LaunchedEffect
+                            val requester = streamFocusRequesters[initialFocusKey]
+                                ?: streamsFocusRequester
+                            runCatching { requester.requestFocus() }
+                        }
+                    }
 
                     LazyColumn(
                         verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm),
@@ -193,20 +217,34 @@ internal fun StreamSourcesSidePanel(
                             end = NuvioTheme.spacing.sm,
                             bottom = NuvioTheme.spacing.sm
                         ),
-                        modifier = Modifier.fillMaxHeight()
+                        modifier = Modifier
+                            .fillMaxHeight()
+                            .focusRestorer {
+                                val key = focusedStreamKey ?: initialFocusKey ?: streamKeys.firstOrNull()
+                                key?.let { streamFocusRequesters[it] } ?: streamsFocusRequester
+                            }
                     ) {
                         itemsIndexed(uiState.sourceFilteredStreams, key = { index, _ ->
                             streamKeys[index]
                         }) { index, stream ->
+                            val rowKey = streamKeys[index]
                             StreamItem(
                                 stream = stream,
-                                focusRequester = streamsFocusRequester,
+                                focusRequester = streamFocusRequesters.getValue(rowKey),
                                 requestInitialFocus = stream == initialFocusStream,
                                 isCurrentStream = index == currentStreamIndex,
                                 showFileSizeBadges = uiState.showFileSizeBadges,
                                 showAddonLogo = uiState.showAddonLogo,
                                 badgePlacement = uiState.streamBadgePlacement,
-                                onClick = { onStreamSelected(stream) }
+                                onClick = { onStreamSelected(stream) },
+                                onFocusChanged = { focused ->
+                                    if (focused) {
+                                        focusedStreamKey = rowKey
+                                    }
+                                    if (stream == initialFocusStream) {
+                                        initialRowHasFocus = focused
+                                    }
+                                },
                             )
                         }
                     }

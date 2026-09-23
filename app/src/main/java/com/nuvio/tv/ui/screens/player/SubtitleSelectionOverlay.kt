@@ -1765,6 +1765,7 @@ private fun buildSubtitleOptionRailItems(
     val internalItems = internalTracks
         .filter { normalizeOverlayLanguageKeyForTrack(it) == selectedLanguageKey }
         .map { track ->
+            val formatLabel = track.codec?.trim()?.takeIf { it.isNotEmpty() }
             SubtitleOptionRailItem(
                 id = "internal:${track.index}",
                 kind = SubtitleOptionKind.INTERNAL,
@@ -1772,9 +1773,9 @@ private fun buildSubtitleOptionRailItems(
                     track.language,
                     normalizeOverlayLanguageKeyForTrack(track)
                 ),
-                sourceLabel = builtInLabel,
+                sourceLabel = embeddedBuiltInSourceLabel(builtInLabel, formatLabel),
                 meta = listOfNotNull(
-                    track.codec,
+                    if (!showEmbeddedFormatInBuiltInChip()) formatLabel else null,
                     if (track.isForced) forcedLabel else null
                 ).joinToString(" • ").ifBlank { null },
                 isSelected = "internal:${track.index}" == selectedOptionId,

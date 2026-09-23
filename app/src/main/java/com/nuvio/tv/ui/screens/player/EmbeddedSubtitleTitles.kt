@@ -1,5 +1,6 @@
 package com.nuvio.tv.ui.screens.player
 
+import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.domain.model.Subtitle
 
 private const val UnknownLanguageKey = "__unknown__"
@@ -24,3 +25,12 @@ fun internalSubtitleRailTitle(language: String?, languageKey: String): String {
 
     return Subtitle.languageCodeToName("und")
 }
+
+/** Chip above the language line in the embedded subtitle option rail. */
+fun embeddedBuiltInSourceLabel(builtInLabel: String, formatLabel: String?): String {
+    val format = formatLabel?.trim()?.takeIf { it.isNotEmpty() }
+    if (!BuildConfig.DEBUG || format == null) return builtInLabel
+    return "$builtInLabel ($format)"
+}
+
+fun showEmbeddedFormatInBuiltInChip(): Boolean = BuildConfig.DEBUG

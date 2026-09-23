@@ -1531,7 +1531,11 @@ private fun EditProfileOverlay(
                                 name = profileName,
                                 avatarColorHex = selectedColorHex,
                                 avatarId = selectedAvatarId,
-                                avatarUrl = if (hasChangedAvatarSelection) null else profile.avatarUrl
+                                avatarUrl = when {
+                                    selectedAvatar != null -> selectedAvatar.imageUrl
+                                    hasChangedAvatarSelection -> null
+                                    else -> profile.avatarUrl
+                                }
                             )
                         )
                     }

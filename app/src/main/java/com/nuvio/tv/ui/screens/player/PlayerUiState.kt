@@ -237,7 +237,8 @@ data class TrackInfo(
     val channelCount: Int? = null,
     val isForced: Boolean = false,
     val isSelected: Boolean = false,
-    val sampleRate: Int? = null
+    val sampleRate: Int? = null,
+    val isCommentary: Boolean = false
 )
 
 data class NextEpisodeInfo(

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.nuvio.tv.core.network.IPv4FirstDns
+import com.nuvio.tv.core.network.useEmulatorPlaintext
 import com.nuvio.tv.core.player.SubtitleCharsetDetector
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -16,6 +17,7 @@ import java.util.concurrent.TimeUnit
 
 private val subtitleAutoSyncHttpClient: OkHttpClient by lazy {
     OkHttpClient.Builder()
+        .useEmulatorPlaintext()
         .dns(IPv4FirstDns())
         // Sidecar + auto-sync both use this client; keep timeouts generous for flaky hosts.
         .connectTimeout(12_000, TimeUnit.MILLISECONDS)
@@ -200,6 +202,12 @@ private fun PlayerRuntimeController.maybeLoadSubtitleAutoSyncCues(force: Boolean
  * subtitle URL shares the same host as the active stream. Forwarding debrid/CDN headers to
  * OpenSubtitles-style hosts is a common cause of intermittent HTTP 4xx / empty bodies.
  */
+@Suppress("UNUSED_PARAMETER")
+internal suspend fun PlayerRuntimeController.downloadSubtitleBody(
+    url: String,
+    headers: Map<String, String>,
+): String = downloadSubtitleBody(url)
+
 internal suspend fun PlayerRuntimeController.downloadSubtitleBody(url: String): String =
     withContext(Dispatchers.IO) {
         var lastError: Exception? = null

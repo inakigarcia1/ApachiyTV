@@ -112,6 +112,11 @@ fun EssentialPlaybackSettingsContent(
                         onClick = { showSubtitleLanguageDialog = true },
                         enabled = settings != null
                     )
+                    AutoSyncDeveloperToggles(
+                        preferredLanguage = settings?.subtitleStyle?.preferredLanguage,
+                        onRequestLanguage = { showSubtitleLanguageDialog = true },
+                        enabled = settings != null,
+                    )
                     SettingsToggleRow(
                         title = stringResource(R.string.sub_use_forced_subtitles),
                         subtitle = stringResource(R.string.sub_use_forced_subtitles_desc),

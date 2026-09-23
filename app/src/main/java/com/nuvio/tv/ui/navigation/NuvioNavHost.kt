@@ -260,10 +260,14 @@ fun NuvioNavHost(
                     )
                 },
                 onContinueWatchingClick = { item ->
-                    navigateFromContinueWatching(item)
+                    navigateFromContinueWatching(item, manualSelection = true)
                 },
                 onContinueWatchingStartFromBeginning = { item ->
-                    navigateFromContinueWatching(item, startFromBeginning = true)
+                    navigateFromContinueWatching(
+                        item,
+                        manualSelection = true,
+                        startFromBeginning = true
+                    )
                 },
                 onContinueWatchingPlayManually = { item ->
                     navigateFromContinueWatching(item, manualSelection = true)

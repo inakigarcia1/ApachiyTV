@@ -149,6 +149,8 @@ import com.nuvio.tv.ui.components.LocalCardDepthStyle
 import com.nuvio.tv.ui.components.ProfileAvatarCircle
 import com.nuvio.tv.ui.navigation.LocalPlaybackGate
 import com.nuvio.tv.ui.navigation.NuvioNavHost
+import com.nuvio.tv.core.sync.androidtv.TvLauncherIntentExtras
+import com.nuvio.tv.core.sync.androidtv.TvLauncherLaunchRequest
 import com.nuvio.tv.ui.navigation.Screen
 import com.nuvio.tv.ui.screens.account.AuthQrSignInScreen
 import com.nuvio.tv.ui.screens.profile.ProfileSelectionScreen
@@ -274,6 +276,7 @@ class MainActivity : ComponentActivity() {
     lateinit var deepLinkHandler: DeepLinkHandler
 
     private val pendingDeepLinkUrl = MutableStateFlow<String?>(null)
+    private val pendingTvLauncherLaunch = MutableStateFlow<TvLauncherLaunchRequest?>(null)
 
     /** After the profile picker, land on Home instead of restoring a leftover player/stream. */
     private var resetNavToHomeAfterProfileSelection = false
@@ -326,9 +329,7 @@ class MainActivity : ComponentActivity() {
             com.nuvio.tv.core.player.DisplayCapabilities.logSummary(snapshot)
         }
 
-        // Extract extras set by the Continue Watching launcher channel preview programs.
-        val launchContentId = intent?.getStringExtra("contentId")
-        val launchContentType = intent?.getStringExtra("contentType")
+        captureTvLauncherIntent(intent)
         captureDeepLinkIntent(intent)
 
         setContent {
@@ -740,16 +741,49 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
-                    // Navigate to content when launched from the Continue Watching channel row.
-                    LaunchedEffect(navController) {
-                        if (launchContentId != null && launchContentType != null && layoutChosen) {
+                    val pendingTvLauncher by pendingTvLauncherLaunch.collectAsState()
+                    LaunchedEffect(navController, layoutChosen, pendingTvLauncher) {
+                        val launch = pendingTvLauncher ?: return@LaunchedEffect
+                        if (!layoutChosen) return@LaunchedEffect
+                        if (launch.openStreamOptions && launch.videoId.isNotBlank()) {
+                            if (launch.contentId.isNotBlank()) {
+                                navController.navigate(
+                                    Screen.Detail.createRoute(
+                                        itemId = launch.contentId,
+                                        itemType = launch.contentType,
+                                        returnFocusSeason = launch.season,
+                                        returnFocusEpisode = launch.episode,
+                                        returnToHomeOnBack = true,
+                                        heroBackdropUrl = launch.backdrop
+                                    )
+                                )
+                            }
+                            navController.navigate(
+                                Screen.Stream.createRoute(
+                                    videoId = launch.videoId,
+                                    contentType = launch.contentType,
+                                    title = launch.title,
+                                    poster = launch.poster,
+                                    backdrop = launch.backdrop,
+                                    logo = launch.logo,
+                                    season = launch.season,
+                                    episode = launch.episode,
+                                    contentId = launch.contentId,
+                                    contentName = launch.title,
+                                    manualSelection = true,
+                                    returnToDetailOnBack = true,
+                                    returnToHomeOnBack = true
+                                )
+                            )
+                        } else {
                             navController.navigate(
                                 Screen.Detail.createRoute(
-                                    itemId = launchContentId,
-                                    itemType = launchContentType
+                                    itemId = launch.contentId,
+                                    itemType = launch.contentType
                                 )
                             )
                         }
+                        pendingTvLauncherLaunch.value = null
                     }
 
                     LaunchedEffect(navController, layoutChosen, pendingDeepLink) {
@@ -993,7 +1027,35 @@ class MainActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        captureTvLauncherIntent(intent)
         captureDeepLinkIntent(intent)
+    }
+
+    private fun captureTvLauncherIntent(intent: Intent?) {
+        val contentId = intent?.getStringExtra(TvLauncherIntentExtras.CONTENT_ID)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: return
+        val contentType = intent?.getStringExtra(TvLauncherIntentExtras.CONTENT_TYPE)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: return
+        val videoId = intent.getStringExtra(TvLauncherIntentExtras.VIDEO_ID)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: contentId
+        val title = intent.getStringExtra(TvLauncherIntentExtras.TITLE)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: contentId
+        val season = intent.getIntExtra(TvLauncherIntentExtras.SEASON, Int.MIN_VALUE)
+            .takeIf { it != Int.MIN_VALUE }
+        val episode = intent.getIntExtra(TvLauncherIntentExtras.EPISODE, Int.MIN_VALUE)
+            .takeIf { it != Int.MIN_VALUE }
+        pendingTvLauncherLaunch.value = TvLauncherLaunchRequest(
+            contentId = contentId,
+            contentType = contentType,
+            videoId = videoId,
+            title = title,
+            season = season,
+            episode = episode,
+            poster = intent.getStringExtra(TvLauncherIntentExtras.POSTER),
+            backdrop = intent.getStringExtra(TvLauncherIntentExtras.BACKDROP),
+            logo = intent.getStringExtra(TvLauncherIntentExtras.LOGO),
+            openStreamOptions = intent.getBooleanExtra(TvLauncherIntentExtras.OPEN_STREAM_OPTIONS, false)
+        )
     }
 
     private fun captureDeepLinkIntent(intent: Intent?) {

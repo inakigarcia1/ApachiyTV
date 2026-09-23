@@ -10,6 +10,7 @@ plugins {
 }
 
 import java.io.File
+import java.net.URI
 import java.util.Properties
 
 fun parseBooleanProperty(value: String?): Boolean {
@@ -41,11 +42,46 @@ val localProperties = Properties().apply {
     }
 }
 
+val useLocalDev = (
+    providers.gradleProperty("apachiy.useLocalDev").orNull
+        ?: providers.gradleProperty("nuvio.useLocalDev").orNull
+        ?: providers.environmentVariable("APACHIY_USE_LOCAL_DEV").orNull
+    )?.trim()?.let { value ->
+        value.equals("true", ignoreCase = true) || value == "1"
+    } ?: false
+
 val devProperties = Properties().apply {
+    if (!useLocalDev) return@apply
     val devPropertiesFile = rootProject.file("local.dev.properties")
     if (devPropertiesFile.exists()) {
         load(devPropertiesFile.inputStream())
     }
+}
+
+fun rewriteLoopbackHostToEmulator(url: String): String {
+    val trimmed = url.trim()
+    if (trimmed.isEmpty()) return trimmed
+    return try {
+        val uri = URI(trimmed)
+        val host = uri.host ?: return trimmed
+        if (!host.equals("localhost", ignoreCase = true) && host != "127.0.0.1") return trimmed
+        URI(
+            uri.scheme,
+            uri.userInfo,
+            "10.0.2.2",
+            uri.port,
+            uri.rawPath,
+            uri.rawQuery,
+            uri.rawFragment,
+        ).toString()
+    } catch (_: Exception) {
+        trimmed
+    }
+}
+
+fun debugConfigUrl(key: String, fallback: String = ""): String {
+    val raw = resolveProperty(devProperties, localProperties, key, fallback)
+    return if (useLocalDev) rewriteLoopbackHostToEmulator(raw) else raw
 }
 
 val enableDoviNative = parseBooleanProperty(
@@ -205,10 +241,11 @@ android {
             buildConfigField("boolean", "APACHIY_UPDATER_DISABLED", "true")
 
             // Dev environment (from local.dev.properties)
-            buildConfigField("String", "SUPABASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "APACHIY_SUPABASE_URL")))
+            buildConfigField("String", "SUPABASE_URL", buildConfigString(debugConfigUrl("APACHIY_SUPABASE_URL")))
             buildConfigField("String", "SUPABASE_ANON_KEY", buildConfigString(resolveProperty(devProperties, localProperties, "APACHIY_SUPABASE_ANON_KEY")))
-            buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(resolveProperty(devProperties, localProperties, "APACHIY_SUPABASE_FALLBACK_URL")))
-            buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", buildConfigString(resolveProperty(devProperties, localProperties, "APACHIY_TV_LOGIN_WEB_BASE_URL", resolveProperty(devProperties, localProperties, "TV_LOGIN_WEB_BASE_URL"))))
+            buildConfigField("String", "SUPABASE_FALLBACK_URL", buildConfigString(debugConfigUrl("APACHIY_SUPABASE_FALLBACK_URL")))
+            buildConfigField("String", "APACHIY_API_BASE_URL", buildConfigString(debugConfigUrl("APACHIY_API_BASE_URL")))
+            buildConfigField("String", "TV_LOGIN_WEB_BASE_URL", buildConfigString(debugConfigUrl("APACHIY_TV_LOGIN_WEB_BASE_URL", debugConfigUrl("TV_LOGIN_WEB_BASE_URL"))))
             buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${devProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
             buildConfigField("String", "INTRODB_API_URL", "\"${devProperties.getProperty("INTRODB_API_URL", "")}\"")
             buildConfigField("String", "TRAILER_API_URL", "\"${devProperties.getProperty("TRAILER_API_URL", "")}\"")

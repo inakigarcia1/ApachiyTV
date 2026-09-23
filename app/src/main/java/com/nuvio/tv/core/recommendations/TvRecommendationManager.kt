@@ -3,6 +3,7 @@ package com.nuvio.tv.core.recommendations
 import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Log
+import com.nuvio.tv.core.sync.androidtv.TvLauncherArtworkCache
 import com.nuvio.tv.domain.model.WatchProgress
 import com.nuvio.tv.ui.screens.home.ContinueWatchingItem
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -20,7 +21,8 @@ import kotlin.math.abs
 @Singleton
 class TvRecommendationManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val programBuilder: ProgramBuilder
+    private val programBuilder: ProgramBuilder,
+    private val artworkCache: TvLauncherArtworkCache
 ) {
 
     private val mutex = Mutex()
@@ -33,7 +35,8 @@ class TvRecommendationManager @Inject constructor(
         val poster: String?,
         val backdrop: String?,
         val season: Int?,
-        val episode: Int?
+        val episode: Int?,
+        val publishedPosterArtUri: String?
     )
 
     companion object {
@@ -89,7 +92,8 @@ class TvRecommendationManager @Inject constructor(
                             poster = p.poster,
                             backdrop = p.backdrop,
                             season = p.season,
-                            episode = p.episode
+                            episode = p.episode,
+                            publishedPosterArtUri = null
                         )
                         val oldFingerprint = syncedFingerprints[id]
                         if (oldFingerprint != null &&
@@ -105,9 +109,13 @@ class TvRecommendationManager @Inject constructor(
                             return@forEach
                         }
 
-                        val program = programBuilder.buildWatchNextProgram(p)
+                        val publishedPosterArtUri = artworkCache.resolvePosterArtUri(
+                            p,
+                            oldFingerprint?.publishedPosterArtUri
+                        )
+                        val program = programBuilder.buildWatchNextProgram(p, publishedPosterArtUri)
                         programBuilder.upsertWatchNextProgram(program, id)
-                        syncedFingerprints[id] = newFingerprint
+                        syncedFingerprints[id] = newFingerprint.copy(publishedPosterArtUri = publishedPosterArtUri)
                     }
                 } catch (e: Exception) {
                     Log.w(TAG, "updateWatchNext failed", e)
@@ -129,7 +137,8 @@ class TvRecommendationManager @Inject constructor(
                         poster = progress.poster,
                         backdrop = progress.backdrop,
                         season = progress.season,
-                        episode = progress.episode
+                        episode = progress.episode,
+                        publishedPosterArtUri = null
                     )
                     val oldFingerprint = syncedFingerprints[id]
                     if (oldFingerprint != null &&
@@ -144,9 +153,13 @@ class TvRecommendationManager @Inject constructor(
                         return@withContext
                     }
 
-                    val program = programBuilder.buildWatchNextProgram(progress)
+                    val publishedPosterArtUri = artworkCache.resolvePosterArtUri(
+                        progress,
+                        oldFingerprint?.publishedPosterArtUri
+                    )
+                    val program = programBuilder.buildWatchNextProgram(progress, publishedPosterArtUri)
                     programBuilder.upsertWatchNextProgram(program, id)
-                    syncedFingerprints[id] = newFingerprint
+                    syncedFingerprints[id] = newFingerprint.copy(publishedPosterArtUri = publishedPosterArtUri)
                 } catch (e: Exception) {
                     Log.w(TAG, "updateSingleWatchNextProgram failed", e)
                 }

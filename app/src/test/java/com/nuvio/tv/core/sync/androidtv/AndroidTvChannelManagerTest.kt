@@ -27,6 +27,7 @@ class AndroidTvChannelManagerTest {
     private val packageManager: PackageManager = mockk(relaxed = true)
     private val contentResolver: ContentResolver = mockk(relaxed = true)
     private val prefs: TvChannelPreferences = mockk(relaxed = true)
+    private val artworkCache: TvLauncherArtworkCache = mockk(relaxed = true)
     private lateinit var manager: AndroidTvChannelManager
 
     private val channelId = 42L
@@ -77,7 +78,11 @@ class AndroidTvChannelManagerTest {
         every { context.contentResolver } returns contentResolver
         every { context.packageName } returns "com.nuvio.tv"
         every { context.getString(any<Int>()) } returns "Continue Watching"
-        manager = AndroidTvChannelManager(context, prefs)
+        coEvery { artworkCache.resolvePosterArtUri(any(), any()) } answers {
+            val progress = firstArg<WatchProgress>()
+            progress.backdrop ?: progress.poster
+        }
+        manager = AndroidTvChannelManager(context, prefs, artworkCache)
     }
 
     @After

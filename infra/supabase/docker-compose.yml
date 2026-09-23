@@ -322,6 +322,16 @@ services:
       VERIFY_JWT: "false"
     volumes:
       - ./volumes/functions:/home/deno/functions:ro
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "test -f /home/deno/functions/main/index.ts && tr '\\0' ' ' </proc/1/cmdline | grep -q 'edge-runtime start'",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 45s
     networks:
       - apachiy_net
     mem_limit: ${APACHIY_SUPABASE_FUNCTIONS_MEM:-256m}

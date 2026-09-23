@@ -85,6 +85,24 @@ class CustomDefaultTrackNameProvider(resources: Resources) : DefaultTrackNamePro
             }
         }
 
+        /** Human-readable embedded subtitle format (SRT, PGS, ASS, …) for player UI. */
+        fun subtitleFormatDisplayName(sampleMimeType: String?, codecHint: String?): String? {
+            formatNameFromMime(sampleMimeType)?.let { return it }
+            val hint = codecHint?.trim()?.lowercase() ?: return null
+            if (hint.isEmpty()) return null
+            return when {
+                hint == "subrip" || hint.contains("subrip") || hint == "srt" -> "SRT"
+                hint.contains("pgs") || hint.contains("s_hdmv/pgs") -> "PGS"
+                hint == "ass" || hint.contains("/ass") || hint.contains("x-ass") -> "ASS"
+                hint == "ssa" || hint.contains("/ssa") || hint.contains("x-ssa") -> "SSA"
+                hint.contains("webvtt") || hint == "vtt" -> "VTT"
+                hint.contains("ttml") -> "TTML"
+                hint.contains("tx3g") -> "TX3G"
+                hint.contains("dvbsub") -> "DVB"
+                else -> formatNameFromMime(codecHint)
+            }
+        }
+
         /**
          * Get a human-readable channel layout description.
          */

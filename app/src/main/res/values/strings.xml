@@ -1553,6 +1553,11 @@
     <string name="subtitle_timing_select_addon_first">Select an addon subtitle track first.</string>
     <string name="subtitle_auto_sync_select_addon_track">Select an addon subtitle track to use Auto Sync.</string>
     <string name="subtitle_auto_sync_applied">Sync applied: %1$s</string>
+    <string name="playback_autosync">Sync subtitles automatically</string>
+    <string name="playback_autosync_sub">Match the chosen subtitle to the audio.</string>
+    <string name="playback_autosync_needs_language">Choose a preferred subtitle language to turn this on.</string>
+    <string name="playback_autosync_aggressive">Aggressive sync</string>
+    <string name="playback_autosync_aggressive_sub">Accept weaker matches so sync still runs.</string>
     <string name="subtitle_timing_loading">Loading subtitle lines…</string>
     <string name="subtitle_timing_no_lines_found">No subtitle lines were found around this moment.</string>
     <string name="subtitle_timing_press_back_cancel">Press Back to cancel</string>

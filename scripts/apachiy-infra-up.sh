@@ -28,8 +28,36 @@ for k in "${required_keys[@]}"; do
   fi
 done
 
+FUNCTIONS_MAIN="$COMPOSE_DIR/volumes/functions/main/index.ts"
+if [ ! -f "$FUNCTIONS_MAIN" ]; then
+  echo "[apachiy-infra-up] missing edge function entrypoint: $FUNCTIONS_MAIN"
+  exit 1
+fi
+
 echo "[apachiy-infra-up] starting stack..."
 docker compose --env-file "$ENV_FILE" -f docker-compose.yml up -d
+
+echo "[apachiy-infra-up] waiting for edge functions to boot..."
+for i in $(seq 1 30); do
+  status="$(docker inspect apachiy-supabase-functions --format '{{.State.Status}}' 2>/dev/null || true)"
+  if [ "$status" = "running" ]; then
+    if docker logs apachiy-supabase-functions 2>&1 | grep -q "Apachiy edge main router started"; then
+      echo "[apachiy-infra-up] edge functions ready."
+      break
+    fi
+  fi
+  if [ "$status" = "restarting" ] || [ "$status" = "exited" ]; then
+    echo "[apachiy-infra-up] edge functions failed to boot (status=$status); recreating with fresh bind mount..."
+    docker compose --env-file "$ENV_FILE" -f docker-compose.yml up -d --force-recreate supabase-edge-functions
+    sleep 5
+  fi
+  sleep 2
+done
+
+if ! docker logs apachiy-supabase-functions 2>&1 | grep -q "Apachiy edge main router started"; then
+  echo "[apachiy-infra-up] WARN: edge functions did not log a successful boot."
+  echo "  Tail logs: docker logs apachiy-supabase-functions"
+fi
 
 echo "[apachiy-infra-up] waiting for services to report healthy..."
 healthy=0

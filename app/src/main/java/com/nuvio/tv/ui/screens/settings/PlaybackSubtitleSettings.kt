@@ -121,6 +121,13 @@ internal fun LazyListScope.subtitleSettingsItems(
         )
     }
 
+    autoSyncSettingsItems(
+        preferredLanguage = playerSettings.subtitleStyle.preferredLanguage,
+        onRequestLanguage = onShowLanguageDialog,
+        enabled = languageSelectionEnabled,
+        onItemFocused = onItemFocused,
+    )
+
     item(key = "subtitle_use_forced_subtitles") {
         ToggleSettingsItem(
             icon = Icons.Default.ClosedCaption,

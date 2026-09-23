@@ -8,6 +8,7 @@ import com.nuvio.tv.data.local.MpvHardwareDecodeMode
 import com.nuvio.tv.data.local.SubtitleStyleSettings
 import `is`.xyz.mpv.BaseMPVView
 import `is`.xyz.mpv.Utils
+import java.io.File
 import java.util.Locale
 import kotlin.math.pow
 import kotlin.math.roundToLong
@@ -366,6 +367,18 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
         return false
     }
 
+    fun screenshotVideoFrameToFile(target: File): Boolean {
+        if (!initialized) return false
+        return runCatching {
+            target.parentFile?.mkdirs()
+            mpv.command("screenshot-to-file", target.absolutePath, "video")
+            target.exists() && target.length() > 0L
+        }.getOrElse {
+            Log.w(TAG, "Failed to capture MPV screenshot: ${it.message}")
+            false
+        }
+    }
+
     fun selectAudioTrackById(trackId: Int): Boolean {
         if (!initialized) return false
         return runCatching {
@@ -404,7 +417,8 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
     fun addAndSelectExternalSubtitle(
         url: String,
         title: String? = null,
-        language: String? = null
+        language: String? = null,
+        flags: String = "cached",
     ): Boolean {
         if (!initialized) return false
         if (url.isBlank()) return false
@@ -414,11 +428,11 @@ class NuvioMpvSurfaceView @JvmOverloads constructor(
             val safeLanguage = language?.takeIf { it.isNotBlank() }
             when {
                 safeTitle != null && safeLanguage != null ->
-                    mpv.command("sub-add", url, "cached", safeTitle, safeLanguage)
+                    mpv.command("sub-add", url, flags, safeTitle, safeLanguage)
                 safeTitle != null ->
-                    mpv.command("sub-add", url, "cached", safeTitle)
+                    mpv.command("sub-add", url, flags, safeTitle)
                 else ->
-                    mpv.command("sub-add", url, "cached")
+                    mpv.command("sub-add", url, flags)
             }
             mpv.setPropertyBoolean("sub-visibility", true)
             true

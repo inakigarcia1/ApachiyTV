@@ -2,6 +2,7 @@ package com.nuvio.tv.ui.screens.player.embedded
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import com.nuvio.tv.core.network.useEmulatorPlaintext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.ByteArrayOutputStream
@@ -23,12 +24,10 @@ internal class EmbeddedSubtitleExtractor(
             else -> emptyList()
         }
         if (tracks.isEmpty()) return@withContext null
-        if (hasEmbeddedSpanishTextTrack(tracks)) {
-            return@withContext EmbeddedExtractResult(hasEmbeddedSpanish = true, reference = null)
-        }
-        val chosen = selectEmbeddedReferenceTrack(tracks)
-            ?: return@withContext EmbeddedExtractResult(false, null)
-        EmbeddedExtractResult(false, chosen.toReference())
+        EmbeddedExtractResult(
+            hasEmbeddedSpanish = hasEmbeddedSpanishTextTrack(tracks),
+            reference = null,
+        )
     }
 
     private fun readMediaPrefix(
@@ -101,6 +100,7 @@ internal class EmbeddedSubtitleExtractor(
     companion object {
         private const val PREFIX_BYTES = 16 * 1024 * 1024
         private val defaultClient: OkHttpClient = OkHttpClient.Builder()
+            .useEmulatorPlaintext()
             .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .followRedirects(true)

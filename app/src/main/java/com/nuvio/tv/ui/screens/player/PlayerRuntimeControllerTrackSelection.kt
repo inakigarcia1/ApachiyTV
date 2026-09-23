@@ -41,7 +41,10 @@ internal fun PlayerRuntimeController.showSeekOverlayTemporarily() {
     }
 }
 
-internal fun PlayerRuntimeController.selectAudioTrack(trackIndex: Int) {
+internal fun PlayerRuntimeController.selectAudioTrack(trackIndex: Int, fromUser: Boolean = true) {
+    if (fromUser) {
+        isUserExplicitAudioSelection = true
+    }
     logSwitchTrace(
         stage = "select-audio-track",
         message = "trackIndex=$trackIndex usingMpv=${isUsingMpvEngine()} " +
@@ -464,6 +467,7 @@ internal fun PlayerRuntimeController.selectAddonSubtitle(subtitle: Subtitle) {
         }
         updateMpvAvailableTracks()
         keepMpvPlayingIfNeeded(wasPlaying)
+        maybeRunAutomaticSubtitleSync(subtitle)
         return
     }
 
@@ -509,6 +513,7 @@ internal fun PlayerRuntimeController.selectAddonSubtitle(subtitle: Subtitle) {
                     selectedSubtitleTrackIndex = -1
                 )
             }
+            maybeRunAutomaticSubtitleSync(subtitle)
             return@let
         }
 
@@ -529,7 +534,9 @@ internal fun PlayerRuntimeController.selectAddonSubtitle(subtitle: Subtitle) {
                     selectedSubtitleTrackIndex = -1
                 )
             }
-            startSidecarAddonSubtitle(subtitle)
+            if (!maybeRunAutomaticSubtitleSync(subtitle)) {
+                startSidecarAddonSubtitle(subtitle)
+            }
             return@let
         }
 
@@ -545,6 +552,7 @@ internal fun PlayerRuntimeController.selectAddonSubtitle(subtitle: Subtitle) {
         }
 
         attachAddonSubtitleViaMediaReload(subtitle)
+        maybeRunAutomaticSubtitleSync(subtitle)
     }
 }
 

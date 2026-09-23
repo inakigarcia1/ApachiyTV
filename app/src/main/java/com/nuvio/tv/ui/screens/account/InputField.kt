@@ -79,7 +79,7 @@ internal fun InputField(
     ) {
         BasicTextField(
             value = value,
-            onValueChange = onValueChange,
+            onValueChange = { onValueChange(it.replace("\u0000", "")) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = NuvioTheme.spacing.lg, vertical = 14.dp)

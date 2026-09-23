@@ -29,6 +29,7 @@ private const val TAG = "TvChannelSync"
 class AndroidTvChannelManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val prefs: TvChannelPreferences,
+    private val artworkCache: TvLauncherArtworkCache,
 ) {
     private val syncedProgramFingerprints = ConcurrentHashMap<String, ChannelProgramFingerprint>()
 
@@ -144,12 +145,12 @@ class AndroidTvChannelManager @Inject constructor(
             items.forEachIndexed { index, progress ->
                 val key = progressKey(progress)
                 val rowIds = existing[key]
+                val oldFingerprint = syncedProgramFingerprints[key]
 
-                val (imageUri, _) = when {
-                    !progress.backdrop.isNullOrBlank() -> progress.backdrop to TvContractCompat.PreviewPrograms.ASPECT_RATIO_16_9
-                    !progress.poster.isNullOrBlank() -> progress.poster to TvContractCompat.PreviewPrograms.ASPECT_RATIO_2_3
-                    else -> null to null
-                }
+                val artSelection = selectTvLauncherPosterArt(progress)
+                val previousArtUri = oldFingerprint?.imageUri
+                val imageUri = artworkCache.resolvePosterArtUri(progress, previousArtUri)
+                val aspectRatio = artSelection.aspectRatio
                 val positionMs = if (progress.position > 0) {
                     progress.position.toInt()
                 } else {
@@ -167,8 +168,6 @@ class AndroidTvChannelManager @Inject constructor(
                     episode = progress.episode,
                     lastEngagementTime = progress.lastWatched
                 )
-                val oldFingerprint = syncedProgramFingerprints[key]
-
                 if (!rowIds.isNullOrEmpty() && oldFingerprint != null &&
                     oldFingerprint.title == newFingerprint.title &&
                     oldFingerprint.imageUri == newFingerprint.imageUri &&
@@ -183,7 +182,14 @@ class AndroidTvChannelManager @Inject constructor(
                     return@forEachIndexed
                 }
 
-                val values = buildProgramValues(progress, channelId, index, key)
+                val values = buildProgramValues(
+                    progress = progress,
+                    channelId = channelId,
+                    sortOrder = index,
+                    key = key,
+                    posterArtUri = imageUri,
+                    posterAspectRatio = aspectRatio
+                )
                 if (!rowIds.isNullOrEmpty()) {
                     val primaryRowId = rowIds.first()
                     // UPDATE the existing program row in place — keeping its row ID stable.
@@ -260,16 +266,11 @@ class AndroidTvChannelManager @Inject constructor(
         progress: WatchProgress,
         channelId: Long,
         sortOrder: Int,
-        key: String
+        key: String,
+        posterArtUri: String?,
+        posterAspectRatio: Int
     ): ContentValues {
-        val intentUri = Uri.parse(
-            Intent(context, MainActivity::class.java).apply {
-                action = Intent.ACTION_VIEW
-                putExtra("contentId", progress.contentId)
-                putExtra("contentType", progress.contentType)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            }.toUri(Intent.URI_INTENT_SCHEME)
-        )
+        val intentUri = TvLauncherIntentBuilder.toIntentUri(context, progress)
 
         val type = if (progress.contentType.equals("movie", ignoreCase = true))
             TvContractCompat.PreviewPrograms.TYPE_MOVIE
@@ -286,14 +287,9 @@ class AndroidTvChannelManager @Inject constructor(
 
         // Backdrop/poster fills the tile via posterArt; logo goes to the dedicated logo column
         // so the launcher renders it as a small badge overlay on focus.
-        val (imageUri, aspectRatio) = when {
-            !progress.backdrop.isNullOrBlank() ->
-                progress.backdrop to TvContractCompat.PreviewPrograms.ASPECT_RATIO_16_9
-            !progress.poster.isNullOrBlank() ->
-                progress.poster to TvContractCompat.PreviewPrograms.ASPECT_RATIO_2_3
-            else -> null to null
+        posterArtUri?.let {
+            builder.setPosterArtUri(Uri.parse(it)).setPosterArtAspectRatio(posterAspectRatio)
         }
-        imageUri?.let { builder.setPosterArtUri(Uri.parse(it)).setPosterArtAspectRatio(aspectRatio!!) }
         progress.logo?.let { builder.setLogoUri(Uri.parse(it)) }
 
         if (progress.duration > 0) {
@@ -319,7 +315,7 @@ class AndroidTvChannelManager @Inject constructor(
             it.put("last_engagement_time_utc_millis", progress.lastWatched)
             // Explicitly clear poster art when no image is available, so UPDATE operations
             // don't leave stale artwork from previous reconcile cycles.
-            if (imageUri == null) {
+            if (posterArtUri == null) {
                 it.putNull(TvContractCompat.PreviewPrograms.COLUMN_POSTER_ART_URI)
             }
             if (progress.logo.isNullOrBlank()) {

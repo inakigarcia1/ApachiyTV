@@ -316,7 +316,8 @@ private fun PlayerRuntimeController.applyMpvTrackSnapshot(snapshot: MpvTrackSnap
                 trackId = track.id.toString(),
                 codec = track.codec,
                 channelCount = track.channelCount,
-                isSelected = track.isSelected
+                isSelected = track.isSelected,
+                isCommentary = isAudioCommentaryTrack(track.name, null)
             )
         }
 
@@ -328,7 +329,7 @@ private fun PlayerRuntimeController.applyMpvTrackSnapshot(snapshot: MpvTrackSnap
                 name = track.name,
                 language = track.language,
                 trackId = track.id.toString(),
-                codec = track.codec,
+                codec = CustomDefaultTrackNameProvider.subtitleFormatDisplayName(null, track.codec),
                 isForced = track.isForced,
                 isSelected = track.isSelected
             )
@@ -349,6 +350,12 @@ private fun PlayerRuntimeController.applyMpvTrackSnapshot(snapshot: MpvTrackSnap
         hasScannedTextTracksOnce = true
     }
     maybeRestorePendingAudioSelectionAfterSubtitleRefresh(audioTracks)
+    val autoSelectedAudioIndex = tryAutoSelectOriginalAudioTrack(audioTracks)
+    val resolvedSelectedAudioIndex = when {
+        autoSelectedAudioIndex != null -> autoSelectedAudioIndex
+        selectedAudioIndex >= 0 -> selectedAudioIndex
+        else -> -1
+    }
 
     _uiState.update { state ->
         val selectedAddonFromMpvTrack = selectedExternalSubtitleTrack?.let { track ->
@@ -372,7 +379,7 @@ private fun PlayerRuntimeController.applyMpvTrackSnapshot(snapshot: MpvTrackSnap
         if (
             state.audioTracks == audioTracks &&
             state.subtitleTracks == internalSubtitleTracks &&
-            state.selectedAudioTrackIndex == selectedAudioIndex &&
+            state.selectedAudioTrackIndex == resolvedSelectedAudioIndex &&
             state.selectedSubtitleTrackIndex == normalizedSelectedSubtitleIndex &&
             state.selectedAddonSubtitle == addonSelection
         ) {
@@ -381,7 +388,7 @@ private fun PlayerRuntimeController.applyMpvTrackSnapshot(snapshot: MpvTrackSnap
             state.copy(
                 audioTracks = audioTracks,
                 subtitleTracks = internalSubtitleTracks,
-                selectedAudioTrackIndex = selectedAudioIndex,
+                selectedAudioTrackIndex = resolvedSelectedAudioIndex,
                 selectedSubtitleTrackIndex = normalizedSelectedSubtitleIndex,
                 selectedAddonSubtitle = addonSelection
             )

@@ -311,6 +311,10 @@ class PlayerRuntimeController(
     internal var openingOverlayStartedAtMs: Long = System.currentTimeMillis()
     /** ExoPlayer sidecar path: external addon cues without setMediaSource (preserves buffer). */
     internal var sidecarSubtitleJob: Job? = null
+    internal var automaticSubtitleSyncJob: Job? = null
+    internal var sidecarRawBodyDeferred: kotlinx.coroutines.CompletableDeferred<String?>? = null
+    internal var sidecarGenerationCounter: Long = 0L
+    internal var activeSidecarGeneration: Long = 0L
     internal var activeSidecarSubtitleKey: String? = null
     internal var sidecarTimedCues: List<androidx.media3.extractor.text.CuesWithTiming> = emptyList()
     internal var lastSidecarCueSignature: Long? = null
@@ -389,6 +393,9 @@ class PlayerRuntimeController(
     internal var lastActiveSkipType: String? = null
     internal var autoSubtitleSelected: Boolean = false
     internal var isUserExplicitSubtitleSelection: Boolean = false
+    internal var isUserExplicitAudioSelection: Boolean = false
+    internal var preferredAudioLanguageSetting: String = com.nuvio.tv.data.local.AudioLanguageOption.DEVICE
+    internal var secondaryPreferredAudioLanguageSetting: String? = null
     internal var lastSubtitlePreferredLanguage: String? = null
     internal var lastSubtitleSecondaryLanguage: String? = null
     internal var lastUseForcedSubtitles: Boolean? = null

@@ -926,14 +926,24 @@ private fun RefreshFilterChip(
         ),
         shape = FilterChipDefaults.shape(shape = RoundedCornerShape(20.dp))
     ) {
-        Icon(
-            imageVector = Icons.Rounded.Refresh,
-            contentDescription = stringResource(R.string.cd_refresh),
-            modifier = Modifier
-                .size(20.dp)
-                .graphicsLayer { rotationZ = rotationAnimatable.value },
-            tint = contentColor
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
+        ) {
+            Text(
+                text = stringResource(R.string.sources_reload),
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor
+            )
+            Icon(
+                imageVector = Icons.Rounded.Refresh,
+                contentDescription = stringResource(R.string.cd_refresh),
+                modifier = Modifier
+                    .size(20.dp)
+                    .graphicsLayer { rotationZ = rotationAnimatable.value },
+                tint = contentColor
+            )
+        }
     }
 }
 

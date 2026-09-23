@@ -3,15 +3,15 @@ package com.nuvio.tv.data.repository
 import android.content.Context
 import android.util.Log
 import com.nuvio.tv.core.network.NetworkResult
+import com.nuvio.tv.core.network.adaptLocalUrlForCurrentDevice
 import com.nuvio.tv.core.network.safeApiCall
 import com.nuvio.tv.data.remote.api.AddonApi
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.Subtitle
 import com.nuvio.tv.domain.model.enabledAddons
 import com.nuvio.tv.domain.repository.SubtitleRepository
-import com.nuvio.tv.ui.screens.player.embedded.AddonSubtitleRequest
 import com.nuvio.tv.ui.screens.player.embedded.EmbeddedSubtitleReference
-import com.nuvio.tv.ui.screens.player.embedded.selectPreferredSpanishAddonSubtitle
+import com.nuvio.tv.ui.screens.player.embedded.isApachiySubtitleAddon
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
@@ -21,17 +21,13 @@ import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
-import javax.inject.Named
 
 class SubtitleRepositoryImpl @Inject constructor(
     @ApplicationContext private val context: Context,
     private val api: AddonApi,
     private val addonRepository: AddonRepositoryImpl,
-    @Named("addon") private val addonHttpClient: OkHttpClient,
 ) : SubtitleRepository {
 
     companion object {
@@ -67,13 +63,14 @@ class SubtitleRepositoryImpl @Inject constructor(
         }
 
         // Filter addons that support subtitles resource
-        val subtitleAddons = addons.filter { addon ->
-            addon.resources.any { resource ->
-                isSubtitleResource(resource.name) && supportsType(addon, resource, requestType, id)
-            }
-        }
-        
-        Log.d(TAG, "Found ${subtitleAddons.size} subtitle addons: ${subtitleAddons.map { it.name }}")
+        val subtitleAddons = collapseDuplicateApachiyAddons(
+            addons.filter { addon ->
+                addon.resources.any { resource ->
+                    isSubtitleResource(resource.name) && supportsType(addon, resource, requestType, id)
+                }
+            },
+        )
+        Log.d(TAG, "Found ${subtitleAddons.size} subtitle addons: ${subtitleAddons.map { it.baseUrl }}")
 
         if (subtitleAddons.isEmpty()) {
             return@withContext emptyList()
@@ -101,7 +98,6 @@ class SubtitleRepositoryImpl @Inject constructor(
                                 videoSize,
                                 filename,
                                 hasEmbeddedSpanish = false,
-                                reference = reference,
                             )
                         }
                     } catch (e: CancellationException) {
@@ -142,7 +138,6 @@ class SubtitleRepositoryImpl @Inject constructor(
             TAG,
             "Subtitle fetch completed total=${result.size} fromAddons=${subtitleAddons.size} in ${System.currentTimeMillis() - startedAtMs}ms"
         )
-        preloadPreferredSpanishSubtitle(result)
         result
     }
 
@@ -184,7 +179,6 @@ class SubtitleRepositoryImpl @Inject constructor(
         videoSize: Long?,
         filename: String?,
         hasEmbeddedSpanish: Boolean,
-        reference: EmbeddedSubtitleReference?,
     ): List<Subtitle> {
         val normalizedType = canonicalSubtitleType(type)
         val actualId: String = if (normalizedType == "series" && !videoId.isNullOrEmpty()) {
@@ -211,26 +205,6 @@ class SubtitleRepositoryImpl @Inject constructor(
         Log.d(TAG, "Fetching subtitles from ${addon.name}: $subtitleUrl")
 
         return try {
-            if (AddonSubtitleRequest.shouldPostEmbeddedReference(addon, subtitleUrl, reference)) {
-                val posted = withTimeoutOrNull(PER_ADDON_TIMEOUT_MS) {
-                    safeApiCall(context) {
-                        api.postSubtitles(subtitleUrl, AddonSubtitleRequest.buildMultipartBody(reference!!))
-                    }
-                }
-                when (posted) {
-                    is NetworkResult.Success -> return mapSubtitleResponse(posted.data, addon)
-                    is NetworkResult.Error -> {
-                        if (posted.code != null && !AddonSubtitleRequest.shouldFallbackPostToGet(posted.code)) {
-                            Log.e(TAG, "Failed to POST subtitles to ${addon.name}: code=${posted.code} message=${posted.message}")
-                            return emptyList()
-                        }
-                        Log.w(TAG, "POST subtitles to ${addon.name} failed (${posted.code}); falling back to GET")
-                    }
-                    NetworkResult.Loading, null -> {
-                        Log.w(TAG, "POST subtitles to ${addon.name} timed out or empty; falling back to GET")
-                    }
-                }
-            }
             when (val result = safeApiCall(context) { api.getSubtitles(subtitleUrl) }) {
                 is NetworkResult.Success -> mapSubtitleResponse(result.data, addon)
                 is NetworkResult.Error -> {
@@ -250,7 +224,8 @@ class SubtitleRepositoryImpl @Inject constructor(
         addon: Addon,
     ): List<Subtitle> {
         val subtitles = data.subtitles?.mapNotNull { dto ->
-            val url = dto.url?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
+            val url = dto.url?.takeIf { it.isNotBlank() }?.let(::adaptLocalUrlForCurrentDevice)
+                ?: return@mapNotNull null
             val lang = dto.lang?.takeIf { it.isNotBlank() } ?: dto.language?.takeIf { it.isNotBlank() } ?: "und"
             val subId = dto.id?.takeIf { it.isNotBlank() } ?: "$lang-${url.hashCode()}"
             Subtitle(
@@ -265,21 +240,15 @@ class SubtitleRepositoryImpl @Inject constructor(
         return subtitles
     }
 
-    private fun preloadPreferredSpanishSubtitle(subtitles: List<Subtitle>) {
-        val preferred = selectPreferredSpanishAddonSubtitle(subtitles) ?: return
-        runCatching {
-            val request = Request.Builder()
-                .url(preferred.url)
-                .header("Accept", "*/*")
-                .build()
-            addonHttpClient.newCall(request).execute().use { response ->
-                response.body?.bytes()
-            }
-        }.onFailure { error ->
-            Log.w(TAG, "Failed to preload Spanish subtitle ${preferred.url}", error)
-        }
+    private fun collapseDuplicateApachiyAddons(addons: List<Addon>): List<Addon> {
+        val apachiy = addons.filter { isApachiySubtitleAddon(it) }
+        if (apachiy.size <= 1) return addons
+        val chosen = apachiy.firstOrNull { it.baseUrl.contains("10.0.2.2") }
+            ?: apachiy.firstOrNull { it.baseUrl.startsWith("http://", ignoreCase = true) }
+            ?: apachiy.first()
+        return addons.filter { addon -> !isApachiySubtitleAddon(addon) || addon.baseUrl == chosen.baseUrl }
     }
-    
+
     private fun buildExtraParams(
         videoHash: String?,
         videoSize: Long?,

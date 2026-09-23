@@ -2,6 +2,7 @@ package com.nuvio.tv.core.di
 
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.core.network.IPv4FirstDns
+import com.nuvio.tv.core.network.useEmulatorPlaintext
 import com.nuvio.tv.data.remote.device.ApachiyDeviceApi
 import com.nuvio.tv.core.installation.InstallationIdManager
 import com.nuvio.tv.core.installation.InstallationIdProvider
@@ -34,6 +35,7 @@ object DeviceRegistrationModule {
     @Named("apachiy")
     fun provideApachiyOkHttpClient(): OkHttpClient {
         return OkHttpClient.Builder()
+            .useEmulatorPlaintext()
             .dns(IPv4FirstDns())
             .connectTimeout(10, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)

@@ -210,6 +210,8 @@ internal fun PlayerRuntimeController.initializePlayer(
                 applyStoredAudioDelayForCurrentRouteIfEnabled()
             }
             cachedDecoderPriority = playerSettings.decoderPriority
+            preferredAudioLanguageSetting = playerSettings.preferredAudioLanguage
+            secondaryPreferredAudioLanguageSetting = playerSettings.secondaryPreferredAudioLanguage
             val preferredAudioLanguages = resolvePreferredAudioLanguages(
                 preferredAudioLanguage = playerSettings.preferredAudioLanguage,
                 secondaryPreferredAudioLanguage = playerSettings.secondaryPreferredAudioLanguage,
@@ -883,7 +885,8 @@ internal fun PlayerRuntimeController.initializePlayer(
             // first-sample sniff). MP4/TS extractors are returned untouched when
             // config is inactive.
             val effectiveExtractorsFactory: ExtractorsFactory =
-                    DolbyVisionExtractorsFactory(
+                    com.nuvio.tv.ui.screens.player.autosync.AutoSyncExtractorsFactory(
+                        delegate = DolbyVisionExtractorsFactory(
                         delegate = extractorsFactory,
                         config = DolbyVisionConversionConfig(
                             active = isExperimentalDv7ToDv81ActiveForCurrentPlayback,
@@ -899,6 +902,8 @@ internal fun PlayerRuntimeController.initializePlayer(
                         ),
                         stripDvRpu = stripDvRpuEnabled,
                         stripHdr10PlusSei = stripHdr10PlusSei
+                    ),
+                        sourceKey = url,
                     )
 
             setLoadingStatus(
@@ -1874,14 +1879,29 @@ internal fun resolvePreferredAudioLanguages(
     }
 
     return when (preferredAudioLanguage.trim().lowercase()) {
-        AudioLanguageOption.DEFAULT -> listOfNotNull(
-            normalize(secondaryPreferredAudioLanguage)
-        ).distinct()
-        AudioLanguageOption.DEVICE -> (
-            deviceLanguages
-            .mapNotNull(::normalize)
-            + listOfNotNull(normalize(secondaryPreferredAudioLanguage))
-            ).distinct()
+        AudioLanguageOption.DEFAULT -> {
+            val originalLang = normalize(contentOriginalLanguage)
+            if (originalLang != null) {
+                listOfNotNull(originalLang, normalize(secondaryPreferredAudioLanguage)).distinct()
+            } else {
+                listOfNotNull(normalize(secondaryPreferredAudioLanguage)).distinct()
+            }
+        }
+        AudioLanguageOption.DEVICE -> {
+            val originalLang = normalize(contentOriginalLanguage)
+            if (originalLang != null) {
+                listOfNotNull(
+                    originalLang,
+                    normalize(secondaryPreferredAudioLanguage)
+                ).distinct()
+            } else {
+                (
+                    deviceLanguages
+                        .mapNotNull(::normalize)
+                        + listOfNotNull(normalize(secondaryPreferredAudioLanguage))
+                ).distinct()
+            }
+        }
         AudioLanguageOption.ORIGINAL -> {
             val originalLang = normalize(contentOriginalLanguage)
             if (originalLang != null) {
@@ -1924,6 +1944,7 @@ internal suspend fun PlayerRuntimeController.prepareStartupSubtitles(): StartupS
 internal fun PlayerRuntimeController.resetAddonSubtitleStateForNewStream() {
     autoSubtitleSelected = subtitleDisabledByPersistedPreference || subtitleAddonRestoredByPersistedPreference
     isUserExplicitSubtitleSelection = false
+    isUserExplicitAudioSelection = false
     hasScannedTextTracksOnce = false
     pendingAddonSubtitleLanguage = null
     pendingAddonSubtitleTrackId = null

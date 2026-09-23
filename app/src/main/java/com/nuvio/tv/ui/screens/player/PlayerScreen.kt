@@ -465,6 +465,19 @@ fun PlayerScreen(
             restoreStreamInfoFocus = false
         }
     }
+    LaunchedEffect(
+        uiState.showSourcesPanel,
+        uiState.isLoadingSourceStreams,
+        uiState.sourceFilteredStreams.size,
+    ) {
+        if (!uiState.showSourcesPanel || uiState.isLoadingSourceStreams) return@LaunchedEffect
+        if (uiState.sourceFilteredStreams.isEmpty()) return@LaunchedEffect
+        delay(280)
+        repeat(30) {
+            kotlinx.coroutines.yield()
+            runCatching { sourceStreamsFocusRequester.requestFocus() }
+        }
+    }
 
     Box(
         modifier = Modifier

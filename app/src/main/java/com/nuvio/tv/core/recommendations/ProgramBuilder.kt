@@ -5,7 +5,8 @@ import android.content.Intent
 import android.net.Uri
 import androidx.tvprovider.media.tv.TvContractCompat
 import androidx.tvprovider.media.tv.WatchNextProgram
-import com.nuvio.tv.MainActivity
+import com.nuvio.tv.core.sync.androidtv.TvLauncherIntentBuilder
+import com.nuvio.tv.core.sync.androidtv.selectTvLauncherPosterArt
 import com.nuvio.tv.domain.model.WatchProgress
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -22,7 +23,10 @@ class ProgramBuilder @Inject constructor(
         else
             "wn_${progress.contentId}"
 
-    fun buildWatchNextProgram(progress: WatchProgress): WatchNextProgram {
+    fun buildWatchNextProgram(
+        progress: WatchProgress,
+        resolvedPosterArtUri: String? = null
+    ): WatchNextProgram {
         val isMovie = progress.contentType == "movie"
         val programType = if (isMovie) {
             TvContractCompat.WatchNextPrograms.TYPE_MOVIE
@@ -38,14 +42,10 @@ class ProgramBuilder @Inject constructor(
             .setInternalProviderId(watchNextId(progress))
             .setIntentUri(buildPlayUri(progress))
 
-        builder.setPosterArtAspectRatio(TvContractCompat.PreviewPrograms.ASPECT_RATIO_16_9)
-
-        val horizontalArt = progress.backdrop ?: progress.poster
-        horizontalArt?.let {
-            val uriWithCacheBuster = Uri.parse(it).buildUpon()
-                .appendQueryParameter("v", "horizontal_fix")
-                .build()
-            builder.setPosterArtUri(uriWithCacheBuster)
+        val artSelection = selectTvLauncherPosterArt(progress)
+        builder.setPosterArtAspectRatio(artSelection.aspectRatio)
+        resolvedPosterArtUri?.let { artUri ->
+            builder.setPosterArtUri(Uri.parse(artUri))
         }
 
         if (progress.duration > 0) {
@@ -213,14 +213,7 @@ class ProgramBuilder @Inject constructor(
     }
 
     private fun buildPlayUri(progress: WatchProgress): Uri =
-        Uri.parse(
-            Intent(context, MainActivity::class.java).apply {
-                action = Intent.ACTION_VIEW
-                putExtra("contentId", progress.contentId)
-                putExtra("contentType", progress.contentType)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
-            }.toUri(Intent.URI_INTENT_SCHEME)
-        )
+        TvLauncherIntentBuilder.toIntentUri(context, progress)
 }
 
 internal fun watchNextIdMatchesContentId(providerId: String?, contentId: String): Boolean {

@@ -91,26 +91,12 @@ class EmbeddedSubtitleSyncTest {
     }
 
     @Test
-    fun overlayWaitsForPipelineUnlessTimeoutAndKeepsBuffering() {
-        assertFalse(
-            AddonSubtitleLoadingGate.shouldDismissOpeningOverlay(
-                playerIsLoading = false,
-                pipelineDone = false,
-                elapsedMs = 1_000L,
-            ),
-        )
-        assertTrue(
-            AddonSubtitleLoadingGate.shouldDismissOpeningOverlay(
-                playerIsLoading = false,
-                pipelineDone = true,
-                elapsedMs = 1_000L,
-            ),
-        )
+    fun overlayDismissesWhenTheFirstFrameIsReady() {
         assertTrue(
             AddonSubtitleLoadingGate.shouldDismissOpeningOverlay(
                 playerIsLoading = false,
                 pipelineDone = false,
-                elapsedMs = AddonSubtitleLoadingGate.TIMEOUT_MS,
+                elapsedMs = 1_000L,
             ),
         )
         assertFalse(
