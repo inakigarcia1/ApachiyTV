@@ -2086,3 +2086,14 @@ internal data class AutoSyncTimelineRetimeResult(
     val coverageSegmentsPassed: Int = 0,
     val simpleGroupRatio: Double = 0.0,
 )
+
+/**
+ * Largest correction the alignment transform applies anywhere in the subtitle's span. The
+ * transform is linear, so the extremes are at the first and last cue.
+ */
+internal fun AutoSyncTimelineRetimeResult.maxAlignmentShiftMs(): Double {
+    fun shiftAt(timeMs: Long): Double =
+        abs((alignmentScale - 1.0) * timeMs + alignmentInterceptMs)
+    val first = cues.firstOrNull()?.originalStartTimeMs ?: return abs(alignmentInterceptMs)
+    return max(shiftAt(first), shiftAt(cues.last().originalStartTimeMs))
+}

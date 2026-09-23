@@ -47,19 +47,23 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -126,7 +130,7 @@ private fun LibraryListTab.localizedTitle(): String {
     }
 }
 
-@OptIn(ExperimentalTvMaterial3Api::class)
+@OptIn(ExperimentalTvMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun LibraryScreen(
     viewModel: LibraryViewModel = hiltViewModel(),
@@ -159,7 +163,13 @@ fun LibraryScreen(
     val posterFocusRequesters = remember(visibleItemKeys) {
         visibleItemKeys.associateWith { FocusRequester() }
     }
+    val layoutDirection = LocalLayoutDirection.current
     val firstVisiblePosterKey = visibleItemKeys.firstOrNull()
+    val firstVisibleCardKey = if (layoutDirection == LayoutDirection.Rtl) {
+        visibleItemKeys.lastOrNull()
+    } else {
+        visibleItemKeys.firstOrNull()
+    }
     val posterCardStyle = PosterCardDefaults.Style
 
     val routeCloudPlayback: (CloudLibraryPlaybackInfo) -> Unit = { info ->
@@ -271,6 +281,14 @@ fun LibraryScreen(
         state = gridState,
         modifier = Modifier
             .fillMaxSize()
+            .focusRestorer {
+                val lastKey = lastFocusedPosterKey
+                (if (lastKey != null && lastKey in posterFocusRequesters) {
+                    posterFocusRequesters[lastKey]
+                } else {
+                    posterFocusRequesters[firstVisibleCardKey]
+                }) ?: FocusRequester()
+            }
             .onPreviewKeyEvent { event ->
                 val native = event.nativeKeyEvent
                 if (native.action == AndroidKeyEvent.ACTION_DOWN && native.repeatCount > 0) {

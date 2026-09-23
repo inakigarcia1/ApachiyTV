@@ -3,6 +3,7 @@ package com.nuvio.tv.ui.screens.settings
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.LocalContext
@@ -36,6 +37,13 @@ internal fun LazyListScope.autoSyncSettingsItems(
                     enabled = rowEnabled,
                 )
             },
+        )
+    }
+    item(key = "subtitle_auto_sync_tolerance") {
+        AutoSyncToleranceSlider(
+            preferredLanguage = preferredLanguage,
+            enabled = enabled,
+            onFocused = onItemFocused,
         )
     }
     item(key = "subtitle_auto_sync_aggressive") {
@@ -77,6 +85,10 @@ internal fun AutoSyncDeveloperToggles(
                 enabled = rowEnabled,
             )
         },
+    )
+    AutoSyncToleranceSlider(
+        preferredLanguage = preferredLanguage,
+        enabled = enabled,
     )
     AutoSyncAggressiveToggle(
         preferredLanguage = preferredLanguage,
@@ -123,6 +135,34 @@ private fun AutoSyncToggle(
             if (turnOn && !languageChosen) onRequestLanguage()
         },
         enabled,
+    )
+}
+
+@Composable
+private fun AutoSyncToleranceSlider(
+    preferredLanguage: String?,
+    enabled: Boolean,
+    onFocused: () -> Unit = {},
+) {
+    val context = LocalContext.current
+    AutoSyncPreferences.ensureLoaded(context)
+    val toleranceMs by AutoSyncPreferences.syncToleranceMs.collectAsStateWithLifecycle()
+    val storedEnabled by AutoSyncPreferences.enabled.collectAsStateWithLifecycle()
+    val shownOn = storedEnabled && isChosenSubtitleLanguage(preferredLanguage)
+    SliderSettingsItem(
+        icon = Icons.Default.Timer,
+        title = stringResource(R.string.playback_autosync_tolerance),
+        subtitle = stringResource(R.string.playback_autosync_tolerance_sub),
+        values = AutoSyncPreferences.syncToleranceOptionsMs,
+        selected = toleranceMs,
+        valueText = if (toleranceMs > 0) {
+            stringResource(R.string.playback_autosync_tolerance_value, toleranceMs)
+        } else {
+            stringResource(R.string.playback_autosync_tolerance_off)
+        },
+        onValueChange = { AutoSyncPreferences.setSyncToleranceMs(context, it) },
+        onFocused = onFocused,
+        enabled = enabled && shownOn,
     )
 }
 

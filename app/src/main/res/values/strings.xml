@@ -1558,6 +1558,10 @@
     <string name="playback_autosync_needs_language">Choose a preferred subtitle language to turn this on.</string>
     <string name="playback_autosync_aggressive">Aggressive sync</string>
     <string name="playback_autosync_aggressive_sub">Accept weaker matches so sync still runs.</string>
+    <string name="playback_autosync_tolerance">Sync tolerance</string>
+    <string name="playback_autosync_tolerance_sub">Keep the original subtitle timing when the correction would be no larger than this.</string>
+    <string name="playback_autosync_tolerance_off">Off</string>
+    <string name="playback_autosync_tolerance_value">%1$d ms</string>
     <string name="subtitle_timing_loading">Loading subtitle lines…</string>
     <string name="subtitle_timing_no_lines_found">No subtitle lines were found around this moment.</string>
     <string name="subtitle_timing_press_back_cancel">Press Back to cancel</string>

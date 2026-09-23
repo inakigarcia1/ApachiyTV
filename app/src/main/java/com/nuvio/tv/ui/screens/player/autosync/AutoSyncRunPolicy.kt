@@ -31,6 +31,15 @@ internal fun effectiveAggressiveMode(
     storedAggressive: Boolean,
 ): Boolean = !developerSettingsVisible || storedAggressive
 
+/**
+ * Debug builds honor the stored tolerance. Release builds always apply a confident correction,
+ * because the control is hidden there.
+ */
+internal fun effectiveSyncToleranceMs(
+    developerSettingsVisible: Boolean,
+    storedToleranceMs: Int,
+): Int = if (developerSettingsVisible) storedToleranceMs else 0
+
 internal enum class AutoSyncStartAction {
     RUN,
     ATTACH_ORIGINAL,
