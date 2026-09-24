@@ -1502,6 +1502,7 @@
     <string name="stream_player_external">Externo</string>
     <string name="stream_filter_all">Todos</string>
     <string name="stream_episode_label">T%1$d E%2$d</string>
+    <string name="stream_resume_from">Continuar desde %1$s</string>
     
     <string name="player_no_external_player">No se encontró un reproductor externo</string>
     <string name="player_loading_generic">Cargando…</string>

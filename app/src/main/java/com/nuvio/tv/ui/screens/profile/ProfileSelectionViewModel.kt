@@ -61,7 +61,8 @@ class ProfileSelectionViewModel @Inject constructor(
         viewModelScope.launch {
             isAvatarCatalogLoading = true
             try {
-                _avatarCatalog.value = avatarRepository.getAvatarCatalog()
+                val catalog = avatarRepository.getAvatarCatalog()
+                _avatarCatalog.value = catalog
             } catch (e: Exception) {
                 Log.e("ProfileSelectionVM", "Failed to load avatar catalog", e)
             } finally {

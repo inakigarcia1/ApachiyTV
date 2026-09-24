@@ -122,8 +122,6 @@ internal fun LazyListScope.subtitleSettingsItems(
     }
 
     autoSyncSettingsItems(
-        preferredLanguage = playerSettings.subtitleStyle.preferredLanguage,
-        onRequestLanguage = onShowLanguageDialog,
         enabled = languageSelectionEnabled,
         onItemFocused = onItemFocused,
     )

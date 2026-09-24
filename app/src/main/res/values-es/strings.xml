@@ -137,6 +137,7 @@
     <string name="detail_btn_resume">Reanudar</string>
     <string name="detail_btn_play_episode">Reproducir T%1$d E%2$d</string>
     <string name="detail_btn_resume_episode">Reanudar T%1$d E%2$d</string>
+    <string name="stream_resume_from">Continuar desde %1$s</string>
     <string name="detail_btn_next_episode">Siguiente T%1$d E%2$d</string>
     <string name="detail_tab_cast">Creador y elenco</string>
     <string name="cast_role_creator">Creador</string>

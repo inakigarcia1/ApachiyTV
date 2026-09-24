@@ -113,8 +113,6 @@ fun EssentialPlaybackSettingsContent(
                         enabled = settings != null
                     )
                     AutoSyncDeveloperToggles(
-                        preferredLanguage = settings?.subtitleStyle?.preferredLanguage,
-                        onRequestLanguage = { showSubtitleLanguageDialog = true },
                         enabled = settings != null,
                     )
                     SettingsToggleRow(

@@ -137,6 +137,18 @@ internal object PlayerSubtitleUtils {
         "spa", "es", "es-es", "spl", "es-419", "es-la", "es-lat",
     )
 
+    /**
+     * Castilian Spanish (`es`, `spa`, `es-ES`). Latin American Spanish (`es-419`) is not included.
+     */
+    fun isCastilianSpanishLanguage(
+        language: String?,
+        name: String? = null,
+        trackId: String? = null,
+    ): Boolean {
+        val variant = detectTrackLanguageVariant(language, name, trackId)
+        return variant == "es" || variant == "es-es"
+    }
+
     fun isEmbeddedSpanishTrack(track: TrackInfo): Boolean =
         isEmbeddedSpanishLanguage(track.language, track.name, track.trackId)
 

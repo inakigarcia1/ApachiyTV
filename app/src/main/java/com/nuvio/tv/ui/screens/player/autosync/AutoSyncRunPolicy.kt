@@ -8,23 +8,13 @@ internal enum class AutoSyncCandidateScope {
 internal fun decideAutoSyncStart(enabled: Boolean): AutoSyncStartAction =
     if (enabled) AutoSyncStartAction.RUN else AutoSyncStartAction.ATTACH_ORIGINAL
 
-internal fun isChosenSubtitleLanguage(language: String?): Boolean {
-    val value = language?.trim().orEmpty()
-    return value.isNotEmpty() &&
-        !value.equals("none", ignoreCase = true) &&
-        !value.equals("forced", ignoreCase = true)
-}
+internal const val SPANISH_SYNC_LANGUAGE = "es"
 
-/** Debug builds follow the stored switches. Release builds always sync, aggressively. */
+/** Debug builds follow the stored switch. Release builds always sync. The run is always Castilian Spanish. */
 internal fun effectiveAutoSyncEnabled(
     developerSettingsVisible: Boolean,
     storedEnabled: Boolean,
-    preferredLanguage: String?,
-): Boolean = if (developerSettingsVisible) {
-    storedEnabled && isChosenSubtitleLanguage(preferredLanguage)
-} else {
-    true
-}
+): Boolean = if (developerSettingsVisible) storedEnabled else true
 
 internal fun effectiveAggressiveMode(
     developerSettingsVisible: Boolean,

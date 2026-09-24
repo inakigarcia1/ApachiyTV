@@ -1527,6 +1527,7 @@
     <string name="stream_player_external">External</string>
     <string name="stream_filter_all">All</string>
     <string name="stream_episode_label">S%1$d E%2$d</string>
+    <string name="stream_resume_from">Continue from %1$s</string>
 
     <string name="player_no_external_player">No external player found</string>
     <string name="player_loading_generic">Cargando…</string>

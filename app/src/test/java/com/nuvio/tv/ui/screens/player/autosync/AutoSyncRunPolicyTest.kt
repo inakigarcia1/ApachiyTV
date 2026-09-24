@@ -12,7 +12,6 @@ class AutoSyncRunPolicyTest {
             effectiveAutoSyncEnabled(
                 developerSettingsVisible = false,
                 storedEnabled = false,
-                preferredLanguage = null,
             ),
         )
         assertTrue(
@@ -36,7 +35,6 @@ class AutoSyncRunPolicyTest {
             effectiveAutoSyncEnabled(
                 developerSettingsVisible = true,
                 storedEnabled = false,
-                preferredLanguage = "es",
             ),
         )
         assertEquals(

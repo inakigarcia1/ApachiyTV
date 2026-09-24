@@ -410,6 +410,9 @@ fun StreamScreen(
 
                 // Right side - Streams container
                 RightStreamSection(
+                    resumeLabel = uiState.resumePositionMs.takeIf { it >= 1_000L }?.let { positionMs ->
+                        stringResource(R.string.stream_resume_from, formatResumeClock(positionMs))
+                    },
                     isLoading = uiState.isLoading,
                     error = uiState.error,
                     streams = uiState.filteredStreams,
@@ -681,9 +684,22 @@ private fun LeftContentSection(
     }
 }
 
+private fun formatResumeClock(positionMs: Long): String {
+    val totalSeconds = positionMs / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return if (hours > 0) {
+        "%d:%02d:%02d".format(hours, minutes, seconds)
+    } else {
+        "%02d:%02d".format(minutes, seconds)
+    }
+}
+
 @OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 private fun RightStreamSection(
+    resumeLabel: String?,
     isLoading: Boolean,
     error: String?,
     streams: List<Stream>,
@@ -759,6 +775,15 @@ private fun RightStreamSection(
             .padding(top = NuvioTheme.spacing.xxxl, end = NuvioTheme.spacing.xxxl, bottom = NuvioTheme.spacing.xxxl)
     ) {
         val chipRowHeight = NuvioTheme.spacing.huge
+
+        if (!resumeLabel.isNullOrBlank()) {
+            Text(
+                text = resumeLabel,
+                style = MaterialTheme.typography.titleMedium,
+                color = NuvioTheme.colors.TextPrimary,
+                modifier = Modifier.padding(bottom = NuvioTheme.spacing.md)
+            )
+        }
 
         // Refresh chip only
         Box(modifier = Modifier.height(chipRowHeight)) {

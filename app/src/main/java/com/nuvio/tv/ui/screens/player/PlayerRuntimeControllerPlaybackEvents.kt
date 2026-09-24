@@ -597,10 +597,11 @@ internal fun PlayerRuntimeController.saveWatchProgressIfNeeded() {
 }
 
 internal fun PlayerRuntimeController.saveWatchProgress() {
-    if (!hasRenderedFirstFrame) return
-    val currentPosition = currentPlaybackPositionMs() ?: return
-    val duration = getEffectiveDuration(currentPosition)
-    if (isShortPlaceholderDuration(duration)) return
+    val currentPosition = currentPlaybackPositionMs()
+    val duration = currentPosition?.let { getEffectiveDuration(it) }
+    if (!hasRenderedFirstFrame || currentPosition == null || duration == null || isShortPlaceholderDuration(duration)) {
+        return
+    }
     saveWatchProgressInternal(currentPosition, duration)
 }
 
@@ -681,7 +682,9 @@ internal fun PlayerRuntimeController.saveWatchProgressInternal(position: Long, d
     val parentContentId = contentId?.takeIf { it.isNotEmpty() } ?: return
     val parentContentType = contentType?.takeIf { it.isNotEmpty() } ?: return
 
-    if (position < 1000) return
+    if (position < 1000) {
+        return
+    }
 
     val fallbackPercent = if (duration <= 0L) 5f else null
 

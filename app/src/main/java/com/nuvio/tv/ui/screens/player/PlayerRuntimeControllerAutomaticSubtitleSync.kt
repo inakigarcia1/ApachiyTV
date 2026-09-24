@@ -11,6 +11,7 @@ import com.nuvio.tv.ui.screens.player.autosync.AutoSyncPreferences
 import com.nuvio.tv.ui.screens.player.autosync.AutoSyncResolvedTimeline
 import com.nuvio.tv.ui.screens.player.autosync.AutomaticSubtitleSync
 import com.nuvio.tv.ui.screens.player.autosync.applyAutoSyncSidecarTimeline
+import com.nuvio.tv.ui.screens.player.autosync.SPANISH_SYNC_LANGUAGE
 import com.nuvio.tv.ui.screens.player.autosync.effectiveAutoSyncEnabled
 import com.nuvio.tv.ui.screens.player.autosync.effectiveSyncToleranceMs
 import com.nuvio.tv.ui.screens.player.autosync.maxAlignmentShiftMs
@@ -21,6 +22,15 @@ import kotlinx.coroutines.flow.update
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+private fun syncReferenceLanguage(subtitle: Subtitle): String {
+    val castilian = PlayerSubtitleUtils.isCastilianSpanishLanguage(
+        language = subtitle.lang,
+        name = subtitle.addonName,
+        trackId = subtitle.id,
+    )
+    return if (castilian) SPANISH_SYNC_LANGUAGE else subtitle.lang
+}
 
 private val autoSyncNoticeHandler = Handler(Looper.getMainLooper())
 
@@ -37,7 +47,6 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
     if (!effectiveAutoSyncEnabled(
             developerSettingsVisible = BuildConfig.IS_DEBUG_BUILD,
             storedEnabled = AutoSyncPreferences.enabled.value,
-            preferredLanguage = currentPlayerSettingsForReport.subtitleStyle.preferredLanguage,
         )
     ) {
         return false
@@ -64,7 +73,7 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
                 sourceHeaders = sourceHeadersAtStart,
                 selectedSubtitleUrl = selectedUrl,
                 selectedSubtitleHeaders = emptyMap(),
-                preferredLanguage = selectedSubtitle.lang,
+                preferredLanguage = syncReferenceLanguage(selectedSubtitle),
                 alternativeSubtitles = emptyList(),
                 alternativeSubtitlesProvider = null,
             ) ?: run {
@@ -141,7 +150,7 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
             selectedSubtitleUrl = selectedUrl,
             selectedSubtitleHeaders = emptyMap(),
             selectedSubtitleBodyDeferred = selectedBodyDeferred,
-            preferredLanguage = selectedSubtitle.lang,
+            preferredLanguage = syncReferenceLanguage(selectedSubtitle),
             alternativeSubtitles = emptyList(),
             alternativeSubtitlesProvider = null,
             onNoSubtitleTracks = { noSubtitleTracks = true },

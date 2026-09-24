@@ -127,9 +127,8 @@ class StreamScreenViewModel @Inject constructor(
     private val contentId: String? = savedStateHandle.getOptionalString("contentId")
     private val contentName: String? = savedStateHandle.getOptionalString("contentName")
     private val contentLanguage: String? = savedStateHandle.getOptionalString("contentLanguage")
-    private val manualSelection: Boolean = savedStateHandle.get<String>("manualSelection")
-        ?.toBooleanStrictOrNull()
-        ?: false
+    // Always stay on the stream list. A saved link can already be dead.
+    private val manualSelection: Boolean = true
     private val streamCacheKey: String = "${contentType.lowercase()}|$videoId"
 
     private val _uiState = MutableStateFlow(
@@ -379,6 +378,7 @@ class StreamScreenViewModel @Inject constructor(
 
             val directFlowActive = directAutoPlayFlowEnabledForSession
             var resolvedAutoPlayTarget = false
+            loadResumePositionHint()
 
             if (directFlowActive) {
                 updateUiStateIfChanged {
@@ -1383,10 +1383,22 @@ class StreamScreenViewModel @Inject constructor(
         sourceChipErrorDismissJob?.cancel()
     }
 
-    /**
-     * Get the resume position (in ms) for the given playback info.
-     * Returns 0 if no progress is saved.
-     */
+    private fun loadResumePositionHint() {
+        viewModelScope.launch {
+            val lookupId = contentId ?: videoId.substringBefore(":")
+            val progress = if (season != null && episode != null) {
+                watchProgressRepository.getEpisodeProgress(lookupId, season, episode).first()
+            } else {
+                watchProgressRepository.getProgress(lookupId).first()
+            }
+            val resumePositionMs = progress
+                ?.takeIf { !it.isCompleted() && it.position >= 1_000L }
+                ?.position
+                ?: 0L
+            updateUiStateIfChanged { it.copy(resumePositionMs = resumePositionMs) }
+        }
+    }
+
     suspend fun getResumePositionMs(playbackInfo: StreamPlaybackInfo): Long {
         val contentId = playbackInfo.contentId ?: return 0L
         val progress = if (playbackInfo.season != null && playbackInfo.episode != null) {

@@ -1651,8 +1651,41 @@ internal fun PlayerRuntimeController.tryAutoSelectPreferredSubtitleFromAvailable
         return
     }
     if (targets.isEmpty()) {
+        if (!hasScannedTextTracksOnce || state.isLoadingAddonSubtitles) {
+            Log.d(
+                PlayerRuntimeController.TAG,
+                "AUTO_SUB defer: no preferred language, waiting for a Castilian Spanish addon"
+            )
+            return
+        }
+        val playerReady = if (isUsingMpvEngine()) {
+            mpvView != null
+        } else {
+            _exoPlayer?.playbackState == Player.STATE_READY
+        }
+        if (!playerReady) {
+            Log.d(PlayerRuntimeController.TAG, "AUTO_SUB defer: no preferred language, player not ready")
+            return
+        }
+        val spanishAddon = state.addonSubtitles.firstOrNull { subtitle ->
+            !addonSubtitleIsForced(subtitle) &&
+                PlayerSubtitleUtils.isCastilianSpanishLanguage(
+                    language = subtitle.lang,
+                    name = subtitle.addonName,
+                    trackId = subtitle.id,
+                )
+        }
+        if (spanishAddon != null) {
+            autoSubtitleSelected = true
+            Log.d(
+                PlayerRuntimeController.TAG,
+                "AUTO_SUB pick Castilian Spanish addon lang=${spanishAddon.lang} id=${spanishAddon.id}"
+            )
+            selectAddonSubtitle(spanishAddon)
+            return
+        }
         autoSubtitleSelected = true
-        Log.d(PlayerRuntimeController.TAG, "AUTO_SUB stop: preferred=none")
+        Log.d(PlayerRuntimeController.TAG, "AUTO_SUB stop: no Castilian Spanish addon")
         if (isUsingMpvEngine()) {
             mpvView?.disableSubtitles()
         }
