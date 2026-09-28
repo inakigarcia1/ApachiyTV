@@ -1004,6 +1004,7 @@ class MainActivity : ComponentActivity() {
     override fun onResume() {
         super.onResume()
         if (::jankStats.isInitialized) jankStats.isTrackingEnabled = true
+        com.nuvio.tv.core.network.TorboxSpeedTestCoordinator.scheduleBackgroundCheck()
         lifecycleScope.launch {
             deviceSessionRegistration.requestForegroundRegistration()
             startupSyncService.requestForegroundSync()

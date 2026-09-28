@@ -2836,6 +2836,10 @@
     <string name="web_stream_badge_error_import_limit">Puedes importar hasta %1$d URL de insignias.</string>
 
     <!-- Playback — Buffer & Network settings -->
+    <string name="settings_playback_torbox_speed_title">Ancho de banda (TorBox)</string>
+    <string name="settings_playback_torbox_speed_none">Sin medición guardada</string>
+    <string name="settings_playback_torbox_speed_last">Última: %1$.1f Mbps · %2$s</string>
+    <string name="settings_playback_torbox_measure_now">Medir ahora</string>
     <string name="playback_section_buffer_network">Búfer y red</string>
     <string name="playback_section_buffer_network_desc">Cuánto contenido mantener en memoria y cómo obtener las transmisiones.</string>
     <string name="playback_net_device_memory_info">Memoria del dispositivo: %1$s | Límite de seguridad recomendado: %2$d MB</string>

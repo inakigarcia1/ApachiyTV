@@ -91,7 +91,6 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         com.nuvio.tv.core.playback.PlaybackCapabilitiesProvider.initialize(this)
         com.nuvio.tv.core.network.TorboxSpeedTestHarness.initialize(this, addonOkHttpClient)
         com.nuvio.tv.core.network.TorboxSpeedTestDevFeedback.initialize(this)
-        com.nuvio.tv.core.network.TorboxSpeedTestCoordinator.scheduleBackgroundCheck()
     }
 
     override fun newImageLoader(context: android.content.Context): ImageLoader {

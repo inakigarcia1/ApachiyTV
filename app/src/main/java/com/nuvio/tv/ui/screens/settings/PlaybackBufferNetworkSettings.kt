@@ -36,6 +36,7 @@ import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
+import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.R
 import com.nuvio.tv.data.local.PlayerSettings
 import com.nuvio.tv.data.local.VodCacheSizeMode
@@ -67,6 +68,12 @@ internal fun LazyListScope.bufferAndNetworkSettingsItems(
     onResetNetworkToDefaults: () -> Unit
 ) {
     val isSupported = android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O
+
+    if (BuildConfig.IS_DEBUG_BUILD) {
+        item(key = "buffer_net_torbox_speed") {
+            TorboxSpeedSettingsRow()
+        }
+    }
 
     // ── Master toggle: ExoPlayer Native Memory ──
     item(key = "buffer_net_nuvio_performance_mode") {

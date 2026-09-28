@@ -460,6 +460,7 @@ fun MetaDetailsScreen(
                 val yearString = remember(meta.releaseInfo) {
                     formatDetailYearRange(meta.releaseInfo)
                 }
+                val movieRuntimeMinutes = remember(meta.runtime) { parseRuntimeMinutes(meta.runtime) }
 
                 MetaDetailsContent(
                     heroBackdropUrl = heroBackdropUrl,
@@ -556,7 +557,7 @@ fun MetaDetailsScreen(
                             null,
                             genresString,
                             yearString,
-                            null,
+                            movieRuntimeMinutes,
                             meta.resolveContentLanguage()
                         )
                     },
@@ -574,7 +575,7 @@ fun MetaDetailsScreen(
                             null,
                             genresString,
                             yearString,
-                            null,
+                            movieRuntimeMinutes,
                             meta.resolveContentLanguage()
                         )
                     },
@@ -610,7 +611,7 @@ fun MetaDetailsScreen(
                             null,
                             genresString,
                             yearString,
-                            null,
+                            movieRuntimeMinutes,
                             meta.resolveContentLanguage()
                         )
                     },

@@ -1015,6 +1015,23 @@ private fun formatYearRange(releaseInfo: String?): String? {
     return releaseInfo.trim()
 }
 
+internal fun parseRuntimeMinutes(runtime: String?): Int? {
+    val trimmed = runtime?.trim().orEmpty()
+    if (trimmed.isEmpty()) return null
+    if (trimmed.contains('h') || trimmed.contains('m')) {
+        val hours = Regex("(\\d+)\\s*h").find(trimmed)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        val mins = Regex("(\\d+)\\s*m").find(trimmed)?.groupValues?.get(1)?.toIntOrNull() ?: 0
+        return (hours * 60 + mins).takeIf { it > 0 }
+    }
+    if (trimmed.contains(':')) {
+        val parts = trimmed.split(':')
+        val hours = parts.getOrNull(0)?.toIntOrNull() ?: 0
+        val mins = parts.getOrNull(1)?.toIntOrNull() ?: 0
+        return (hours * 60 + mins).takeIf { it > 0 }
+    }
+    return trimmed.filter { it.isDigit() }.toIntOrNull()?.takeIf { it > 0 }
+}
+
 private fun formatRuntime(runtime: String): String {
     val trimmed = runtime.trim()
     // Already in "Xh Ym" or "Xh" format

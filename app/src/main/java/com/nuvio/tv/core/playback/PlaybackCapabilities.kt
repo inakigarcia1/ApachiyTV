@@ -58,7 +58,7 @@ object PlaybackCapabilitiesProvider {
         streamUrl: String,
         runtimeMinutes: Int? = null,
     ): String {
-        if (!baseUrl.contains("/apachiy/", ignoreCase = true)) return streamUrl
+        if (!isApachiyAddonBase(baseUrl)) return streamUrl
         val payload = playbackPayloadForStream(runtimeMinutes)?.takeIf { it.hasAnyConstraint() } ?: return streamUrl
         val json = playbackJson.encodeToString(payload)
         val encoded = Base64.getUrlEncoder().withoutPadding().encodeToString(json.toByteArray(Charsets.UTF_8))
@@ -170,4 +170,9 @@ object PlaybackCapabilitiesProvider {
         encodeDefaults = false
         explicitNulls = false
     }
+}
+
+internal fun isApachiyAddonBase(baseUrl: String): Boolean {
+    val path = baseUrl.substringBefore('?').trimEnd('/')
+    return path.endsWith("/apachiy", ignoreCase = true)
 }

@@ -25,6 +25,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.R
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 import kotlinx.coroutines.launch
@@ -54,12 +55,14 @@ fun EssentialPlaybackSettingsContent(
                     subtitle = stringResource(R.string.essential_playback_header_subtitle)
                 )
             }
-            item(key = "torbox_speed") {
-                SettingsGroupCard(
-                    modifier = Modifier.fillMaxWidth(),
-                    title = stringResource(R.string.settings_playback_torbox_speed_title),
-                ) {
-                    TorboxSpeedSettingsRow()
+            if (BuildConfig.IS_DEBUG_BUILD) {
+                item(key = "torbox_speed") {
+                    SettingsGroupCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        title = stringResource(R.string.settings_playback_torbox_speed_title),
+                    ) {
+                        TorboxSpeedSettingsRow()
+                    }
                 }
             }
             item(key = "playback_basics") {
