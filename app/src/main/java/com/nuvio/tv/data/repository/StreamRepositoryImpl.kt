@@ -88,7 +88,8 @@ class StreamRepositoryImpl @Inject constructor(
         videoId: String,
         season: Int?,
         episode: Int?,
-        forceRefresh: Boolean
+        forceRefresh: Boolean,
+        runtimeMinutes: Int?,
     ): Flow<NetworkResult<List<AddonStreams>>> = flow {
         val sourceConfiguration = captureSourceConfiguration()
         val requestKey = StreamSearchRequestKey(
@@ -119,6 +120,7 @@ class StreamRepositoryImpl @Inject constructor(
                     videoId = videoId,
                     season = season,
                     episode = episode,
+                    runtimeMinutes = runtimeMinutes,
                     addons = sourceConfiguration.addons,
                     debridSettings = sourceConfiguration.debridSettings,
                     hasCompatiblePlugins = sourceConfiguration.pluginsEnabled &&
@@ -158,6 +160,7 @@ class StreamRepositoryImpl @Inject constructor(
         videoId: String,
         season: Int?,
         episode: Int?,
+        runtimeMinutes: Int?,
         addons: List<Addon>,
         debridSettings: DebridSettings,
         hasCompatiblePlugins: Boolean
@@ -190,7 +193,7 @@ class StreamRepositoryImpl @Inject constructor(
                 streamAddons.forEach { addon ->
                     launch {
                         try {
-                            val streamsResult = getStreamsFromAddon(addon.baseUrl, type, videoId)
+                            val streamsResult = getStreamsFromAddon(addon.baseUrl, type, videoId, runtimeMinutes)
                             when (streamsResult) {
                                 is NetworkResult.Success -> {
                                     if (streamsResult.data.isNotEmpty()) {
@@ -563,7 +566,8 @@ class StreamRepositoryImpl @Inject constructor(
     override suspend fun getStreamsFromAddon(
         baseUrl: String,
         type: String,
-        videoId: String
+        videoId: String,
+        runtimeMinutes: Int?,
     ): NetworkResult<List<Stream>> {
         val cleanBaseUrl = baseUrl.trimEnd('/')
         val queryStart = cleanBaseUrl.indexOf('?')
@@ -571,7 +575,12 @@ class StreamRepositoryImpl @Inject constructor(
         val baseQuery = if (queryStart >= 0) cleanBaseUrl.substring(queryStart) else ""
         val encodedType = encodePathSegment(type)
         val encodedVideoId = encodePathSegment(videoId)
-        val streamUrl = "$basePath/stream/$encodedType/$encodedVideoId.json$baseQuery"
+        var streamUrl = "$basePath/stream/$encodedType/$encodedVideoId.json$baseQuery"
+        streamUrl = com.nuvio.tv.core.playback.PlaybackCapabilitiesProvider.appendToStreamUrlIfApachiy(
+            baseUrl,
+            streamUrl,
+            runtimeMinutes,
+        )
         Log.d(TAG, "Fetching streams type=$type videoId=$videoId url=$streamUrl")
 
         // First, get addon info for name and logo

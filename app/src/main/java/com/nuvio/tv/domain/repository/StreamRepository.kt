@@ -22,7 +22,8 @@ interface StreamRepository {
         videoId: String,
         season: Int? = null,
         episode: Int? = null,
-        forceRefresh: Boolean = false
+        forceRefresh: Boolean = false,
+        runtimeMinutes: Int? = null,
     ): Flow<NetworkResult<List<AddonStreams>>>
 
     /**
@@ -35,6 +36,7 @@ interface StreamRepository {
     suspend fun getStreamsFromAddon(
         baseUrl: String,
         type: String,
-        videoId: String
+        videoId: String,
+        runtimeMinutes: Int? = null,
     ): NetworkResult<List<Stream>>
 }

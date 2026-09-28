@@ -26,6 +26,8 @@ if (-not (Test-Path $DevProps)) {
 
 $env:APACHIY_USE_LOCAL_DEV = "1"
 
+. (Join-Path $PSScriptRoot "Use-EmulatorOnlyAdb.ps1")
+
 Write-Host "Installing TV (emulator) with local.dev.properties (localhost -> 10.0.2.2 in APK)."
 
 & $Gradlew ":app:installFullDebug" "-Papachiy.useLocalDev=true" @Args

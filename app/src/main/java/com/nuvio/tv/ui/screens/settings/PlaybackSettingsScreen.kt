@@ -202,8 +202,6 @@ fun PlaybackSettingsContent(
                 playerSettings = playerSettings,
                 onShowPlayerPreferenceDialog = { openDialog { showPlayerPreferenceDialog = true } },
                 onShowInternalPlayerEngineDialog = { openDialog { showInternalPlayerEngineDialog = true } },
-                onShowAudioLanguageDialog = { openDialog { showAudioLanguageDialog = true } },
-                onShowSecondaryAudioLanguageDialog = { openDialog { showSecondaryAudioLanguageDialog = true } },
                 onShowAudioOutputChannelsDialog = { openDialog { showAudioOutputChannelsDialog = true } },
                 onShowDecoderPriorityDialog = { openDialog { showDecoderPriorityDialog = true } },
                 onShowMpvHardwareDecodeModeDialog = { openDialog { showMpvHardwareDecodeModeDialog = true } },

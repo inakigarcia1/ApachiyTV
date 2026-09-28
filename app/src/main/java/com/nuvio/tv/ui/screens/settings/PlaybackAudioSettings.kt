@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Tune
@@ -63,8 +62,6 @@ import com.nuvio.tv.ui.components.NuvioDialog
 
 internal fun LazyListScope.trailerAndAudioSettingsItems(
     playerSettings: PlayerSettings,
-    onShowAudioLanguageDialog: () -> Unit,
-    onShowSecondaryAudioLanguageDialog: () -> Unit,
     onShowAudioOutputChannelsDialog: () -> Unit,
     onShowDecoderPriorityDialog: () -> Unit,
     onShowMpvHardwareDecodeModeDialog: () -> Unit,
@@ -104,44 +101,6 @@ internal fun LazyListScope.trailerAndAudioSettingsItems(
             style = MaterialTheme.typography.bodySmall,
             color = NuvioTheme.colors.TextSecondary,
             modifier = Modifier.padding(bottom = NuvioTheme.spacing.sm)
-        )
-    }
-
-    item(key = "audio_preferred_language") {
-        val audioLangName = when (playerSettings.preferredAudioLanguage) {
-            AudioLanguageOption.DEFAULT -> stringResource(R.string.audio_lang_default)
-            AudioLanguageOption.DEVICE -> stringResource(R.string.audio_lang_device)
-            AudioLanguageOption.ORIGINAL -> stringResource(R.string.audio_lang_original)
-            else -> AVAILABLE_SUBTITLE_LANGUAGES.find {
-                it.code == playerSettings.preferredAudioLanguage
-            }?.displayName ?: playerSettings.preferredAudioLanguage
-        }
-
-        NavigationSettingsItem(
-            icon = Icons.Default.Language,
-            title = stringResource(R.string.audio_preferred_lang),
-            subtitle = audioLangName,
-            onClick = onShowAudioLanguageDialog,
-            onFocused = onItemFocused,
-            enabled = enabled
-        )
-    }
-
-    item(key = "audio_secondary_preferred_language") {
-        val secondaryAudioLangName = playerSettings.secondaryPreferredAudioLanguage?.let { code ->
-            when {
-                code.equals(AudioLanguageOption.ORIGINAL, ignoreCase = true) -> stringResource(R.string.audio_lang_original)
-                else -> AVAILABLE_SUBTITLE_LANGUAGES.find { it.code == code }?.displayName ?: code
-            }
-        } ?: stringResource(R.string.sub_not_set)
-
-        NavigationSettingsItem(
-            icon = Icons.Default.Language,
-            title = stringResource(R.string.sub_secondary_lang),
-            subtitle = secondaryAudioLangName,
-            onClick = onShowSecondaryAudioLanguageDialog,
-            onFocused = onItemFocused,
-            enabled = enabled
         )
     }
 

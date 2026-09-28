@@ -394,7 +394,7 @@ class PlayerRuntimeController(
     internal var autoSubtitleSelected: Boolean = false
     internal var isUserExplicitSubtitleSelection: Boolean = false
     internal var isUserExplicitAudioSelection: Boolean = false
-    internal var preferredAudioLanguageSetting: String = com.nuvio.tv.data.local.AudioLanguageOption.DEVICE
+    internal var preferredAudioLanguageSetting: String = com.nuvio.tv.data.local.AudioLanguageOption.ORIGINAL
     internal var secondaryPreferredAudioLanguageSetting: String? = null
     internal var lastSubtitlePreferredLanguage: String? = null
     internal var lastSubtitleSecondaryLanguage: String? = null

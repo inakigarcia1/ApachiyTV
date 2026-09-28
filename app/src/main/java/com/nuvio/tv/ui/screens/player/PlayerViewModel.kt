@@ -78,6 +78,7 @@ class PlayerViewModel @Inject constructor(
 ) : ViewModel() {
 
     init {
+        com.nuvio.tv.core.network.PlaybackActiveGuard.isPlaybackActive = true
         // Release trailer player codec resources so the full-screen player can
         // claim hardware decoders without contention (prevents black screen).
         trailerPlayerPool.yield()
@@ -183,6 +184,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        com.nuvio.tv.core.network.PlaybackActiveGuard.isPlaybackActive = false
         controller.onCleared()
         // Allow the trailer player to be re-created when returning to home screen.
         trailerPlayerPool.reclaim()

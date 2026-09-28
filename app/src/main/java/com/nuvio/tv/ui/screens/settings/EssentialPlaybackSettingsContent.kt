@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.tv.R
-import com.nuvio.tv.data.local.AudioLanguageOption
 import com.nuvio.tv.data.local.StreamAutoPlayMode
 import kotlinx.coroutines.launch
 
@@ -38,7 +37,6 @@ fun EssentialPlaybackSettingsContent(
     val playerSettings by viewModel.playerSettings.collectAsStateWithLifecycle(initialValue = null)
     val coroutineScope = rememberCoroutineScope()
     var showSubtitleLanguageDialog by remember { mutableStateOf(false) }
-    var showAudioLanguageDialog by remember { mutableStateOf(false) }
     var showDecoderPriorityDialog by remember { mutableStateOf(false) }
     val settings = playerSettings
 
@@ -55,6 +53,14 @@ fun EssentialPlaybackSettingsContent(
                     title = stringResource(R.string.essential_playback_header_title),
                     subtitle = stringResource(R.string.essential_playback_header_subtitle)
                 )
+            }
+            item(key = "torbox_speed") {
+                SettingsGroupCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    title = stringResource(R.string.settings_playback_torbox_speed_title),
+                ) {
+                    TorboxSpeedSettingsRow()
+                }
             }
             item(key = "playback_basics") {
                 SettingsGroupCard(modifier = Modifier.fillMaxWidth(), title = stringResource(R.string.essential_playback_basics)) {
@@ -126,14 +132,6 @@ fun EssentialPlaybackSettingsContent(
                         enabled = settings != null
                     )
                     SettingsActionRow(
-                        title = stringResource(R.string.essential_audio_language),
-                        subtitle = stringResource(R.string.essential_audio_language_subtitle),
-                        value = settings?.preferredAudioLanguage.orEmpty(),
-                        trailingIcon = Icons.Default.VideoSettings,
-                        onClick = { showAudioLanguageDialog = true },
-                        enabled = settings != null
-                    )
-                    SettingsActionRow(
                         title = stringResource(R.string.audio_decoder_priority),
                         subtitle = stringResource(R.string.audio_decoder_controls),
                         value = when (settings?.decoderPriority) {
@@ -162,25 +160,6 @@ fun EssentialPlaybackSettingsContent(
                 showSubtitleLanguageDialog = false
             },
             onDismiss = { showSubtitleLanguageDialog = false }
-        )
-    }
-    if (showAudioLanguageDialog && settings != null) {
-        LanguageSelectionDialog(
-            title = stringResource(R.string.essential_audio_language),
-            selectedLanguage = settings.preferredAudioLanguage,
-            showNoneOption = false,
-            extraOptions = listOf(
-                AudioLanguageOption.DEFAULT to stringResource(R.string.audio_lang_media_default),
-                AudioLanguageOption.DEVICE to stringResource(R.string.audio_lang_device),
-                AudioLanguageOption.ORIGINAL to stringResource(R.string.audio_lang_original)
-            ),
-            onLanguageSelected = { language ->
-                if (language != null) {
-                    coroutineScope.launch { viewModel.setPreferredAudioLanguage(language) }
-                }
-                showAudioLanguageDialog = false
-            },
-            onDismiss = { showAudioLanguageDialog = false }
         )
     }
     if (showDecoderPriorityDialog && settings != null) {

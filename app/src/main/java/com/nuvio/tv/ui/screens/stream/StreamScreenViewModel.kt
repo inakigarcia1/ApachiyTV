@@ -640,7 +640,8 @@ class StreamScreenViewModel @Inject constructor(
                     videoId = videoId,
                     season = season,
                     episode = episode,
-                    forceRefresh = forceRefresh
+                    forceRefresh = forceRefresh,
+                    runtimeMinutes = runtime,
                 ).collect { result ->
                     when (result) {
                         is NetworkResult.Success -> {

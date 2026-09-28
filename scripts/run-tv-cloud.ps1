@@ -21,6 +21,8 @@ if (-not (Test-Path $LocalProps)) {
 
 Remove-Item Env:APACHIY_USE_LOCAL_DEV -ErrorAction SilentlyContinue
 
+. (Join-Path $PSScriptRoot "Use-EmulatorOnlyAdb.ps1")
+
 Write-Host "Installing TV (emulator) with local.properties (cloud)."
 
 & $Gradlew ":app:installFullDebug" "-Papachiy.useLocalDev=false" @Args

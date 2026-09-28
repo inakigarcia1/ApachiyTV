@@ -111,8 +111,6 @@ internal fun PlaybackSettingsSections(
     playerSettings: PlayerSettings,
     onShowPlayerPreferenceDialog: () -> Unit,
     onShowInternalPlayerEngineDialog: () -> Unit,
-    onShowAudioLanguageDialog: () -> Unit,
-    onShowSecondaryAudioLanguageDialog: () -> Unit,
     onShowAudioOutputChannelsDialog: () -> Unit,
     onShowDecoderPriorityDialog: () -> Unit,
     onShowMpvHardwareDecodeModeDialog: () -> Unit,
@@ -567,8 +565,6 @@ internal fun PlaybackSettingsSections(
         ) {
             trailerAndAudioSettingsItems(
                 playerSettings = playerSettings,
-                onShowAudioLanguageDialog = onShowAudioLanguageDialog,
-                onShowSecondaryAudioLanguageDialog = onShowSecondaryAudioLanguageDialog,
                 onShowAudioOutputChannelsDialog = onShowAudioOutputChannelsDialog,
                 onShowDecoderPriorityDialog = onShowDecoderPriorityDialog,
                 onShowMpvHardwareDecodeModeDialog = onShowMpvHardwareDecodeModeDialog,
