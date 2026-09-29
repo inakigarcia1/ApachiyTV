@@ -2,10 +2,11 @@ package com.nuvio.tv.ui.components
 
 import com.nuvio.tv.ui.theme.NuvioTheme
 
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,24 +16,33 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,29 +57,44 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupProperties
 import kotlin.math.floor
 import kotlin.math.max
+import androidx.compose.animation.animateColorAsState
+import androidx.tv.material3.Border
+import androidx.tv.material3.Card
+import androidx.tv.material3.CardDefaults
+import androidx.tv.material3.ExperimentalTvMaterial3Api
+import androidx.tv.material3.Icon
+import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Text
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.nuvio.tv.R
 import com.nuvio.tv.data.remote.supabase.AvatarCatalogItem
+import com.nuvio.tv.ui.screens.detail.requestFocusAfterFrames
+import kotlinx.coroutines.delay
 
 private val PinnedAvatarCategories = listOf("anime", "animation", "tv", "movie", "gaming")
 
+@OptIn(ExperimentalTvMaterial3Api::class)
 @Composable
 fun AvatarPickerGrid(
     avatars: List<AvatarCatalogItem>,
     selectedAvatarId: String?,
     onAvatarSelected: (AvatarCatalogItem) -> Unit,
-    onAvatarFocused: ((AvatarCatalogItem?) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val categories = remember(avatars) {
@@ -95,9 +120,7 @@ fun AvatarPickerGrid(
         }
     }
     var selectedCategory by remember { mutableStateOf("all") }
-    val categoryRequesters = remember(categories) {
-        categories.associateWith { FocusRequester() }
-    }
+    val categoryFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(categories) {
         if (selectedCategory !in categories) {
@@ -112,36 +135,25 @@ fun AvatarPickerGrid(
     val avatarRequesters = remember(filteredAvatars) {
         filteredAvatars.associate { it.id to FocusRequester() }
     }
-    val selectedCategoryRequester = categoryRequesters.getValue(selectedCategory)
     val firstAvatarRequester = filteredAvatars.firstOrNull()?.let { avatarRequesters[it.id] }
+    val gridState = rememberLazyGridState()
 
-    Column(modifier = modifier) {
-        // Category tabs
-        FlowRow(
+    Column(modifier = modifier.fillMaxHeight()) {
+        AvatarCategoryDropdown(
+            categories = categories,
+            selectedCategory = selectedCategory,
+            onCategorySelected = { selectedCategory = it },
+            focusRequester = categoryFocusRequester,
+            downFocusRequester = firstAvatarRequester,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = NuvioTheme.spacing.lg),
-            horizontalArrangement = Arrangement.Center,
-            verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.sm)
-        ) {
-            categories.forEach { category ->
-                CategoryTab(
-                    label = categoryLabel(category),
-                    isSelected = selectedCategory == category,
-                    focusRequester = categoryRequesters.getValue(category),
-                    downFocusRequester = if (selectedCategory == category) firstAvatarRequester else null,
-                    onClick = { selectedCategory = category }
-                )
-                if (category != categories.last()) {
-                    Spacer(modifier = Modifier.width(NuvioTheme.spacing.sm))
-                }
-            }
-        }
+                .padding(bottom = NuvioTheme.spacing.md)
+        )
 
         BoxWithConstraints(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
-                .wrapContentHeight()
         ) {
             val minCellWidth = 88.dp
             val horizontalSpacing = NuvioTheme.spacing.md
@@ -155,103 +167,271 @@ fun AvatarPickerGrid(
                 ).toInt()
             )
 
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(minSize = minCellWidth),
-                contentPadding = PaddingValues(horizontal = NuvioTheme.spacing.sm, vertical = NuvioTheme.spacing.xs),
-                horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
-                verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                itemsIndexed(filteredAvatars, key = { _, avatar -> avatar.id }) { index, avatar ->
-                    AvatarGridItem(
-                        avatar = avatar,
-                        isSelected = avatar.id == selectedAvatarId,
-                        focusRequester = avatarRequesters.getValue(avatar.id),
-                        upFocusRequester = if (index < columnCount) selectedCategoryRequester else null,
-                        onFocused = { focused -> if (focused) onAvatarFocused?.invoke(avatar) },
-                        onClick = { onAvatarSelected(avatar) }
-                    )
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyVerticalGrid(
+                    state = gridState,
+                    columns = GridCells.Adaptive(minSize = minCellWidth),
+                    contentPadding = PaddingValues(
+                        horizontal = NuvioTheme.spacing.sm,
+                        vertical = NuvioTheme.spacing.xs
+                    ),
+                    horizontalArrangement = Arrangement.spacedBy(horizontalSpacing),
+                    verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(end = 14.dp)
+                ) {
+                    itemsIndexed(filteredAvatars, key = { _, avatar -> avatar.id }) { index, avatar ->
+                        AvatarGridItem(
+                            avatar = avatar,
+                            isSelected = avatar.id == selectedAvatarId,
+                            focusRequester = avatarRequesters.getValue(avatar.id),
+                            upFocusRequester = if (index < columnCount) categoryFocusRequester else null,
+                            onClick = { onAvatarSelected(avatar) }
+                        )
+                    }
                 }
+
+                ApachiyVerticalScrollIndicator(
+                    totalItems = gridState.layoutInfo.totalItemsCount,
+                    firstVisibleIndex = gridState.firstVisibleItemIndex,
+                    visibleCount = gridState.layoutInfo.visibleItemsInfo.size,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .padding(vertical = NuvioTheme.spacing.xs)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun CategoryTab(
-    label: String,
-    isSelected: Boolean,
+private fun ApachiyVerticalScrollIndicator(
+    totalItems: Int,
+    firstVisibleIndex: Int,
+    visibleCount: Int,
+    modifier: Modifier = Modifier
+) {
+    if (totalItems == 0) return
+
+    val scrollFraction = if (totalItems <= 1) {
+        0f
+    } else {
+        firstVisibleIndex.toFloat() / (totalItems - 1).toFloat()
+    }
+    val thumbFraction = (visibleCount.toFloat() / totalItems.toFloat()).coerceIn(0.15f, 1f)
+    val trackColor = NuvioTheme.colors.Secondary.copy(alpha = 0.35f)
+    val thumbColor = NuvioTheme.colors.Secondary
+
+    BoxWithConstraints(
+        modifier = modifier.width(10.dp)
+    ) {
+        val trackHeight = maxHeight
+        val thumbHeight = maxOf(trackHeight * thumbFraction, 32.dp)
+        val thumbOffset = (trackHeight - thumbHeight) * scrollFraction
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(5.dp))
+                .background(trackColor)
+        )
+        Box(
+            modifier = Modifier
+                .width(10.dp)
+                .height(thumbHeight)
+                .align(Alignment.TopCenter)
+                .offset(y = thumbOffset)
+                .clip(RoundedCornerShape(5.dp))
+                .background(thumbColor)
+        )
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class, ExperimentalFoundationApi::class)
+@Composable
+private fun AvatarCategoryDropdown(
+    categories: List<String>,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit,
     focusRequester: FocusRequester,
     downFocusRequester: FocusRequester?,
-    onClick: () -> Unit
+    modifier: Modifier = Modifier
 ) {
+    var expanded by remember { mutableStateOf(false) }
     var isFocused by remember { mutableStateOf(false) }
-    val interactionSource = remember { MutableInteractionSource() }
+    var anchorSize by remember { mutableStateOf(IntSize.Zero) }
+    val selectedItemFocusRequester = remember { FocusRequester() }
+    val selectedBringIntoViewRequester = remember { BringIntoViewRequester() }
 
-    val bgColor by animateColorAsState(
-        targetValue = when {
-            isSelected && isFocused -> NuvioTheme.colors.FocusBackground
-            isSelected -> NuvioTheme.colors.Secondary.copy(alpha = 0.22f)
-            isFocused -> NuvioTheme.colors.FocusBackground
-            else -> Color.White.copy(alpha = 0.06f)
-        },
-        animationSpec = tween(150),
-        label = "categoryBg"
-    )
-    val borderColor by animateColorAsState(
-        targetValue = when {
-            isSelected && isFocused -> NuvioTheme.colors.FocusRing
-            isFocused -> NuvioTheme.colors.FocusRing
-            isSelected -> NuvioTheme.colors.Secondary
-            else -> NuvioTheme.colors.Border
-        },
-        animationSpec = tween(150),
-        label = "categoryBorder"
-    )
-    val borderWidth by animateDpAsState(
-        targetValue = when {
-            isSelected && isFocused -> NuvioTheme.spacing.xxs
-            isFocused -> NuvioTheme.spacing.xxs
-            isSelected -> NuvioTheme.spacing.hairline
-            else -> NuvioTheme.spacing.hairline
-        },
-        animationSpec = tween(150),
-        label = "categoryBorderWidth"
-    )
-    val textColor by animateColorAsState(
-        targetValue = if (isSelected || isFocused) Color.White else NuvioTheme.colors.TextSecondary,
-        animationSpec = tween(150),
-        label = "categoryText"
-    )
+    LaunchedEffect(expanded, selectedCategory) {
+        if (!expanded) return@LaunchedEffect
+        var focused = selectedItemFocusRequester.requestFocusAfterFrames(frames = 3)
+        var attempt = 0
+        while (!focused && attempt < 6) {
+            delay(32)
+            focused = runCatching { selectedItemFocusRequester.requestFocus() }.getOrDefault(false)
+            attempt++
+        }
+        if (!focused) return@LaunchedEffect
+        runCatching { selectedBringIntoViewRequester.bringIntoView() }
+        delay(48)
+        if (runCatching { selectedItemFocusRequester.requestFocus() }.getOrDefault(false)) {
+            runCatching { selectedBringIntoViewRequester.bringIntoView() }
+        }
+    }
 
-    Box(
-        modifier = Modifier
-            .focusRequester(focusRequester)
-            .then(
-                if (downFocusRequester != null) {
-                    Modifier.focusProperties { down = downFocusRequester }
-                } else {
-                    Modifier
+    Box(modifier = modifier) {
+        Card(
+            onClick = { expanded = !expanded },
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(focusRequester)
+                .then(
+                    if (downFocusRequester != null) {
+                        Modifier.focusProperties { down = downFocusRequester }
+                    } else {
+                        Modifier
+                    }
+                )
+                .onSizeChanged { anchorSize = it }
+                .onFocusChanged { isFocused = it.isFocused },
+            shape = CardDefaults.shape(shape = RoundedCornerShape(14.dp)),
+            colors = CardDefaults.colors(
+                containerColor = NuvioTheme.colors.BackgroundCard,
+                focusedContainerColor = NuvioTheme.colors.FocusBackground
+            ),
+            border = CardDefaults.border(
+                border = Border(
+                    border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border),
+                    shape = RoundedCornerShape(14.dp)
+                ),
+                focusedBorder = Border(
+                    border = BorderStroke(NuvioTheme.spacing.xxs, NuvioTheme.colors.FocusRing),
+                    shape = RoundedCornerShape(14.dp)
+                )
+            ),
+            scale = CardDefaults.scale(focusedScale = 1f, pressedScale = 1f)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xxs)
+                ) {
+                    Text(
+                        text = stringResource(R.string.profile_avatar_category_label),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = NuvioTheme.colors.TextTertiary
+                    )
+                    Text(
+                        text = categoryLabel(selectedCategory),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = NuvioTheme.colors.TextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
-            )
-            .clip(RoundedCornerShape(20.dp))
-            .background(bgColor)
-            .border(borderWidth, borderColor, RoundedCornerShape(20.dp))
-            .onFocusChanged { isFocused = it.isFocused }
-            .clickable(
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick
-            )
-            .padding(horizontal = 18.dp, vertical = NuvioTheme.spacing.sm),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            color = textColor,
-            fontSize = 13.sp,
-            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
-        )
+                Icon(
+                    imageVector = if (expanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                    contentDescription = if (expanded) {
+                        stringResource(R.string.cd_collapse, stringResource(R.string.profile_avatar_category_label))
+                    } else {
+                        stringResource(R.string.cd_expand, stringResource(R.string.profile_avatar_category_label))
+                    },
+                    tint = if (isFocused) NuvioTheme.colors.FocusRing else NuvioTheme.colors.TextSecondary
+                )
+            }
+        }
+
+        if (expanded) {
+            val categoryListState = rememberLazyListState()
+            val categoryLayoutInfo by remember { derivedStateOf { categoryListState.layoutInfo } }
+            val menuHeight = minOf(52.dp * categories.size + 8.dp, 320.dp)
+
+            Popup(
+                alignment = Alignment.TopStart,
+                offset = IntOffset(0, anchorSize.height),
+                onDismissRequest = { expanded = false },
+                properties = PopupProperties(focusable = true)
+            ) {
+            Box(
+                modifier = Modifier
+                    .width(with(LocalDensity.current) { anchorSize.width.toDp() })
+                    .height(menuHeight)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(NuvioTheme.colors.BackgroundCard)
+                    .border(
+                        BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border),
+                        RoundedCornerShape(14.dp)
+                    )
+            ) {
+                LazyColumn(
+                    state = categoryListState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(end = 14.dp, top = 4.dp, bottom = 4.dp)
+                ) {
+                    items(categories, key = { it }) { category ->
+                        val isSelected = category == selectedCategory
+                        var optionFocused by remember { mutableStateOf(false) }
+                        val itemBackgroundColor = when {
+                            optionFocused -> NuvioTheme.colors.Secondary
+                            isSelected -> NuvioTheme.colors.FocusBackground
+                            else -> Color.Transparent
+                        }
+
+                        DropdownMenuItem(
+                            modifier = Modifier
+                                .then(
+                                    if (isSelected) {
+                                        Modifier
+                                            .focusRequester(selectedItemFocusRequester)
+                                            .bringIntoViewRequester(selectedBringIntoViewRequester)
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                                .padding(horizontal = 6.dp, vertical = NuvioTheme.spacing.xxs)
+                                .background(itemBackgroundColor, RoundedCornerShape(10.dp))
+                                .onFocusChanged { optionFocused = it.isFocused || it.hasFocus },
+                            text = {
+                                Text(
+                                    text = categoryLabel(category),
+                                    color = if (optionFocused) {
+                                        NuvioTheme.colors.OnSecondary
+                                    } else {
+                                        NuvioTheme.colors.TextPrimary
+                                    },
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                                )
+                            },
+                            onClick = {
+                                onCategorySelected(category)
+                                expanded = false
+                            }
+                        )
+                    }
+                }
+
+                ApachiyVerticalScrollIndicator(
+                    totalItems = categoryLayoutInfo.totalItemsCount,
+                    firstVisibleIndex = categoryListState.firstVisibleItemIndex,
+                    visibleCount = categoryLayoutInfo.visibleItemsInfo.size,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .fillMaxHeight()
+                        .padding(vertical = 6.dp, horizontal = 2.dp)
+                )
+            }
+            }
+        }
     }
 }
 
@@ -261,7 +441,6 @@ private fun AvatarGridItem(
     isSelected: Boolean,
     focusRequester: FocusRequester,
     upFocusRequester: FocusRequester?,
-    onFocused: (Boolean) -> Unit,
     onClick: () -> Unit
 ) {
     var isFocused by remember { mutableStateOf(false) }
@@ -305,10 +484,7 @@ private fun AvatarGridItem(
                     Modifier
                 }
             )
-            .onFocusChanged {
-                isFocused = it.isFocused
-                onFocused(it.isFocused)
-            }
+            .onFocusChanged { isFocused = it.isFocused }
             .clip(CircleShape)
             .border(borderWidth, borderColor, CircleShape)
             .clickable(

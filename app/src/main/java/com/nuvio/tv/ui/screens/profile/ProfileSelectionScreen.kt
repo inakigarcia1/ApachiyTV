@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -1161,7 +1162,6 @@ private fun CreateProfileOverlay(
     var profileName by remember { mutableStateOf("") }
     var selectedColorHex by remember { mutableStateOf("#1E88E5") }
     var selectedAvatarId by remember { mutableStateOf<String?>(null) }
-    var focusedAvatarName by remember { mutableStateOf<String?>(null) }
     val selectedAvatar = remember(avatarCatalog, selectedAvatarId) {
         avatarCatalog.find { it.id == selectedAvatarId }
     }
@@ -1285,7 +1285,9 @@ private fun CreateProfileOverlay(
                 Spacer(modifier = Modifier.width(ProfileSelectionSpacing.EditorDividerSpacing))
 
                 Column(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
                 ) {
                     Text(
@@ -1293,15 +1295,6 @@ private fun CreateProfileOverlay(
                         modifier = Modifier.fillMaxWidth(),
                         color = NuvioTheme.colors.TextSecondary,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Text(
-                        text = stringResource(R.string.profile_custom_avatar_web_panel_note),
-                        modifier = Modifier.fillMaxWidth(),
-                        color = NuvioTheme.colors.TextTertiary,
-                        fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         textAlign = TextAlign.Center
                     )
@@ -1319,19 +1312,9 @@ private fun CreateProfileOverlay(
                                     avatar.bgColor?.let { selectedColorHex = it }
                                 }
                             },
-                            onAvatarFocused = { avatar ->
-                                focusedAvatarName = avatar?.displayName
-                            },
-                            modifier = Modifier.heightIn(max = 320.dp)
-                        )
-
-                        Text(
-                            text = focusedAvatarName ?: stringResource(R.string.profile_avatar_focus_hint),
-                            modifier = Modifier.fillMaxWidth(),
-                            color = if (focusedAvatarName != null) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextTertiary,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
                         )
                     } else {
                         Box(
@@ -1443,7 +1426,6 @@ private fun EditProfileOverlay(
     var selectedAvatarId by remember(profile.id, profile.avatarId) {
         mutableStateOf(profile.avatarId)
     }
-    var focusedAvatarName by remember { mutableStateOf<String?>(null) }
     val selectedAvatar = remember(avatarCatalog, selectedAvatarId) {
         avatarCatalog.find { it.id == selectedAvatarId }
     }
@@ -1593,7 +1575,9 @@ private fun EditProfileOverlay(
                 Spacer(modifier = Modifier.width(ProfileSelectionSpacing.EditorDividerSpacing))
 
                 Column(
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
                     verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.md)
                 ) {
                     Text(
@@ -1601,15 +1585,6 @@ private fun EditProfileOverlay(
                         modifier = Modifier.fillMaxWidth(),
                         color = NuvioTheme.colors.TextSecondary,
                         fontSize = 13.sp,
-                        fontWeight = FontWeight.Medium,
-                        textAlign = TextAlign.Center
-                    )
-
-                    Text(
-                        text = stringResource(R.string.profile_custom_avatar_web_panel_note),
-                        modifier = Modifier.fillMaxWidth(),
-                        color = NuvioTheme.colors.TextTertiary,
-                        fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
                         textAlign = TextAlign.Center
                     )
@@ -1627,19 +1602,9 @@ private fun EditProfileOverlay(
                                     avatar.bgColor?.let { selectedColorHex = it }
                                 }
                             },
-                            onAvatarFocused = { avatar ->
-                                focusedAvatarName = avatar?.displayName
-                            },
-                            modifier = Modifier.heightIn(max = 320.dp)
-                        )
-
-                        Text(
-                            text = focusedAvatarName ?: stringResource(R.string.profile_avatar_focus_hint),
-                            modifier = Modifier.fillMaxWidth(),
-                            color = if (focusedAvatarName != null) NuvioTheme.colors.TextPrimary else NuvioTheme.colors.TextTertiary,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth()
                         )
                     } else {
                         Box(
@@ -2205,6 +2170,7 @@ private fun OverlayButton(
     )
     val textColor = when {
         !enabled -> NuvioTheme.colors.TextDisabled
+        isPrimary && !isFocused -> NuvioTheme.colors.BackgroundElevated
         else -> if (bgColor.luminance() > 0.55f) Color.Black else Color.White
     }
 

@@ -1399,6 +1399,7 @@
     <string name="profile_custom_avatar_web_panel_note">Custom avatar URLs can be configured from the Apachiy web panel.</string>
     <string name="profile_avatar_none_selected">No avatar selected</string>
     <string name="profile_avatar_focus_hint">Focus an avatar to view its name</string>
+    <string name="profile_avatar_category_label">Category</string>
     <string name="profile_avatar_category_all">All</string>
     <string name="profile_avatar_category_anime">Anime</string>
     <string name="profile_avatar_category_animation">Animation</string>

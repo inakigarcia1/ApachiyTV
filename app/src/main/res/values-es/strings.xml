@@ -999,6 +999,7 @@
     <string name="profile_avatar_category_movie">Película</string>
     <string name="profile_avatar_category_tv">TV</string>
     <string name="profile_avatar_category_gaming">Juegos</string>
+    <string name="profile_avatar_category_label">Categoría</string>
     <string name="profile_add_new">Añadir perfil</string>
     <string name="profile_cancel">Cancelar</string>
     <string name="profile_save">Guardar</string>
