@@ -234,12 +234,12 @@ class AccountViewModel @Inject constructor(
                         updateEffectiveOwnerId(_uiState.value.authState)
                         _uiState.update { it.copy(isLoading = false, syncClaimSuccess = true) }
                     } else {
-                        authManager.signOut(explicit = false)
+                        authManager.signOut(explicit = false, reason = "sync_claim_rejected")
                         _uiState.update { it.copy(isLoading = false, error = result.message) }
                     }
                 },
                 onFailure = { e ->
-                    authManager.signOut(explicit = false)
+                    authManager.signOut(explicit = false, reason = "sync_claim_failed")
                     _uiState.update { it.copy(isLoading = false, error = userFriendlyError(e)) }
                 }
             )

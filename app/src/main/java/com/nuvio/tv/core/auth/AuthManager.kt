@@ -4,6 +4,7 @@ import android.os.SystemClock
 import android.util.Log
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.core.auth.diagnostics.AuthDiagnosticEventListenerFactory
+import com.nuvio.tv.core.diagnostics.SentryInitializer
 import com.nuvio.tv.core.auth.diagnostics.AuthDiagnosticsSession
 import com.nuvio.tv.core.auth.diagnostics.authDiagnosticFilteredBody
 import com.nuvio.tv.core.logging.bodySnippetForLog
@@ -35,6 +36,7 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,6 +56,7 @@ import javax.inject.Singleton
 import javax.net.ssl.SSLException
 
 private const val TAG = "AuthManager"
+private const val REFRESH_LEAD_MS = 10 * 60 * 1000L
 private const val AUTH_ENDPOINT_SIGNUP = "/auth/v1/signup"
 private const val AUTH_ENDPOINT_PASSWORD = "/auth/v1/token?grant_type=password"
 private const val AUTH_ENDPOINT_REFRESH = "/auth/v1/token?grant_type=refresh_token"
@@ -106,6 +109,7 @@ class AuthManager @Inject constructor(
 
     init {
         observeSessionStatus()
+        keepSessionFresh()
     }
 
     private fun observeSessionStatus() {
@@ -180,7 +184,7 @@ class AuthManager @Inject constructor(
                                 }
                             }
                         } else {
-                            handleUnexpectedSignedOut()
+                            handleUnexpectedSignedOut("no_refresh_token")
                             finishStartupAuthDiagnostics("signed_out", "startup_no_refresh_token")
                         }
                     }
@@ -378,12 +382,12 @@ class AuthManager @Inject constructor(
         }
     }
 
-    suspend fun signOut(explicit: Boolean = true) {
+    suspend fun signOut(explicit: Boolean = true, reason: String = "unspecified") {
         sessionValidator.reset()
         if (explicit) {
             authSessionNoticeDataStore.markNuvioExplicitLogout()
-        } else {
-            authSessionNoticeDataStore.markUnexpectedNuvioLogoutIfNeeded()
+        } else if (authSessionNoticeDataStore.markUnexpectedNuvioLogoutIfNeeded()) {
+            SentryInitializer.reportUnexpectedSignOut(reason)
         }
         try {
             auth.signOut()
@@ -414,12 +418,13 @@ class AuthManager @Inject constructor(
         cachedEffectiveUserSourceUserId = null
     }
 
-    private suspend fun handleUnexpectedSignedOut() {
+    private suspend fun handleUnexpectedSignedOut(reason: String) {
         sessionValidator.reset()
         cachedEffectiveUserId = null
         cachedEffectiveUserSourceUserId = null
         _authState.value = AuthState.SignedOut
         if (authSessionNoticeDataStore.markUnexpectedNuvioLogoutIfNeeded()) {
+            SentryInitializer.reportUnexpectedSignOut(reason)
             accountLocalDataResetService.clearAfterSignOut()
         }
     }
@@ -505,7 +510,40 @@ class AuthManager @Inject constructor(
             if (error != null) clearError.addSuppressed(error)
             Log.w(TAG, "Failed to clear invalid Supabase session", clearError)
         }
-        handleUnexpectedSignedOut()
+        handleUnexpectedSignedOut(invalidSessionReason(error))
+    }
+
+    private fun invalidSessionReason(error: Throwable?): String {
+        val type = error?.javaClass?.simpleName ?: "none"
+        val status = error?.authHttpStatus()?.toString() ?: "-"
+        return "invalid_session:$type:$status"
+    }
+
+    private fun keepSessionFresh() {
+        scope.launch {
+            while (true) {
+                val session = auth.currentSessionOrNull()
+                val refreshToken = session?.refreshToken?.takeIf { it.isNotBlank() }
+                if (session == null || refreshToken == null) {
+                    delay(30_000)
+                    continue
+                }
+                val waitMs = session.expiresAt.toEpochMilliseconds() - REFRESH_LEAD_MS - System.currentTimeMillis()
+                if (waitMs > 0) {
+                    delay(waitMs)
+                    continue
+                }
+                val outcome = refreshCurrentSessionSerialized(
+                    observedRefreshToken = refreshToken,
+                    reason = "scheduled refresh"
+                )
+                if (outcome.result == SessionRefreshResult.INVALID_SESSION) {
+                    clearInvalidRemoteSession(outcome.error)
+                } else if (outcome.result == SessionRefreshResult.TRANSIENT_FAILURE) {
+                    delay(60_000)
+                }
+            }
+        }
     }
 
     private suspend fun refreshCurrentSessionSerialized(

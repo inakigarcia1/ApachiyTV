@@ -192,7 +192,7 @@ class DeviceRegistrar @Inject constructor(
         Log.w(TAG, "max devices exceeded for user")
         deviceLimitNotifier.notifyMaxDevicesExceeded()
         if (authManager.lastAuthKind != LastAuthKind.SignUp) {
-            authManager.signOut(explicit = false)
+            authManager.signOut(explicit = false, reason = "max_devices")
         }
     }
 

@@ -10,6 +10,7 @@ import com.nuvio.tv.core.debrid.DirectDebridStreamPreparer
 import com.nuvio.tv.core.cloud.CloudLibraryPlaybackSessionStore
 import com.nuvio.tv.core.cloud.CloudLibraryPlaybackProgressStore
 import com.nuvio.tv.core.cloud.CloudLibraryRepository
+import com.nuvio.tv.core.player.ActivePlayback
 import com.nuvio.tv.core.plugin.PluginManager
 import com.nuvio.tv.core.tracking.TrackingScrobbleCoordinator
 import com.nuvio.tv.core.torrent.TorrentService
@@ -122,6 +123,11 @@ class PlayerViewModel @Inject constructor(
         scope = viewModelScope
     )
 
+    private val unregisterActivePlayback = ActivePlayback.register {
+        com.nuvio.tv.core.network.PlaybackActiveGuard.isPlaybackActive = false
+        controller.stopAndRelease()
+    }
+
     val uiState: StateFlow<PlayerUiState>
         get() = controller.uiState
 
@@ -184,6 +190,7 @@ class PlayerViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        unregisterActivePlayback()
         com.nuvio.tv.core.network.PlaybackActiveGuard.isPlaybackActive = false
         controller.onCleared()
         // Allow the trailer player to be re-created when returning to home screen.

@@ -77,10 +77,9 @@ object SupabaseModule {
                 }
             }
             install(Auth) {
-                // Session refresh must go through this client only. AuthManager calls
-                // refreshCurrentSession() on the same Auth instance so it cannot race a
-                // second HTTP refresh against GoTrue token rotation.
-                alwaysAutoRefresh = true
+                // AuthManager is the only refresher. The library timer captures a
+                // refresh token and can race that call, and a 400 then clears the session.
+                alwaysAutoRefresh = false
                 autoLoadFromStorage = true
                 autoSaveToStorage = true
                 enableLifecycleCallbacks = false

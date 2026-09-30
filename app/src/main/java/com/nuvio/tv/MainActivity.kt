@@ -382,7 +382,17 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            var hadAccount by remember { mutableStateOf(authState is AuthState.FullAccount) }
             LaunchedEffect(authState) {
+                when (authState) {
+                    is AuthState.FullAccount -> hadAccount = true
+                    is AuthState.SignedOut -> if (hadAccount) {
+                        com.nuvio.tv.core.player.ActivePlayback.stop()
+                        trailerPlayerPool.stop()
+                        hadAccount = false
+                    }
+                    else -> Unit
+                }
                 if (authState !is AuthState.FullAccount) {
                     hasSelectedProfileThisSession = false
                     onboardingCompletedThisSession = false

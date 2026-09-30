@@ -80,7 +80,7 @@ class RemoteLogoutWatcher @Inject constructor(
                             stillRegisteredOnApi(installationId).not()
                         if (!matchesInstallation && !matchesDeviceId && !missingLocally) return@collect
                         Log.w(TAG, "device row deleted remotely; signing out")
-                        authManager.signOut(explicit = false)
+                        authManager.signOut(explicit = false, reason = "device_row_deleted")
                     }
                 }
                 channel.subscribe(blockUntilSubscribed = true)

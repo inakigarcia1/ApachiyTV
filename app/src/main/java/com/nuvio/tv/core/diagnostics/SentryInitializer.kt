@@ -3,8 +3,10 @@ package com.nuvio.tv.core.diagnostics
 import android.app.Application
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.data.local.SentrySettingsDataStore
+import android.util.Log
 import io.sentry.Sentry
 import io.sentry.SentryEvent
+import io.sentry.SentryLevel
 import io.sentry.SentryOptions
 import io.sentry.android.core.SentryAndroid
 import kotlinx.coroutines.CoroutineScope
@@ -16,6 +18,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
 object SentryInitializer {
+    private const val TAG = "SentryInitializer"
     private val droppedIssueText = listOf(
         "Large HTTP payload",
         "File IO on Main Thread"
@@ -85,6 +88,12 @@ object SentryInitializer {
             scope.setTag("app.version_code", BuildConfig.VERSION_CODE.toString())
         }
         active = true
+    }
+
+    fun reportUnexpectedSignOut(reason: String) {
+        Log.e(TAG, "unexpected sign-out: $reason")
+        if (!active || !Sentry.isEnabled()) return
+        Sentry.captureMessage("unexpected_sign_out: $reason", SentryLevel.ERROR)
     }
 
     private fun shouldDrop(event: SentryEvent): Boolean {
