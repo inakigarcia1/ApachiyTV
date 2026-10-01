@@ -181,6 +181,14 @@ class PlayerViewModel @Inject constructor(
         controller.onEvent(event)
     }
 
+    fun reportVisiblePlaybackError(message: String) {
+        controller.reportVisiblePlaybackError(message)
+    }
+
+    fun clearVisiblePlaybackErrorReport() {
+        controller.clearVisiblePlaybackErrorReport()
+    }
+
     fun bindExoSubtitleView(subtitleView: androidx.media3.ui.SubtitleView?) {
         controller.bindExoSubtitleView(subtitleView)
     }

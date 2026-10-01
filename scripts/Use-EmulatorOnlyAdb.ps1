@@ -12,6 +12,7 @@ if ($preferred) {
         Write-Error "APACHIY_ADB_SERIAL must be an emulator serial (emulator-XXXX), got: $preferred"
     }
     $env:ANDROID_SERIAL = $preferred
+    $ApachiyEmulatorSerials = @($preferred)
     Write-Host "ADB install target: $preferred (APACHIY_ADB_SERIAL)"
     return
 }
@@ -42,8 +43,10 @@ if ($emulators.Count -eq 0) {
 }
 
 if ($emulators.Count -gt 1) {
-    Write-Host ("Multiple emulators, using " + $emulators[0] + ". Set APACHIY_ADB_SERIAL to pick another.")
+    Write-Host ("Multiple emulators booted: " + ($emulators -join ", ") + ". Set APACHIY_ADB_SERIAL to limit Gradle install* to one.")
 }
+
+$ApachiyEmulatorSerials = @($emulators)
 
 $env:ANDROID_SERIAL = $emulators[0]
 Write-Host "ADB install target: $env:ANDROID_SERIAL"

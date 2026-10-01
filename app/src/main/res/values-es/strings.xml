@@ -1100,4 +1100,13 @@
     <string name="watchlist_removed">Eliminado de lista de deseos</string>
     <string name="playback_player_auto">Automático (Mejor para el contenido)</string>
     <string name="playback_player_auto_desc">ExoPlayer para Películas y Series · MPV para Anime</string>
+    <string name="settings_playback_torbox_speed_pinned">Fijado: %1$.1f Mbps</string>
+    <string name="settings_playback_torbox_pin_title">Fijar Mbps</string>
+    <string name="settings_playback_torbox_pin_subtitle">Solo development. Reemplaza la medición guardada hasta que lo quites.</string>
+    <string name="settings_playback_torbox_pin_action">Fijar</string>
+    <string name="settings_playback_torbox_pin_dialog_title">Fijar ancho de banda</string>
+    <string name="settings_playback_torbox_pin_dialog_subtitle">Mbps que se manda con la petición de streams. La medición real queda guardada aparte.</string>
+    <string name="settings_playback_torbox_pin_save">Guardar</string>
+    <string name="settings_playback_torbox_pin_clear">Quitar</string>
+    <string name="settings_playback_torbox_pin_invalid">Escribí un número mayor que 0.</string>
 </resources>

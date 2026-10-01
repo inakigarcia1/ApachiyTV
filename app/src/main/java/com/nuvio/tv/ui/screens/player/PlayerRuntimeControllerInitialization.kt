@@ -1541,6 +1541,10 @@ internal fun PlayerRuntimeController.initializePlayer(
                             return
                         }
 
+                        if (tryNextStreamAfterCompatibilityFailure(error, detailedError)) {
+                            return
+                        }
+
                         if (rebufferStartedAtMs != 0L) {
                             val lastRebufferMs = (SystemClock.elapsedRealtime() - rebufferStartedAtMs).coerceAtLeast(0L)
                             rebufferTotalMs += lastRebufferMs

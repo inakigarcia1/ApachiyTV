@@ -889,6 +889,14 @@ fun PlayerScreen(
         )
 
         // Error state
+        LaunchedEffect(uiState.error) {
+            val error = uiState.error
+            if (error.isNullOrBlank()) {
+                viewModel.clearVisiblePlaybackErrorReport()
+            } else {
+                viewModel.reportVisiblePlaybackError(error)
+            }
+        }
         if (uiState.error != null) {
             ErrorOverlay(
                 message = uiState.error!!,

@@ -28,7 +28,27 @@ $env:APACHIY_USE_LOCAL_DEV = "1"
 
 . (Join-Path $PSScriptRoot "Use-EmulatorOnlyAdb.ps1")
 
-Write-Host "Installing TV (emulator) with local.dev.properties (localhost -> 10.0.2.2 in APK)."
+$targets = @($ApachiyEmulatorSerials)
+if ($targets.Count -eq 0) {
+    Write-Error "No emulator install targets. Boot an AVD or set APACHIY_ADB_SERIAL=emulator-5554."
+}
 
-& $Gradlew ":app:installFullDebug" "-Papachiy.useLocalDev=true" @Args
+Write-Host ("Building TV APK (local.dev.properties; localhost -> 10.0.2.2). Installing on " + $targets.Count + " emulator(s): " + ($targets -join ", "))
+
+& $Gradlew ":app:assembleFullDebug" "-Papachiy.useLocalDev=true" @Args
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+$Apk = Join-Path $Root "app\build\outputs\apk\full\debug\app-full-universal-debug.apk"
+if (-not (Test-Path $Apk)) {
+    Write-Error "APK not found at $Apk"
+}
+
+$installFailed = $false
+foreach ($serial in $targets) {
+    Write-Host "adb install -> $serial"
+    & adb -s $serial install -r $Apk
+    if ($LASTEXITCODE -ne 0) {
+        $installFailed = $true
+    }
+}
+if ($installFailed) { exit 1 }

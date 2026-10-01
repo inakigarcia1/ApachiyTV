@@ -19,6 +19,7 @@ private const val KEY_SPEED = "speed_mbps"
 private const val KEY_AT = "measured_at"
 private const val KEY_CONN = "connection_type"
 private const val KEY_NET_SIG = "network_signature"
+private const val KEY_PINNED = "pinned_mbps"
 
 @Serializable
 private data class TorboxSpeedtestApiResponse(
@@ -43,7 +44,29 @@ object TorboxSpeedTestHarness {
         }
     }
 
+    fun readPinnedMbps(): Double? {
+        val prefs = appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE) ?: return null
+        val pinned = prefs.getFloat(KEY_PINNED, -1f).toDouble()
+        return pinned.takeIf { it > 0.0 }
+    }
+
+    fun pinMbps(mbps: Double?) {
+        val prefs = appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE) ?: return
+        if (mbps == null || mbps <= 0.0) {
+            prefs.edit().remove(KEY_PINNED).apply()
+        } else {
+            prefs.edit().putFloat(KEY_PINNED, mbps.toFloat()).apply()
+        }
+    }
+
     fun readSample(): TorboxSpeedSample? {
+        readPinnedMbps()?.let { pinned ->
+            return TorboxSpeedSample(
+                speedMbps = pinned,
+                measuredAtEpochMs = System.currentTimeMillis(),
+                connectionType = "pinned",
+            )
+        }
         val prefs = appContext?.getSharedPreferences(PREFS, Context.MODE_PRIVATE) ?: return null
         val speed = prefs.getFloat(KEY_SPEED, -1f).toDouble()
         val at = prefs.getLong(KEY_AT, 0L)
@@ -147,6 +170,9 @@ object TorboxSpeedTestCoordinator {
     }
 
     suspend fun runIfNeeded(force: Boolean, manual: Boolean = false) {
+        if (!force && TorboxSpeedTestHarness.readPinnedMbps() != null) {
+            return
+        }
         if (PlaybackActiveGuard.isPlaybackActive) {
             if (force) TorboxSpeedTestDevFeedback.onSkippedPlaybackActive()
             return

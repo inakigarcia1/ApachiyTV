@@ -220,6 +220,9 @@ class PlayerRuntimeController(
     }
 
     internal var currentVideoId: String? = videoId
+    internal val compatibilityAttemptedUrls = mutableSetOf<String>()
+    internal var compatibilityFallbackJob: kotlinx.coroutines.Job? = null
+    internal var compatibilityFallbackVideoId: String? = null
     internal var currentSeason: Int? = initialSeason
     internal var currentEpisode: Int? = initialEpisode
     internal var currentEpisodeTitle: String? = initialEpisodeTitle
@@ -339,6 +342,7 @@ class PlayerRuntimeController(
     internal var lastPlaybackDiagnosticsForReport: LastPlaybackDiagnostics =
         LastPlaybackDiagnostics.EMPTY
     internal var lastPlaybackIssueError: PlaybackIssueErrorInput? = null
+    internal var reportedVisiblePlaybackError: String? = null
     internal val playbackIssueReportRequestVersion = AtomicLong(0L)
     internal val playbackAnalyticsDiagnostics = PlayerPlaybackAnalyticsDiagnostics()
     internal val loadingDiagnosticEvents: ArrayDeque<PlayerLoadingDiagnosticEvent> = ArrayDeque()

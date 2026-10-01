@@ -2527,6 +2527,7 @@
     <string name="player_error_stream_unavailable">\n\nEl servidor del stream no está disponible actualmente. Prueba otra fuente.</string>
     <string name="player_error_source_invalid_content">Error de fuente: la fuente del stream devolvió contenido inválido o no reproducible. El enlace pudo haber expirado o el servidor devolvió una página de error en lugar de video.\n\nPrueba otra fuente. [%1$s]</string>
     <string name="player_error_decoder">Error del decodificador</string>
+    <string name="player_source_incompatible_trying_next">La fuente seleccionada no es compatible. Probando otra…</string>
     <string name="player_error_unsupported_format">Este stream usa un formato que tu dispositivo podría no soportar. Prueba otra fuente. [%1$s]</string>
     <string name="player_error_initialize_failed">No se pudo inicializar el reproductor</string>
     <string name="player_error_mpv_surface_failed">No se pudo inicializar la superficie de libmpv</string>
@@ -2837,7 +2838,7 @@
     <string name="web_stream_badge_error_import_limit">Puedes importar hasta %1$d URL de insignias.</string>
 
     <!-- Playback — Buffer & Network settings -->
-    <string name="settings_playback_torbox_speed_title">Ancho de banda (TorBox)</string>
+    <string name="settings_playback_torbox_speed_title">Ancho de banda</string>
     <string name="settings_playback_torbox_speed_none">Sin medición guardada</string>
     <string name="settings_playback_torbox_speed_last">Última: %1$.1f Mbps · %2$s</string>
     <string name="settings_playback_torbox_measure_now">Medir ahora</string>
