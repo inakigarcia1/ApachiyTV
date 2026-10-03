@@ -1,4 +1,6 @@
 *.iml
+app/libs/sherpa-onnx-*.aar
+app/libs/sherpa-onnx-*.aar.part
 .gradle
 /local.properties
 /local.dev.properties

@@ -11,6 +11,7 @@ plugins {
 
 import java.io.File
 import java.net.URI
+import java.security.MessageDigest
 import java.util.Properties
 
 fun parseBooleanProperty(value: String?): Boolean {
@@ -132,6 +133,21 @@ val releaseKeyPasswordValue = env("APACHIY_RELEASE_KEY_PASSWORD")
     ?: localProperties.getProperty("APACHIY_RELEASE_KEY_PASSWORD", "")
 val releaseStorePasswordValue = env("APACHIY_RELEASE_STORE_PASSWORD")
     ?: localProperties.getProperty("APACHIY_RELEASE_STORE_PASSWORD", "")
+
+val sherpaOnnxVersion = "1.13.8"
+val sherpaOnnxSha256 = "633c24321e06b1fe79feafa03ea16cbc0f8a286641e2da3559bac91bdb13bd96"
+val sherpaOnnxAar: File = project.file("libs/sherpa-onnx-$sherpaOnnxVersion.aar").also { aar ->
+    fun sha256(file: File): String = MessageDigest.getInstance("SHA-256")
+        .digest(file.readBytes()).joinToString("") { "%02x".format(it) }
+    if (aar.isFile && sha256(aar) == sherpaOnnxSha256) return@also
+    val url = "https://github.com/k2-fsa/sherpa-onnx/releases/download/v$sherpaOnnxVersion/sherpa-onnx-$sherpaOnnxVersion.aar"
+    logger.lifecycle("Downloading $url")
+    aar.parentFile.mkdirs()
+    val partial = File(aar.path + ".part")
+    URI(url).toURL().openStream().use { input -> partial.outputStream().use { input.copyTo(it) } }
+    check(sha256(partial) == sherpaOnnxSha256) { "Checksum mismatch for $url" }
+    check(partial.renameTo(aar)) { "Could not move ${partial.name} into libs/" }
+}
 
 android {
     namespace = "com.nuvio.tv"
@@ -354,6 +370,10 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+            excludes += listOf(
+                "**/libsherpa-onnx-c-api.so",
+                "**/libsherpa-onnx-cxx-api.so",
+            )
             // Keep one consistent native set across dependencies.
             pickFirsts += listOf(
                 "lib/*/libc++_shared.so",
@@ -519,6 +539,7 @@ dependencies {
         "libs/lib-extractor-release.aar"
     ))
     implementation(libs.media3.ui)
+    implementation(files(sherpaOnnxAar))
 
     // Local decoder AARs (AV1, IAMF, MPEG-H)
     implementation(files(
@@ -589,6 +610,7 @@ dependencies {
     androidTestImplementation(libs.androidx.test.ext.junit)
     androidTestImplementation(libs.androidx.test.runner)
     testImplementation("junit:junit:4.13.2")
+    testImplementation(kotlin("test"))
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.1")
     testImplementation("io.mockk:mockk:1.13.12")
     testImplementation("org.mockito:mockito-core:5.14.2")

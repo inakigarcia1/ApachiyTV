@@ -161,7 +161,12 @@ internal object EmbeddedSubtitleTimelineLoader {
             if (cached != null) {
                 if (cached.timeline != null) return cached.timeline
                 val ageMs = (nowNs - cached.createdAtNs).coerceAtLeast(0L) / 1_000_000L
-                if (ageMs < NEGATIVE_CACHE_TTL_MS) return null
+                if (ageMs < NEGATIVE_CACHE_TTL_MS) {
+                    AutoSyncDebugLog.info {
+                        "index skipped: it failed ${ageMs / 1_000L}s ago for this stream"
+                    }
+                    return null
+                }
                 cache.remove(cacheKey)
             }
         }
@@ -176,7 +181,9 @@ internal object EmbeddedSubtitleTimelineLoader {
             } catch (_: TimeoutCancellationException) {
                 // A transient deadline is not evidence that the container is unsupported.
                 // Do not publish a negative cache entry for timed-out work.
-                Log.w("NuvioAutoSync", "embedded index timed out after ${TOTAL_TIMEOUT_MS}ms")
+                AutoSyncDebugLog.warn {
+                    "index reject reason=timeout after ${TOTAL_TIMEOUT_MS}ms"
+                }
                 return null
             }
 
@@ -191,12 +198,18 @@ internal object EmbeddedSubtitleTimelineLoader {
             // External cancellation must remain observable and must never publish cache state.
             throw cancel
         } catch (error: Exception) {
-            Log.w("NuvioAutoSync", "embedded index failed: ${error.javaClass.simpleName}: ${error.message}")
-            synchronized(cacheLock) {
-                cache[cacheKey] = CachedLoadResult(
-                    timeline = null,
-                    createdAtNs = System.nanoTime(),
-                )
+            val transient = isTransientIndexFailure(error)
+            AutoSyncDebugLog.warn {
+                "index reject reason=${if (transient) "network" else "error"} " +
+                    "detail=${error.javaClass.simpleName}: ${error.message}"
+            }
+            if (!transient) {
+                synchronized(cacheLock) {
+                    cache[cacheKey] = CachedLoadResult(
+                        timeline = null,
+                        createdAtNs = System.nanoTime(),
+                    )
+                }
             }
             null
         }
@@ -2186,7 +2199,12 @@ internal object EmbeddedSubtitleTimelineLoader {
 
                         try {
                             val result = response.use { current ->
-                                if (!current.isSuccessful) return@use null
+                                if (!current.isSuccessful) {
+                                    if (isTransientHttpStatus(current.code)) {
+                                        throw java.io.IOException("HTTP ${current.code}")
+                                    }
+                                    return@use null
+                                }
                                 if (requirePartialContent && current.code != 206) return@use null
                                 if (start > 0L && current.code != 206) return@use null
 
@@ -2262,6 +2280,15 @@ internal object EmbeddedSubtitleTimelineLoader {
             )
         }
     }
+
+    private fun isTransientIndexFailure(error: Exception): Boolean {
+        if (error is java.io.IOException) return true
+        val code = Regex("HTTP (\\d+)").find(error.message.orEmpty())?.groupValues?.getOrNull(1)?.toIntOrNull()
+        return code != null && isTransientHttpStatus(code)
+    }
+
+    private fun isTransientHttpStatus(code: Int): Boolean =
+        code == 408 || code == 425 || code == 429 || code >= 500
 
     private fun parseContentRange(value: String?): ContentRange? {
         if (value.isNullOrBlank()) return null

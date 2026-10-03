@@ -11,7 +11,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.R
+import com.nuvio.tv.ui.screens.player.audiosync.AudioSyncSettings
+import com.nuvio.tv.ui.screens.player.audiosync.SubtitleSyncStatus
 import com.nuvio.tv.ui.screens.player.autosync.AutoSyncPreferences
+import com.nuvio.tv.ui.screens.player.autosync.bubble.AutoSyncBubbleToasts
 
 internal fun LazyListScope.autoSyncSettingsItems(
     enabled: Boolean,
@@ -56,6 +59,18 @@ internal fun LazyListScope.autoSyncSettingsItems(
             },
         )
     }
+    item(key = "audio_sync_fallback") {
+        AudioSyncFallbackToggle(enabled = enabled, onFocused = onItemFocused)
+    }
+    item(key = "audio_sync_mobile_data") {
+        AudioSyncMobileDataToggle(enabled = enabled, onFocused = onItemFocused)
+    }
+    item(key = "audio_sync_bubble") {
+        AudioSyncBubbleToggle(onFocused = onItemFocused)
+    }
+    item(key = "audio_sync_model") {
+        AudioSyncModelRow(enabled = enabled, onFocused = onItemFocused)
+    }
 }
 
 @Composable
@@ -90,6 +105,10 @@ internal fun AutoSyncDeveloperToggles(
             )
         },
     )
+    AudioSyncFallbackToggle(enabled = enabled)
+    AudioSyncMobileDataToggle(enabled = enabled)
+    AudioSyncBubbleToggle()
+    AudioSyncModelRow(enabled = enabled)
 }
 
 @Composable
@@ -164,5 +183,71 @@ private fun AutoSyncAggressiveToggle(
         aggressive,
         { AutoSyncPreferences.setAggressiveMode(context, it) },
         enabled && shownOn,
+    )
+}
+
+@Composable
+private fun AudioSyncFallbackToggle(enabled: Boolean, onFocused: () -> Unit = {}) {
+    val checked by AudioSyncSettings.fallbackEnabled.collectAsStateWithLifecycle()
+    ToggleSettingsItem(
+        icon = Icons.Default.Sync,
+        title = stringResource(R.string.playback_audio_sync_fallback),
+        subtitle = stringResource(R.string.playback_audio_sync_fallback_sub),
+        isChecked = checked,
+        onCheckedChange = AudioSyncSettings::setFallbackEnabled,
+        onFocused = onFocused,
+        enabled = enabled,
+    )
+}
+
+@Composable
+private fun AudioSyncMobileDataToggle(enabled: Boolean, onFocused: () -> Unit = {}) {
+    val fallback by AudioSyncSettings.fallbackEnabled.collectAsStateWithLifecycle()
+    val checked by AudioSyncSettings.samplingOnMobileData.collectAsStateWithLifecycle()
+    ToggleSettingsItem(
+        icon = Icons.Default.Sync,
+        title = stringResource(R.string.playback_audio_sync_mobile_data),
+        subtitle = stringResource(R.string.playback_audio_sync_mobile_data_sub),
+        isChecked = checked,
+        onCheckedChange = AudioSyncSettings::setSamplingOnMobileData,
+        onFocused = onFocused,
+        enabled = enabled && fallback,
+    )
+}
+
+@Composable
+private fun AudioSyncBubbleToggle(onFocused: () -> Unit = {}) {
+    val context = LocalContext.current
+    AutoSyncBubbleToasts.ensureLoaded(context)
+    val checked by AutoSyncBubbleToasts.enabled.collectAsStateWithLifecycle()
+    ToggleSettingsItem(
+        icon = Icons.Default.Sync,
+        title = stringResource(R.string.settings_autosync_bubble_toast),
+        subtitle = stringResource(R.string.settings_autosync_bubble_toast_description),
+        isChecked = checked,
+        onCheckedChange = { AutoSyncBubbleToasts.setEnabled(context, it) },
+        onFocused = onFocused,
+    )
+}
+
+@Composable
+private fun AudioSyncModelRow(enabled: Boolean, onFocused: () -> Unit = {}) {
+    val model by SubtitleSyncStatus.speechModel.collectAsStateWithLifecycle()
+    val subtitle = when {
+        model.downloading -> stringResource(R.string.playback_audio_sync_model_downloading, (model.progress * 100).toInt())
+        model.downloaded -> stringResource(R.string.playback_audio_sync_model_ready)
+        model.error != null -> stringResource(R.string.playback_audio_sync_model_failed, model.error.orEmpty())
+        else -> stringResource(R.string.playback_audio_sync_model_missing)
+    }
+    NavigationSettingsItem(
+        icon = Icons.Default.Sync,
+        title = stringResource(R.string.playback_audio_sync_model, model.sizeMb),
+        subtitle = subtitle,
+        enabled = enabled && !model.downloading,
+        onFocused = onFocused,
+        onClick = {
+            if (model.downloaded) SubtitleSyncStatus.modelActions?.delete()
+            else SubtitleSyncStatus.modelActions?.download()
+        },
     )
 }
