@@ -140,7 +140,7 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
 
     val selectedBodyDeferred = sidecarRawBodyDeferredFor(selectedUrl)
     val userChoseSubtitle = isUserExplicitSubtitleSelection
-    AudioSyncFallback.of(this)?.arm(mayReplaceSubtitle = !userChoseSubtitle)
+    AudioSyncFallback.stop(this)
     player.trackSelectionParameters = player.trackSelectionParameters
         .buildUpon()
         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
@@ -189,9 +189,13 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
         if (matched == null) {
             val stillOnSubtitle = currentStreamUrl == sourceUrlAtStart &&
                 _uiState.value.selectedAddonSubtitle?.url == selectedUrl
-            val handedToAudio = stillOnSubtitle &&
+            val handedToAudio = noSubtitleTracks &&
+                stillOnSubtitle &&
                 activeSidecarSubtitleKey == selectedUrl &&
-                AudioSyncFallback.of(this@maybeRunAutomaticSubtitleSync)?.takeOver(selectedUrl) == true
+                AudioSyncFallback.of(this@maybeRunAutomaticSubtitleSync)?.let { fallback ->
+                    fallback.arm(mayReplaceSubtitle = !userChoseSubtitle)
+                    fallback.takeOver(selectedUrl)
+                } == true
             if (handedToAudio) return@launch
             if (stillOnSubtitle && activeSidecarSubtitleKey == null) {
                 startSidecarAddonSubtitle(selectedSubtitle)
@@ -201,7 +205,7 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
             )
             return@launch
         }
-        AudioSyncFallback.of(this@maybeRunAutomaticSubtitleSync)?.disarm()
+        AudioSyncFallback.stop(this@maybeRunAutomaticSubtitleSync)
         val resolved = matched ?: return@launch
         if (currentStreamUrl != sourceUrlAtStart) return@launch
         val activeSubtitleUrl = _uiState.value.selectedAddonSubtitle?.url
