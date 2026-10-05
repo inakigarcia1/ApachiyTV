@@ -2133,7 +2133,7 @@ private class SubtitleOffsetRenderersFactory(
             .setEnableFloatOutput(enableFloatOutput)
             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
             .setAudioProcessors(arrayOf(gainAudioProcessor))
-        val baseAudioSink = builder.build()
+        val baseAudioSink = com.nuvio.tv.ui.screens.player.audiosync.AudioSyncTaps.wrapAudioSink(builder.build())
         val playbackSpeedAwareAudioSink = PlaybackSpeedAwareAudioSink(
             sink = baseAudioSink,
             initialForcePcm = initialForcePcm,

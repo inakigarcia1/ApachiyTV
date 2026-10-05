@@ -11,6 +11,8 @@ import com.nuvio.tv.ui.screens.player.autosync.AutoSyncPreferences
 import com.nuvio.tv.ui.screens.player.autosync.AutoSyncResolvedTimeline
 import com.nuvio.tv.ui.screens.player.autosync.AutomaticSubtitleSync
 import com.nuvio.tv.ui.screens.player.autosync.applyAutoSyncSidecarTimeline
+import com.nuvio.tv.ui.screens.player.audiosync.AudioSyncFallback
+import com.nuvio.tv.ui.screens.player.autosync.AutoSyncSubtitleCandidate
 import com.nuvio.tv.ui.screens.player.autosync.SPANISH_SYNC_LANGUAGE
 import com.nuvio.tv.ui.screens.player.autosync.effectiveAutoSyncEnabled
 import com.nuvio.tv.ui.screens.player.autosync.effectiveSyncToleranceMs
@@ -34,7 +36,7 @@ private fun syncReferenceLanguage(subtitle: Subtitle): String {
 
 private val autoSyncNoticeHandler = Handler(Looper.getMainLooper())
 
-private fun PlayerRuntimeController.showAutoSyncNotice(message: String) {
+internal fun PlayerRuntimeController.showAutoSyncNotice(message: String) {
     Log.d(PlayerRuntimeController.TAG, message)
     if (!BuildConfig.IS_DEBUG_BUILD) return
     autoSyncNoticeHandler.post {
@@ -137,6 +139,8 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
     }
 
     val selectedBodyDeferred = sidecarRawBodyDeferredFor(selectedUrl)
+    val userChoseSubtitle = isUserExplicitSubtitleSelection
+    AudioSyncFallback.of(this)?.arm(mayReplaceSubtitle = !userChoseSubtitle)
     player.trackSelectionParameters = player.trackSelectionParameters
         .buildUpon()
         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
@@ -144,7 +148,7 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
 
     automaticSubtitleSyncJob = scope.launch {
         var noSubtitleTracks = false
-        val resolved = AutomaticSubtitleSync.findTimelineRetime(
+        var matched = AutomaticSubtitleSync.findTimelineRetime(
             sourceKey = sourceUrlAtStart,
             sourceHeaders = sourceHeadersAtStart,
             selectedSubtitleUrl = selectedUrl,
@@ -155,8 +159,41 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
             alternativeSubtitlesProvider = null,
             onNoSubtitleTracks = { noSubtitleTracks = true },
         )
-        if (resolved == null) {
-            if (activeSidecarSubtitleKey == null) {
+        if (matched == null &&
+            !noSubtitleTracks &&
+            !userChoseSubtitle &&
+            currentStreamUrl == sourceUrlAtStart &&
+            _uiState.value.selectedAddonSubtitle?.url == selectedUrl
+        ) {
+            val seed = secondaryLanguageSearchSeed(
+                candidates = _uiState.value.addonSubtitles.map { subtitle ->
+                    AutoSyncSubtitleCandidate(subtitle.url, subtitle.lang, subtitle.addonName)
+                },
+                selectedUrl = selectedUrl,
+                searchedLanguage = selectedSubtitle.lang,
+                secondaryLanguage = _uiState.value.subtitleStyle.secondaryPreferredLanguage,
+            )
+            if (seed != null) {
+                matched = AutomaticSubtitleSync.findTimelineRetime(
+                    sourceKey = sourceUrlAtStart,
+                    sourceHeaders = sourceHeadersAtStart,
+                    selectedSubtitleUrl = seed.url,
+                    selectedSubtitleHeaders = emptyMap(),
+                    preferredLanguage = seed.language,
+                )
+                showAutoSyncNotice(
+                    if (matched != null) "Auto Sync V2: secondary language matched" else "Auto Sync V2: secondary language missed",
+                )
+            }
+        }
+        if (matched == null) {
+            val stillOnSubtitle = currentStreamUrl == sourceUrlAtStart &&
+                _uiState.value.selectedAddonSubtitle?.url == selectedUrl
+            val handedToAudio = stillOnSubtitle &&
+                activeSidecarSubtitleKey == selectedUrl &&
+                AudioSyncFallback.of(this@maybeRunAutomaticSubtitleSync)?.takeOver(selectedUrl) == true
+            if (handedToAudio) return@launch
+            if (stillOnSubtitle && activeSidecarSubtitleKey == null) {
                 startSidecarAddonSubtitle(selectedSubtitle)
             }
             showAutoSyncNotice(
@@ -164,6 +201,8 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
             )
             return@launch
         }
+        AudioSyncFallback.of(this@maybeRunAutomaticSubtitleSync)?.disarm()
+        val resolved = matched ?: return@launch
         if (currentStreamUrl != sourceUrlAtStart) return@launch
         val activeSubtitleUrl = _uiState.value.selectedAddonSubtitle?.url
         if (activeSubtitleUrl != selectedUrl && activeSubtitleUrl != resolved.subtitleUrl) {
@@ -256,6 +295,26 @@ private fun buildAutoSyncSuccessToast(
         driftCorrected -> "$prefix • drift corrected"
         abs(interceptMs) >= 50.0 -> "$prefix • ${formatAutoSyncOffset(interceptMs)}"
         else -> "$prefix • already in sync"
+    }
+}
+
+private val nonLanguageSecondaryValues = setOf("none", "device", "forced", "default")
+
+/** One subtitle in the secondary language, for this playback only. Not saved as a preference. */
+private fun secondaryLanguageSearchSeed(
+    candidates: List<AutoSyncSubtitleCandidate>,
+    selectedUrl: String,
+    searchedLanguage: String?,
+    secondaryLanguage: String?,
+): AutoSyncSubtitleCandidate? {
+    val raw = secondaryLanguage?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
+    if (raw in nonLanguageSecondaryValues) return null
+    val secondary = PlayerSubtitleUtils.normalizeLanguageCode(raw).takeIf { it.isNotBlank() } ?: return null
+    if (PlayerSubtitleUtils.matchesLanguageCode(searchedLanguage, secondary)) return null
+    return candidates.firstOrNull { candidate ->
+        candidate.url.isNotBlank() &&
+            candidate.url != selectedUrl &&
+            PlayerSubtitleUtils.matchesLanguageCode(candidate.language, secondary)
     }
 }
 

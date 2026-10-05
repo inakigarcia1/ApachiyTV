@@ -1,4 +1,7 @@
 # Add project specific ProGuard rules here.
+-keep class com.k2fsa.sherpa.onnx.** { *; }
+-keep interface com.k2fsa.sherpa.onnx.** { *; }
+
 
 # ── Moshi ──────────────────────────────────────────────────────────────────────
 # Keep Moshi-generated JsonAdapter classes

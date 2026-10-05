@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="player_audio_sync_model_downloading">Descargando el modelo de reconocimiento (%1$d MB) para sincronizar más rápido…</string>
+    <string name="player_audio_sync_model_needs_wifi">Conectate a Wi-Fi una vez para bajar el modelo de %1$d MB</string>
+    <string name="player_audio_sync_live_only">Este televisor no puede adelantar el audio %1$s: sincroniza con lo que se está oyendo</string>
+    <string name="player_audio_sync_withdrawn">No se pudo confirmar la sincronización, volvió el tiempo original</string>
+    <string name="player_audio_sync_estimated">Sincronizando subtítulos con el audio (%1$s)…</string>
+    <string name="player_audio_sync_synced">Sincronización confirmada (%1$s)</string>
+    <string name="player_audio_sync_synced_rate">Sincronización confirmada (%1$s, cadencia corregida)</string>
+    <string name="player_audio_sync_adjusted">Cambió el tiempo del subtítulo, se volvió a sincronizar (%1$s)</string>
+    <string name="playback_audio_sync_fallback">Sincronizar con el audio si AutoSync no puede</string>
+    <string name="playback_audio_sync_fallback_sub">Si no hay subtítulos embebidos o el match es flojo, alinea el subtítulo escuchando el audio</string>
+    <string name="playback_audio_sync_mobile_data">Muestrear con datos móviles</string>
+    <string name="playback_audio_sync_mobile_data_sub">Lee tramos cortos por delante. Usa hasta 150 MB por título</string>
+    <string name="playback_audio_sync_model">Modelo de reconocimiento (%1$d MB)</string>
+    <string name="playback_audio_sync_model_missing">No está descargado. Seleccioná para bajarlo</string>
+    <string name="playback_audio_sync_model_downloading">Descargando… %1$d%%</string>
+    <string name="playback_audio_sync_model_ready">Descargado. Seleccioná para borrarlo</string>
+    <string name="playback_audio_sync_model_failed">Falló la descarga (%1$s). Seleccioná para reintentar</string>
+    <string name="settings_autosync_bubble_toast">Aviso de vidrio</string>
+    <string name="settings_autosync_bubble_toast_description">Muestra el progreso de la sincronización en una burbuja, en vez de un toast</string>
+    <string name="autosync_bubble_label">AutoSync</string>
+</resources>

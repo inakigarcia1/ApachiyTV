@@ -37,7 +37,11 @@ internal object AutoSyncDebugLog {
     private const val MAX_CUE_TEXT_CHARS = 500
 
     private val lock = Any()
+    private const val MAX_EARLY_LINES = 40
+    private const val MAX_EARLY_LINE_CHARS = 500
+
     private val buffer = StringBuilder()
+    private val earlyLines = java.util.ArrayDeque<String>()
 
     private var sessionId: String = "none"
     private var startedElapsedMs: Long = 0L
@@ -61,6 +65,12 @@ internal object AutoSyncDebugLog {
             appendRawLocked("addon=${safeSourceLabel(subtitleUrl)}")
             appendRawLocked("verbose=$VERBOSE")
             appendRawLocked("")
+            if (earlyLines.isNotEmpty()) {
+                appendRawLocked("=== BEFORE SESSION ===")
+                earlyLines.forEach(::appendRawLocked)
+                earlyLines.clear()
+                appendRawLocked("")
+            }
         }
         Log.i(TAG, "session=$sessionId started")
     }
@@ -165,8 +175,16 @@ internal object AutoSyncDebugLog {
     }
 
     private fun append(level: String, message: String) {
-        val line = "[+${elapsedMs()}ms][$level] $message"
-        appendRaw(line)
+        val line = synchronized(lock) {
+            if (active) {
+                "[+${elapsedMs()}ms][$level] $message".also(::appendRawLocked)
+            } else {
+                "[${clockTime()}][$level] $message".also { early ->
+                    earlyLines.addLast(early.take(MAX_EARLY_LINE_CHARS))
+                    while (earlyLines.size > MAX_EARLY_LINES) earlyLines.removeFirst()
+                }
+            }
+        }
         when (level) {
             "ERROR" -> Log.e(TAG, line)
             "WARN" -> Log.w(TAG, line)
@@ -246,6 +264,9 @@ internal object AutoSyncDebugLog {
             millis,
         )
     }
+
+    private fun clockTime(): String =
+        SimpleDateFormat("HH:mm:ss.SSS", Locale.US).format(Date())
 
     private fun wallClock(): String =
         SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.US).format(Date())

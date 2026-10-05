@@ -88,6 +88,8 @@ class NuvioApplication : Application(), SingletonImageLoader.Factory {
         // SharedPreferences reads are fast (cached in memory after first access).
         AppLocalePreferences.ensureDefaultLocaleIfUnset(this)
         LocaleCache.localeTag = AppLocalePreferences.cacheLocaleTag(this)
+        com.nuvio.tv.ui.screens.player.audiosync.AudioSyncFallback.initialize(this)
+        com.nuvio.tv.ui.screens.player.autosync.bubble.AutoSyncBubbleToasts.ensureLoaded(this)
         com.nuvio.tv.core.playback.PlaybackCapabilitiesProvider.initialize(this)
         com.nuvio.tv.core.network.TorboxSpeedTestHarness.initialize(this, addonOkHttpClient)
         com.nuvio.tv.core.network.TorboxSpeedTestDevFeedback.initialize(this)

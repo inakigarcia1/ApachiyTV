@@ -96,6 +96,7 @@ internal fun PlayerRuntimeController.bindExoSubtitleView(subtitleView: SubtitleV
 internal fun PlayerRuntimeController.stopSidecarAddonSubtitle(clearView: Boolean = true) {
     automaticSubtitleSyncJob?.cancel()
     automaticSubtitleSyncJob = null
+    com.nuvio.tv.ui.screens.player.audiosync.AudioSyncFallback.stop(this)
     sidecarSubtitleJob?.cancel()
     sidecarSubtitleJob = null
     sidecarRawBodyDeferred?.complete(null)

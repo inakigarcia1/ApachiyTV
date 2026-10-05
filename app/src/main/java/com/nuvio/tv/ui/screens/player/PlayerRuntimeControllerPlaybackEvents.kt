@@ -1059,7 +1059,6 @@ internal fun PlayerRuntimeController.setSubtitleDelayMs(targetMs: Int, showOverl
             it.copy(
                 subtitleDelayMs = newDelayMs,
                 showSubtitleDelayOverlay = false,
-                showControls = true
             )
         }
     }

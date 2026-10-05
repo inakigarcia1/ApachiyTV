@@ -5,6 +5,7 @@
 
 package com.nuvio.tv.ui.screens.player
 
+import com.nuvio.tv.ui.screens.player.autosync.bubble.AutoSyncBubbleToastHost
 import com.nuvio.tv.ui.theme.NuvioMotion
 
 import com.nuvio.tv.ui.theme.NuvioTheme
@@ -897,6 +898,7 @@ fun PlayerScreen(
                 viewModel.reportVisiblePlaybackError(error)
             }
         }
+        AutoSyncBubbleToastHost(controlsVisible = uiState.showControls)
         if (uiState.error != null) {
             ErrorOverlay(
                 message = uiState.error!!,
