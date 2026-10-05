@@ -161,6 +161,7 @@ internal fun PlayerRuntimeController.initializePlayer(
         _uiState.update { it.copy(error = context.getString(R.string.player_error_no_stream_url), showLoadingOverlay = false) }
         return
     }
+    playedRequestUrls.add(url)
 
     scope.launch {
         try {
@@ -1308,6 +1309,10 @@ internal fun PlayerRuntimeController.initializePlayer(
                     override fun onRenderedFirstFrame() {
                         val isFirstFrame = !hasRenderedFirstFrame  // capture BEFORE flipping
                         hasRenderedFirstFrame = true
+                        if (_uiState.value.subtitleTracks.isEmpty()) {
+                            hasScannedTextTracksOnce = true
+                        }
+                        fetchAddonSubtitlesIfTracksScanned()
                         mediaSourceFactory.unlockStartupPrefetch()
                         if (isFirstFrame && _uiState.value.postPlayDismissedForCurrentEpisode) {
                             _uiState.update { it.copy(postPlayDismissedForCurrentEpisode = false) }

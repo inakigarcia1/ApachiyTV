@@ -5,6 +5,36 @@ import org.junit.Assert.assertEquals
 
 class PgsCueSemanticParserTest {
     @Test
+    fun cueIndexPairsShowAndClear() {
+        val reference = IndexedPgsReference(
+            key = "pgs",
+            language = "en",
+            label = "English",
+            selectionFlags = 0,
+            roleFlags = 0,
+            trackNumber = 1,
+            segmentDataStart = 0L,
+            timestampScaleNs = 1_000_000L,
+            cues = listOf(1_000L, 2_000L, 4_000L, 5_000L).map { start ->
+                PgsCueLocator(
+                    startTimeMs = start,
+                    cueTimeTicks = start,
+                    durationMs = null,
+                    clusterPosition = start,
+                    relativePosition = null,
+                    blockNumber = null,
+                )
+            },
+        )
+        val show = listOf(1_000L to 2_000L, 4_000L to 5_000L)
+        assertEquals(
+            show,
+            reference.cueIndexTracks().first { it.key.endsWith("#p0") }.cues
+                .map { it.startTimeMs to it.endTimeMs },
+        )
+    }
+
+    @Test
     fun assemblesSegmentBlocksAndPreservesSilence() {
         val probes = buildList<RawProbe> {
             visibleSet(startMs = 1_000, state = 2, objectVersion = 0)

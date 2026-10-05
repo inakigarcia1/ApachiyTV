@@ -128,7 +128,21 @@ internal suspend fun PlayerRuntimeController.fetchAddonSubtitlesNow(
     )
 }
 
+internal fun PlayerRuntimeController.fetchAddonSubtitlesIfTracksScanned() {
+    if (!hasScannedTextTracksOnce) return
+    if (PlayerSubtitleUtils.hasEmbeddedSpanishTrack(_uiState.value.subtitleTracks)) return
+    if (addonSubtitleFetchJob?.isActive == true) return
+    if (_uiState.value.isLoadingAddonSubtitles || _uiState.value.addonSubtitles.isNotEmpty()) return
+    fetchAddonSubtitles()
+}
+
 internal fun PlayerRuntimeController.fetchAddonSubtitles() {
+    if (!hasScannedTextTracksOnce) return
+    if (PlayerSubtitleUtils.hasEmbeddedSpanishTrack(_uiState.value.subtitleTracks)) {
+        clearAddonSubtitlesForEmbeddedSpanish()
+        markSubtitlePipelineDone()
+        return
+    }
     if (buildSubtitleFetchRequest() == null) {
         markSubtitlePipelineDone()
         return

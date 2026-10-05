@@ -71,7 +71,18 @@ internal fun PlayerRuntimeController.attemptStartupRecovery(
  * exceptions that commonly occur after pause/resume or seek on flaky streams.
  * Decoder-init and DRM errors are considered fatal.
  */
+internal fun isHardCapabilityPlaybackError(error: PlaybackException): Boolean {
+    if (error.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES ||
+        error.errorCode == PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED
+    ) {
+        return true
+    }
+    val message = error.message ?: return false
+    return message.contains("NO_EXCEEDS_CAPABILITIES") || message.contains("NO_UNSUPPORTED_TYPE")
+}
+
 internal fun isRetryablePlaybackError(error: PlaybackException): Boolean {
+    if (isHardCapabilityPlaybackError(error)) return false
     return when (error.errorCode) {
         // --- Source / IO errors (the 2xxx range) ---
         PlaybackException.ERROR_CODE_IO_UNSPECIFIED,
@@ -96,11 +107,11 @@ internal fun isRetryablePlaybackError(error: PlaybackException): Boolean {
         PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED,
         PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED,
 
-        // --- Decoder errors (often transient after pause/resume on some hardware) ---
+        // Decoder crashes after pause/resume can be transient. A format the
+        // device already rejected (NO_EXCEEDS_CAPABILITIES) is not, and is
+        // excluded above.
         PlaybackException.ERROR_CODE_DECODER_INIT_FAILED,
-        PlaybackException.ERROR_CODE_DECODING_FAILED,
-        PlaybackException.ERROR_CODE_DECODING_FORMAT_EXCEEDS_CAPABILITIES,
-        PlaybackException.ERROR_CODE_DECODING_FORMAT_UNSUPPORTED -> true
+        PlaybackException.ERROR_CODE_DECODING_FAILED -> true
 
         // --- Behind-the-scenes / unexpected errors (often IllegalStateException / NPE) ---
         PlaybackException.ERROR_CODE_UNSPECIFIED -> {

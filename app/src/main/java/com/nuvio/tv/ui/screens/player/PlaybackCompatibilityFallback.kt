@@ -18,25 +18,37 @@ internal fun PlaybackException.isCompatibilityFailure(): Boolean = errorCode in 
     PlaybackException.ERROR_CODE_PARSING_MANIFEST_UNSUPPORTED,
 )
 
+internal fun PlayerRuntimeController.skipStreamForUnsupportedAudio(): Boolean {
+    if (currentStreamUrl in unsupportedAudioSkippedUrls) return false
+    unsupportedAudioSkippedUrls.add(currentStreamUrl)
+    return beginCompatibilityStreamSwitch(
+        context.getString(com.nuvio.tv.R.string.player_error_unsupported_format, "audio"),
+    )
+}
+
 internal fun PlayerRuntimeController.tryNextStreamAfterCompatibilityFailure(
     error: PlaybackException,
     detailedError: String,
 ): Boolean {
     if (!error.isCompatibilityFailure()) return false
-    if (compatibilityFallbackJob?.isActive == true) return true
-    if (compatibilityFallbackVideoId != currentVideoId) {
-        compatibilityFallbackVideoId = currentVideoId
-        compatibilityAttemptedUrls.clear()
-    }
-    compatibilityAttemptedUrls.add(currentStreamUrl)
-    if (compatibilityAttemptedUrls.size > 6) return false
-
     val format = (error as? ExoPlaybackException)?.rendererFormat
     PlaybackCapabilitiesProvider.recordDecoderFailure(
         mime = format?.sampleMimeType,
         codecs = format?.codecs,
         height = format?.height ?: 0,
     )
+    return beginCompatibilityStreamSwitch(detailedError)
+}
+
+private fun PlayerRuntimeController.beginCompatibilityStreamSwitch(detailedError: String): Boolean {
+    if (compatibilityFallbackJob?.isActive == true) return true
+    if (compatibilityFallbackVideoId != currentVideoId) {
+        compatibilityFallbackVideoId = currentVideoId
+        compatibilityAttemptedUrls.clear()
+    }
+    compatibilityAttemptedUrls.add(currentStreamUrl)
+    compatibilityAttemptedUrls.addAll(playedRequestUrls)
+    if (compatibilityAttemptedUrls.size > 6) return false
 
     _uiState.update {
         it.copy(
@@ -79,6 +91,9 @@ private suspend fun PlayerRuntimeController.pollNextCompatibleStream(): Stream? 
 private fun PlayerRuntimeController.nextCompatibleStream(): Stream? {
     return _uiState.value.sourceAllStreams.firstOrNull { stream ->
         val url = stream.getStreamUrl()
-        !url.isNullOrBlank() && url !in compatibilityAttemptedUrls && url != currentStreamUrl
+        !url.isNullOrBlank() &&
+            url !in compatibilityAttemptedUrls &&
+            url !in playedRequestUrls &&
+            url != currentStreamUrl
     }
 }

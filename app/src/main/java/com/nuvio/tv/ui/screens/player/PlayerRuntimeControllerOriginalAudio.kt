@@ -1,6 +1,15 @@
 package com.nuvio.tv.ui.screens.player
 
+import com.nuvio.tv.core.playback.PlaybackCapabilitiesProvider
 import kotlinx.coroutines.flow.update
+
+internal fun supportedAudioCodecsFromDevice(): Set<String>? {
+    val audio = PlaybackCapabilitiesProvider.snapshot()?.audio ?: return null
+    if (audio.isEmpty()) return null
+    return withSoftwareAudioCodecs(
+        audio.filterValues { it }.keys.map { it.lowercase() }.toSet()
+    )
+}
 
 internal fun PlayerRuntimeController.tryAutoSelectOriginalAudioTrack(
     audioTracks: List<TrackInfo>
@@ -15,15 +24,22 @@ internal fun PlayerRuntimeController.tryAutoSelectOriginalAudioTrack(
             index = track.index,
             language = track.language,
             name = track.name,
-            isCommentary = track.isCommentary
+            isCommentary = track.isCommentary,
+            codec = track.codec,
         )
+    }
+    val supported = supportedAudioCodecsFromDevice()
+    if (noPlayableAudioTrack(candidates, supported)) {
+        skipStreamForUnsupportedAudio()
+        return null
     }
     val pick = pickPreferredAudioTrackIndex(
         tracks = candidates,
         originalLanguage = contentLanguage,
         secondaryLanguage = secondaryPreferredAudioLanguageSetting,
         deviceLanguages = resolveDeviceAudioLanguages(),
-        preferredAudioLanguage = preferredAudioLanguageSetting
+        preferredAudioLanguage = preferredAudioLanguageSetting,
+        supportedAudioCodecs = supported,
     ) ?: return null
 
     val currentlySelected = audioTracks.indexOfFirst { it.isSelected }

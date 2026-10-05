@@ -7,7 +7,8 @@ data class AudioTrackCandidate(
     val index: Int,
     val language: String?,
     val name: String,
-    val isCommentary: Boolean
+    val isCommentary: Boolean,
+    val codec: String? = null,
 )
 
 fun shouldUseOriginalAudioHeuristic(preferredAudioLanguage: String): Boolean {
@@ -35,32 +36,103 @@ fun audioLanguagesMatch(first: String?, second: String?): Boolean {
     return left.intersect(right).isNotEmpty()
 }
 
+fun audioCodecKey(codec: String?, name: String): String? {
+    val text = "${codec.orEmpty()} $name".lowercase()
+    return when {
+        "truehd" in text || "true hd" in text || "mlp" in text -> "truehd"
+        "atmos" in text -> "atmos"
+        "dts-hd" in text || "dts hd" in text || "dtshd" in text -> "dtshd"
+        "dts:x" in text || "dtsx" in text -> "dtsx"
+        "e-ac-3" in text || "eac3" in text || "ec-3" in text || "dd+" in text -> "eac3"
+        "ac-3" in text || "ac3" in text || "dolby digital" in text -> "ac3"
+        "flac" in text -> "flac"
+        "opus" in text -> "opus"
+        "vorbis" in text -> "vorbis"
+        "aac" in text -> "aac"
+        "mp3" in text -> "mp3"
+        "dts" in text -> "dts"
+        else -> null
+    }
+}
+
+// ponytail: static list from app/libs/README.md ENABLED_DECODERS. Update it if the ffmpeg AAR drops a decoder.
+val SOFTWARE_AUDIO_CODECS = setOf(
+    "aac", "mp3", "opus", "vorbis", "flac", "ac3", "eac3", "dts", "truehd",
+)
+
+fun withSoftwareAudioCodecs(deviceSupported: Set<String>): Set<String> =
+    deviceSupported + SOFTWARE_AUDIO_CODECS
+
+private val GENERIC_AUDIO_COMPATIBILITY = listOf(
+    "aac", "mp3", "opus", "vorbis", "ac3", "eac3", "flac", "dts", "dtsx", "dtshd", "truehd", "atmos",
+)
+
+fun genericAudioCompatibilityRank(codec: String?, name: String): Int {
+    val key = audioCodecKey(codec, name) ?: return GENERIC_AUDIO_COMPATIBILITY.size
+    val index = GENERIC_AUDIO_COMPATIBILITY.indexOf(key)
+    return if (index >= 0) index else GENERIC_AUDIO_COMPATIBILITY.size
+}
+
+fun audioTrackKnownIncompatible(
+    codec: String?,
+    name: String,
+    supportedAudioCodecs: Set<String>?,
+): Boolean {
+    if (supportedAudioCodecs == null) return false
+    val key = audioCodecKey(codec, name) ?: return false
+    return key !in supportedAudioCodecs
+}
+
+fun noPlayableAudioTrack(
+    tracks: List<AudioTrackCandidate>,
+    supportedAudioCodecs: Set<String>?,
+): Boolean {
+    if (supportedAudioCodecs == null || tracks.isEmpty()) return false
+    val pool = tracks.filter { !it.isCommentary }.ifEmpty { tracks }
+    return pool.all { audioTrackKnownIncompatible(it.codec, it.name, supportedAudioCodecs) }
+}
+
 fun pickPreferredAudioTrackIndex(
     tracks: List<AudioTrackCandidate>,
     originalLanguage: String?,
     secondaryLanguage: String?,
     deviceLanguages: List<String>,
-    preferredAudioLanguage: String
+    preferredAudioLanguage: String,
+    supportedAudioCodecs: Set<String>? = null,
 ): Int? {
     if (tracks.isEmpty() || !shouldUseOriginalAudioHeuristic(preferredAudioLanguage)) return null
 
     val nonCommentary = tracks.filter { !it.isCommentary }
     val pool = nonCommentary.ifEmpty { tracks }
+    val playable = if (supportedAudioCodecs == null) {
+        pool
+    } else {
+        pool.filter { !audioTrackKnownIncompatible(it.codec, it.name, supportedAudioCodecs) }
+    }
+    if (playable.isEmpty()) return null
+
+    fun best(candidates: List<AudioTrackCandidate>): Int? =
+        candidates.minWithOrNull(
+            compareBy<AudioTrackCandidate>({ genericAudioCompatibilityRank(it.codec, it.name) }, { it.index })
+        )?.index
 
     val original = originalLanguage?.trim()?.takeIf { it.isNotBlank() }
     if (original != null) {
-        pool.firstOrNull { audioLanguagesMatch(it.language, original) }?.index?.let { return it }
+        val matches = playable.filter { audioLanguagesMatch(it.language, original) }
+        if (matches.isNotEmpty()) return best(matches)
     }
 
     secondaryLanguage?.trim()?.takeIf { it.isNotBlank() }?.let { secondary ->
-        pool.firstOrNull { audioLanguagesMatch(it.language, secondary) }?.index?.let { return it }
+        val matches = playable.filter { audioLanguagesMatch(it.language, secondary) }
+        if (matches.isNotEmpty()) return best(matches)
     }
 
     for (deviceLanguage in deviceLanguages) {
-        pool.firstOrNull { audioLanguagesMatch(it.language, deviceLanguage) }?.index?.let { return it }
+        val matches = playable.filter { audioLanguagesMatch(it.language, deviceLanguage) }
+        if (matches.isNotEmpty()) return best(matches)
     }
 
-    return pool.firstOrNull()?.index
+    return best(playable)
 }
 
 private val AUDIO_COMMENTARY_HINTS = listOf(

@@ -221,6 +221,8 @@ class PlayerRuntimeController(
 
     internal var currentVideoId: String? = videoId
     internal val compatibilityAttemptedUrls = mutableSetOf<String>()
+    internal val playedRequestUrls = mutableSetOf<String>()
+    internal val unsupportedAudioSkippedUrls = mutableSetOf<String>()
     internal var compatibilityFallbackJob: kotlinx.coroutines.Job? = null
     internal var compatibilityFallbackVideoId: String? = null
     internal var currentSeason: Int? = initialSeason

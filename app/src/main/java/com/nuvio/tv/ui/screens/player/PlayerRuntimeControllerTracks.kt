@@ -337,6 +337,7 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
     tryAutoSelectPreferredSubtitleFromAvailableTracks()
     maybeAdjustLibassPipelineForTracks(tracks)
     handleEmbeddedSpanishSubtitleTracks(subtitleTracks)
+    fetchAddonSubtitlesIfTracksScanned()
 }
 
 private fun formatSupportRank(@C.FormatSupport formatSupport: Int): Int {

@@ -542,14 +542,8 @@ internal object AutomaticSubtitleSync {
                         "load=${indexedTimeline.loadMs}ms"
                 }
                 var indexedTracks = indexedTimeline.tracks
-                val initialProfiles = indexedTracks.map(::buildReferenceProfile)
-                val hasPreferredReadyText = initialProfiles.any { profile ->
-                    profile.fullDialogue &&
-                        profile.cueCount >= MIN_FULL_DIALOGUE_CUES &&
-                        profile.spanMs >= MIN_INDEXED_REFERENCE_SPAN_MS
-                }
 
-                if (indexedTimeline.pgsReferences.isNotEmpty() && !hasPreferredReadyText) {
+                if (indexedTimeline.pgsReferences.isNotEmpty() && indexedTimeline.tracks.isEmpty()) {
                     val pendingPgs = indexedTimeline.pgsReferences
                         .map { reference -> reference to buildReferenceProfile(reference.previewTrack()) }
                         .filter { (_, profile) ->
@@ -558,7 +552,9 @@ internal object AutomaticSubtitleSync {
                                 profile.spanMs >= MIN_INDEXED_REFERENCE_SPAN_MS
                         }
                         .sortedWith(
-                            compareByDescending<Pair<IndexedPgsReference, ReferenceProfile>> {
+                            compareBy<Pair<IndexedPgsReference, ReferenceProfile>> {
+                                if (isEnglishReferenceLanguage(it.first.language)) 0 else 1
+                            }.thenByDescending {
                                 it.second.fullDialogue
                             }.thenByDescending {
                                 it.second.rankingScore
@@ -572,14 +568,9 @@ internal object AutomaticSubtitleSync {
 
                     if (pendingPgs.isNotEmpty()) {
                         pgsResolutionAttempted = true
-                        val resolvedPgs = EmbeddedSubtitleTimelineLoader.resolvePgsReferences(
-                            sourceUrl = sourceKey,
-                            sourceHeaders = sourceHeaders,
-                            references = pendingPgs,
-                        )
-                        if (resolvedPgs.isNotEmpty()) {
-                            indexedTracks = indexedTracks + resolvedPgs
-                        }
+                        val chosen = pendingPgs.firstOrNull { isEnglishReferenceLanguage(it.language) }
+                            ?: pendingPgs.first()
+                        indexedTracks = indexedTracks + chosen.cueIndexTracks()
                     }
                 }
 
@@ -2093,6 +2084,9 @@ internal object AutomaticSubtitleSync {
         val label = track.label.orEmpty().lowercase()
         return label.contains("audio description") || label.contains("descriptive subtitle")
     }
+
+    internal fun isEnglishReferenceLanguage(language: String?): Boolean =
+        PlayerSubtitleUtils.matchesLanguageCode(language, "en")
 
     internal fun isSdhReferenceTrack(track: ReferenceTrack): Boolean {
         if ((track.roleFlags and C.ROLE_FLAG_DESCRIBES_MUSIC_AND_SOUND) != 0) return true

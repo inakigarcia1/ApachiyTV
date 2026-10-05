@@ -1121,9 +1121,10 @@ class StreamScreenViewModel @Inject constructor(
     }
 
     suspend fun resolveStreamForPlayback(stream: Stream): StreamPlaybackInfo? {
+        val resolvedInfo = run {
         if (!directDebridResolver.shouldResolveToPlayableStream(stream)) {
             Log.d(TAG, "resolveStreamForPlayback: no debrid resolve needed, using direct URL")
-            return getStreamForPlayback(stream)
+            return@run getStreamForPlayback(stream)
         }
 
         Log.d(TAG, "resolveStreamForPlayback: starting debrid resolve for stream=${stream.name} addon=${stream.addonName}")
@@ -1147,7 +1148,7 @@ class StreamScreenViewModel @Inject constructor(
         val resolveMs = System.currentTimeMillis() - resolveStartMs
         Log.d(TAG, "resolveStreamForPlayback: debrid resolve completed in ${resolveMs}ms result=${result::class.simpleName}")
 
-        return when (result) {
+        val picked = when (result) {
             is DirectDebridResolveResult.Success -> {
                 if (!_uiState.value.isDirectAutoPlayFlow) {
                     updateUiStateIfChanged {
@@ -1206,6 +1207,9 @@ class StreamScreenViewModel @Inject constructor(
                 null
             }
         }
+        picked
+        }
+        return resolvedInfo
     }
 
     fun onPlaybackErrorShown() {

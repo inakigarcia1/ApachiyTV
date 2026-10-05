@@ -15,6 +15,49 @@ internal data class IndexedPgsReference(
     val cues: List<PgsCueLocator>,
     val unsupportedReason: String? = null,
 ) {
+    fun cueIndexTracks(): List<ReferenceTrack> {
+        val ordered = cues.sortedBy { it.startTimeMs }.distinctBy { it.startTimeMs }
+        if (ordered.size < 4) return listOf(phaseTrack(ordered, startIndex = 0, keySuffix = "p0"))
+        return listOf(
+            phaseTrack(ordered, startIndex = 0, keySuffix = "p0"),
+            phaseTrack(ordered, startIndex = 1, keySuffix = "p1"),
+        )
+    }
+
+    private fun phaseTrack(
+        ordered: List<PgsCueLocator>,
+        startIndex: Int,
+        keySuffix: String,
+    ): ReferenceTrack {
+        val syncCues = ArrayList<SubtitleSyncCue>(ordered.size / 2 + 1)
+        var index = startIndex
+        while (index < ordered.size) {
+            val cue = ordered[index]
+            val next = ordered.getOrNull(index + 1)
+            val gap = next?.let { it.startTimeMs - cue.startTimeMs }
+            if (next != null && gap != null && gap in 200L..8_000L) {
+                syncCues += SubtitleSyncCue(
+                    startTimeMs = cue.startTimeMs,
+                    endTimeMs = next.startTimeMs,
+                    text = "",
+                )
+            } else {
+                val duration = when {
+                    gap == null -> 2_000L
+                    gap < 200L -> gap.coerceAtLeast(1L)
+                    else -> gap.coerceAtMost(4_000L)
+                }
+                syncCues += SubtitleSyncCue(
+                    startTimeMs = cue.startTimeMs,
+                    endTimeMs = cue.startTimeMs + duration,
+                    text = "",
+                )
+            }
+            index += 2
+        }
+        return previewTrack().copy(key = "$key#$keySuffix", cues = syncCues)
+    }
+
     fun previewTrack(): ReferenceTrack = ReferenceTrack(
         key = key,
         language = language,

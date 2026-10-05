@@ -117,7 +117,10 @@ internal object EmbeddedSubtitleTimelineLoader {
     private const val ID_CUE_BLOCK_NUMBER = 0x5378L
     private const val ID_CUE_DURATION = 0xB2L
 
+    // Own dispatcher: newBuilder() otherwise shares playback's queue, and a PGS
+    // range request waits behind the video download until that queue drains.
     private val httpClient = PlayerPlaybackNetworking.playbackHttpClient.newBuilder()
+        .dispatcher(okhttp3.Dispatcher())
         .connectTimeout(3, TimeUnit.SECONDS)
         .readTimeout(4, TimeUnit.SECONDS)
         .callTimeout(5, TimeUnit.SECONDS)
@@ -216,6 +219,30 @@ internal object EmbeddedSubtitleTimelineLoader {
         )
         val ready = mutableListOf<ReferenceTrack>()
 
+        try {
+            withTimeout(PGS_RESOLUTION_TIMEOUT_MS) {
+                resolvePgsReferencesUntilReady(
+                    sourceUrl = sourceUrl,
+                    sourceHeaders = sourceHeaders,
+                    references = references,
+                    stats = stats,
+                    ready = ready,
+                )
+            }
+        } catch (_: TimeoutCancellationException) {
+            // The cue index is used when the bitmap read does not finish.
+        }
+
+        return ready
+    }
+
+    private suspend fun resolvePgsReferencesUntilReady(
+        sourceUrl: String,
+        sourceHeaders: Map<String, String>,
+        references: List<IndexedPgsReference>,
+        stats: RangeStats,
+        ready: MutableList<ReferenceTrack>,
+    ) {
         for (reference in references) {
             val cacheKey =
                 "$sourceUrl#${sourceHeaders.hashCode()}#${reference.key}#" +
@@ -251,6 +278,7 @@ internal object EmbeddedSubtitleTimelineLoader {
                         "PGS semantic ready track=${reference.key} cues=${resolution.track.cues.size} " +
                             "requests=${stats.requests} bytes=${stats.bytesDownloaded}"
                     }
+                    break
                 }
 
                 is PgsReferenceResolution.Unavailable -> {
@@ -273,8 +301,6 @@ internal object EmbeddedSubtitleTimelineLoader {
                 break
             }
         }
-
-        return ready
     }
 
     private suspend fun resolvePgsReference(
