@@ -22,8 +22,12 @@ import com.nuvio.tv.ui.screens.player.autosync.replaceAutoSyncSidecarSubtitle
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.update
 import java.io.File
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+private const val OPEN_SUBTITLES_ADDON = "https://opensubtitles-v3.strem.io"
+private const val MAX_EXTRA_CANDIDATES = 5
 
 private fun syncReferenceLanguage(subtitle: Subtitle): String {
     val castilian = PlayerSubtitleUtils.isCastilianSpanishLanguage(
@@ -69,6 +73,7 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
     val selectedUrl = selectedSubtitle.url
 
     if (isUsingMpvEngine()) {
+        val extraCandidates = startExtraSubtitleLookup(syncReferenceLanguage(selectedSubtitle))
         automaticSubtitleSyncJob = scope.launch {
             val resolved = AutomaticSubtitleSync.findTimelineRetime(
                 sourceKey = sourceUrlAtStart,
@@ -76,15 +81,14 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
                 selectedSubtitleUrl = selectedUrl,
                 selectedSubtitleHeaders = emptyMap(),
                 preferredLanguage = syncReferenceLanguage(selectedSubtitle),
-                alternativeSubtitles = emptyList(),
-                alternativeSubtitlesProvider = null,
+                alternativeSubtitles = extraCandidates,
+                alternativeSubtitlesProvider = { extraCandidates.toList() },
             ) ?: run {
                 showAutoSyncNotice("Auto Sync V2 failed: no reliable match")
                 return@launch
             }
             if (currentStreamUrl != sourceUrlAtStart) return@launch
             if (_uiState.value.selectedAddonSubtitle?.url != selectedUrl) return@launch
-            if (resolved.subtitleUrl != selectedUrl) return@launch
             val withinToleranceMs = withinAutoSyncToleranceMs(selectedUrl, resolved)
             if (withinToleranceMs != null) {
                 setSubtitleDelayMs(targetMs = 0, showOverlay = false)
@@ -146,6 +150,7 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
         .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
         .build()
 
+    val extraCandidates = startExtraSubtitleLookup(syncReferenceLanguage(selectedSubtitle))
     automaticSubtitleSyncJob = scope.launch {
         var noSubtitleTracks = false
         var matched = AutomaticSubtitleSync.findTimelineRetime(
@@ -155,8 +160,8 @@ internal fun PlayerRuntimeController.maybeRunAutomaticSubtitleSync(selectedSubti
             selectedSubtitleHeaders = emptyMap(),
             selectedSubtitleBodyDeferred = selectedBodyDeferred,
             preferredLanguage = syncReferenceLanguage(selectedSubtitle),
-            alternativeSubtitles = emptyList(),
-            alternativeSubtitlesProvider = null,
+            alternativeSubtitles = extraCandidates,
+            alternativeSubtitlesProvider = { extraCandidates.toList() },
             onNoSubtitleTracks = { noSubtitleTracks = true },
         )
         if (matched == null &&
@@ -283,6 +288,46 @@ private fun withinAutoSyncToleranceMs(
 
 private fun withinToleranceToast(toleranceMs: Int): String =
     "Auto Sync V2 • in sync (within $toleranceMs ms tolerance)"
+
+/**
+ * Same-language files from the open OpenSubtitles addon. AutoSync scores them against the
+ * embedded tracks and keeps one only when it actually fits this release. The list fills while
+ * that search runs.
+ */
+private fun PlayerRuntimeController.startExtraSubtitleLookup(
+    language: String,
+): CopyOnWriteArrayList<AutoSyncSubtitleCandidate> {
+    val extra = CopyOnWriteArrayList<AutoSyncSubtitleCandidate>()
+    val type = contentType?.takeIf { it.isNotBlank() } ?: return extra
+    val id = (videoId ?: currentVideoId)?.takeIf { it.isNotBlank() } ?: return extra
+    scope.launch {
+        val found = runCatching { fetchOpenSubtitleCandidates(type, id, language) }
+            .getOrElse { error ->
+                Log.w(PlayerRuntimeController.TAG, "extra subtitle lookup failed for $id: ${error.message}")
+                emptyList()
+            }
+        extra.addAll(found)
+    }
+    return extra
+}
+
+private suspend fun fetchOpenSubtitleCandidates(
+    type: String,
+    videoId: String,
+    language: String,
+): List<AutoSyncSubtitleCandidate> {
+    val canonicalType = if (type.equals("tv", ignoreCase = true)) "series" else type.lowercase()
+    val url = "$OPEN_SUBTITLES_ADDON/subtitles/$canonicalType/$videoId.json"
+    val body = AutomaticSubtitleSync.downloadSubtitleBody(url = url, headers = emptyMap())
+    val array = org.json.JSONObject(body).optJSONArray("subtitles") ?: org.json.JSONArray()
+    return (0 until array.length()).mapNotNull { index ->
+        val item = array.optJSONObject(index) ?: return@mapNotNull null
+        val subtitleUrl = item.optString("url").takeIf { it.isNotBlank() } ?: return@mapNotNull null
+        val lang = item.optString("lang")
+        if (!PlayerSubtitleUtils.matchesLanguageCode(lang, language)) return@mapNotNull null
+        AutoSyncSubtitleCandidate(url = subtitleUrl, language = lang, name = "OpenSubtitles")
+    }.distinctBy { it.url }.take(MAX_EXTRA_CANDIDATES)
+}
 
 private fun buildAutoSyncSuccessToast(
     replacedSubtitle: Boolean,

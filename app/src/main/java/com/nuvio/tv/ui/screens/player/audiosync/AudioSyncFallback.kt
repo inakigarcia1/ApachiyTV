@@ -276,6 +276,7 @@ internal class AudioSyncFallback private constructor(
     }
 
     private fun toast(status: AudioSyncStatus) {
+        if (!BuildConfig.IS_DEBUG_BUILD) return
         status.devNotice()?.let { runtime.showAutoSyncNotice(it) }
         val message = status.message(appContext) ?: return
         showAutoSyncMessage(appContext, status.bubbleKind(), message)

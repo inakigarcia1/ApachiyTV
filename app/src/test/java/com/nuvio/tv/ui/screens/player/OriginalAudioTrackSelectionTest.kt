@@ -128,6 +128,25 @@ class OriginalAudioTrackSelectionTest {
     }
 
     @Test
+    fun originalEnglishDtsHdBeatsRussianAc3WhenDtsDecoderExists() {
+        val tracks = listOf(
+            track(0, "ru", "Russian AC-3", codec = "ac3"),
+            track(1, "en", "English DTS-HD MA 5.1", codec = "dts-hd"),
+        )
+        assertEquals(
+            1,
+            pickPreferredAudioTrackIndex(
+                tracks = tracks,
+                originalLanguage = "en",
+                secondaryLanguage = null,
+                deviceLanguages = emptyList(),
+                preferredAudioLanguage = AudioLanguageOption.ORIGINAL,
+                supportedAudioCodecs = setOf("aac", "ac3", "dts"),
+            )
+        )
+    }
+
+    @Test
     fun concreteLanguageSettingSkipsHeuristic() {
         val tracks = listOf(track(0, "spa", "Spanish"))
         assertEquals(

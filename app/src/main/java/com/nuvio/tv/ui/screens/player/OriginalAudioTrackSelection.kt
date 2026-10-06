@@ -80,7 +80,9 @@ fun audioTrackKnownIncompatible(
 ): Boolean {
     if (supportedAudioCodecs == null) return false
     val key = audioCodecKey(codec, name) ?: return false
-    return key !in supportedAudioCodecs
+    if (key in supportedAudioCodecs) return false
+    // DTS-HD and DTS:X decode through the DTS decoder already in the FFmpeg build.
+    return !((key == "dtshd" || key == "dtsx") && "dts" in supportedAudioCodecs)
 }
 
 fun noPlayableAudioTrack(
