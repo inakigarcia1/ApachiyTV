@@ -134,7 +134,7 @@ val AVAILABLE_TMDB_LANGUAGES = AVAILABLE_SUBTITLE_LANGUAGES + listOf(
  */
 data class SubtitleStyleSettings(
     val preferredLanguage: String = "es",
-    val secondaryPreferredLanguage: String? = null,
+    val secondaryPreferredLanguage: String? = "es-419",
     val useForcedSubtitles: Boolean = false,
     val showOnlyPreferredLanguages: Boolean = false,
     val stripSdh: Boolean = false,
@@ -947,7 +947,8 @@ class PlayerSettingsDataStore @Inject constructor(
                     ),
                     secondaryPreferredLanguage = prefs[subtitleSecondaryLanguageKey]
                         ?.let(::normalizeSelectableLanguageCode)
-                        ?.takeUnless { it == SUBTITLE_LANGUAGE_FORCED },
+                        ?.takeUnless { it == SUBTITLE_LANGUAGE_FORCED }
+                        ?: "es-419",
                     useForcedSubtitles = (prefs[subtitleUseForcedSubtitlesKey] ?: false) ||
                         prefs[subtitlePreferredLanguageKey]?.let(::normalizeSelectableLanguageCode) == SUBTITLE_LANGUAGE_FORCED ||
                         prefs[subtitleSecondaryLanguageKey]?.let(::normalizeSelectableLanguageCode) == SUBTITLE_LANGUAGE_FORCED,
