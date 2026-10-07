@@ -1233,8 +1233,8 @@ fun PlayerRuntimeController.onEvent(event: PlayerEvent) {
                 stage = "event-select-audio",
                 message = "index=${event.index}"
             )
+            if (!selectAudioTrack(event.index)) return
             rememberAudioSelection(event.index)
-            selectAudioTrack(event.index)
             _uiState.update {
                 it.copy(
                     showAudioOverlay = false,

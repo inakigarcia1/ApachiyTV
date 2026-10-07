@@ -1,6 +1,7 @@
 package com.nuvio.tv.ui.screens.player
 
 import android.util.Log
+import android.widget.Toast
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -41,8 +42,15 @@ internal fun PlayerRuntimeController.showSeekOverlayTemporarily() {
     }
 }
 
-internal fun PlayerRuntimeController.selectAudioTrack(trackIndex: Int, fromUser: Boolean = true) {
+internal fun PlayerRuntimeController.selectAudioTrack(trackIndex: Int, fromUser: Boolean = true): Boolean {
+    val track = _uiState.value.audioTracks.getOrNull(trackIndex)
+    if (track != null && !track.isSupported) {
+        if (fromUser) showUnsupportedAudioTrack(track.name.ifBlank { track.language })
+        return false
+    }
     if (fromUser) {
+        audioIndexBeforeManual = _uiState.value.selectedAudioTrackIndex
+        manualAudioSelectionIndex = trackIndex
         isUserExplicitAudioSelection = true
     }
     logSwitchTrace(
@@ -58,7 +66,7 @@ internal fun PlayerRuntimeController.selectAudioTrack(trackIndex: Int, fromUser:
         if (changed) {
             keepMpvPlayingIfNeeded(wasPlaying)
         }
-        return
+        return changed
     }
 
     _exoPlayer?.let { player ->
@@ -78,13 +86,15 @@ internal fun PlayerRuntimeController.selectAudioTrack(trackIndex: Int, fromUser:
                         // where the new track requires a different segment.
                         val pos = player.currentPosition
                         if (pos > 0) player.seekTo((pos - 1).coerceAtLeast(0))
-                        return
+                        armAudioDecoderStallCheck()
+                        return true
                     }
                     currentAudioIndex++
                 }
             }
         }
     }
+    return false
 }
 
 internal fun PlayerRuntimeController.rememberAudioSelection(trackIndex: Int) {
@@ -727,4 +737,92 @@ internal fun PlayerRuntimeController.captureCurrentAudioSelectionForSubtitleRefr
         }
     }
     return null
+}
+
+private fun PlayerRuntimeController.showUnsupportedAudioTrack(name: String?) {
+    val label = name?.trim().orEmpty()
+    if (label.isEmpty()) return
+    Toast.makeText(
+        context,
+        context.getString(com.nuvio.tv.R.string.player_audio_track_unsupported, label),
+        Toast.LENGTH_LONG,
+    ).show()
+}
+
+private const val AUDIO_STALL_BUFFER_AHEAD_MS = 2_500L
+private const val AUDIO_STALL_FROZEN_MS = 700L
+
+internal fun audioDecoderIsStuck(
+    playWhenReady: Boolean,
+    waiting: Boolean,
+    positionMs: Long,
+    bufferedPositionMs: Long,
+    sampledPositionMs: Long,
+    sampledBufferedPositionMs: Long,
+    sampleAgeMs: Long,
+): Boolean {
+    if (!playWhenReady || !waiting || sampleAgeMs < AUDIO_STALL_FROZEN_MS) return false
+    if (positionMs != sampledPositionMs || bufferedPositionMs != sampledBufferedPositionMs) return false
+    return bufferedPositionMs - positionMs >= AUDIO_STALL_BUFFER_AHEAD_MS
+}
+
+internal fun PlayerRuntimeController.armAudioDecoderStallCheck() {
+    if (isUsingMpvEngine() || suppressBufferingUiForSeek) return
+    val player = _exoPlayer ?: return
+    if (!player.playWhenReady) return
+    audioStallJob?.cancel()
+    val position = player.currentPosition
+    val buffered = player.bufferedPosition
+    val index = _uiState.value.selectedAudioTrackIndex
+    audioStallJob = scope.launch {
+        delay(AUDIO_STALL_FROZEN_MS)
+        val still = _exoPlayer ?: return@launch
+        val waiting = still.playbackState == Player.STATE_BUFFERING || !still.isPlaying
+        val stuck = audioDecoderIsStuck(
+            playWhenReady = still.playWhenReady,
+            waiting = waiting,
+            positionMs = still.currentPosition,
+            bufferedPositionMs = still.bufferedPosition,
+            sampledPositionMs = position,
+            sampledBufferedPositionMs = buffered,
+            sampleAgeMs = AUDIO_STALL_FROZEN_MS,
+        )
+        if (stuck) audioStallPlateauCount++ else audioStallPlateauCount = 0
+        if (!stuck || (!audioStallReadySeen && audioStallPlateauCount < 3)) {
+            val ahead = still.bufferedPosition - still.currentPosition
+            if (
+                still.playWhenReady && waiting && still.currentPosition == position &&
+                ahead >= AUDIO_STALL_BUFFER_AHEAD_MS
+            ) {
+                armAudioDecoderStallCheck()
+            }
+            return@launch
+        }
+        onAudioDecoderStuck(index)
+    }
+}
+
+internal fun PlayerRuntimeController.onAudioDecoderStuck(index: Int) {
+    if (index < 0 || index in rejectedAudioTrackIndices) return
+    rejectedAudioTrackIndices.add(index)
+    val manual = manualAudioSelectionIndex == index
+    manualAudioSelectionIndex = -1
+    val tracks = _uiState.value.audioTracks.map { track ->
+        if (track.index in rejectedAudioTrackIndices) track.copy(isSupported = false) else track
+    }
+    _uiState.update { it.copy(audioTracks = tracks) }
+    val revert = audioIndexBeforeManual.takeIf { manual && it >= 0 && it !in rejectedAudioTrackIndices }
+    if (revert != null) {
+        val rejected = tracks.firstOrNull { it.index == index }
+        showUnsupportedAudioTrack(rejected?.name?.ifBlank { rejected.language })
+        selectAudioTrack(revert, fromUser = false)
+        rememberAudioSelection(revert)
+        _uiState.update { it.copy(selectedAudioTrackIndex = revert, showAudioOverlay = true) }
+        return
+    }
+    isUserExplicitAudioSelection = false
+    tryAutoSelectOriginalAudioTrack(tracks)?.let { pick ->
+        rememberAudioSelection(pick)
+        _uiState.update { it.copy(selectedAudioTrackIndex = pick) }
+    }
 }

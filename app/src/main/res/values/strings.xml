@@ -2627,6 +2627,7 @@
     <string name="player_error_decoder">Decoder error</string>
     <string name="player_source_incompatible_trying_next">This source is not compatible. Trying another…</string>
     <string name="player_error_unsupported_format">This stream uses a format your device may not support. Try a different source. [%1$s]</string>
+    <string name="player_audio_track_unsupported">The audio track "%1$s" is not supported on your device. Please choose another.</string>
     <string name="player_error_initialize_failed">Failed to initialize player</string>
     <string name="player_error_mpv_surface_failed">Failed to initialize libmpv surface</string>
     <string name="player_error_mpv_playback_failed">Failed to initialize libmpv playback</string>

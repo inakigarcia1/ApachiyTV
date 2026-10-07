@@ -402,6 +402,12 @@ class PlayerRuntimeController(
     internal var autoSubtitleSelected: Boolean = false
     internal var isUserExplicitSubtitleSelection: Boolean = false
     internal var isUserExplicitAudioSelection: Boolean = false
+    internal val rejectedAudioTrackIndices = mutableSetOf<Int>()
+    internal var manualAudioSelectionIndex = -1
+    internal var audioIndexBeforeManual = -1
+    internal var audioStallJob: Job? = null
+    internal var audioStallReadySeen: Boolean = false
+    internal var audioStallPlateauCount: Int = 0
     internal var preferredAudioLanguageSetting: String = com.nuvio.tv.data.local.AudioLanguageOption.ORIGINAL
     internal var secondaryPreferredAudioLanguageSetting: String? = null
     internal var lastSubtitlePreferredLanguage: String? = null

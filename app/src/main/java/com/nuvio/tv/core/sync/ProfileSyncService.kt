@@ -109,20 +109,32 @@ class ProfileSyncService @Inject constructor(
         }
     }
 
-    suspend fun deleteProfileData(profileId: Int): Result<Unit> = withContext(Dispatchers.IO) {
+    suspend fun deleteProfileData(profileIndex: Int): Result<Unit> = withContext(Dispatchers.IO) {
         try {
-            val params = buildJsonObject {
-                put("p_profile_id", profileId)
-                putSyncOriginClientId(syncClientIdentity)
+            val remote = withJwtRefreshRetry {
+                postgrest.rpc("sync_pull_profiles")
+            }.decodeList<SupabaseProfile>()
+            val rowId = remote.firstOrNull { it.profileIndex == profileIndex }?.id
+            if (rowId == null) {
+                Log.d(TAG, "No remote row for profile index $profileIndex")
+                return@withContext Result.success(Unit)
             }
-            withJwtRefreshRetry {
-                postgrest.rpc("sync_delete_profile_data", params)
+            val deleted = withJwtRefreshRetry {
+                postgrest.rpc(
+                    "sync_delete_profile_data",
+                    buildJsonObject { put("p_profile_id", rowId) },
+                ).decodeAs<Boolean>()
             }
-
-            Log.d(TAG, "Deleted remote data for profile $profileId")
+            if (!deleted) {
+                Log.e(TAG, "Profile delete RPC returned false for row $rowId (index $profileIndex)")
+                return@withContext Result.failure(
+                    IllegalStateException("sync_delete_profile_data returned false"),
+                )
+            }
+            Log.d(TAG, "Deleted remote profile row $rowId (index $profileIndex)")
             Result.success(Unit)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to delete remote profile data for profile $profileId", e)
+            Log.e(TAG, "Failed to delete remote profile data for profile index $profileIndex", e)
             Result.failure(e)
         }
     }

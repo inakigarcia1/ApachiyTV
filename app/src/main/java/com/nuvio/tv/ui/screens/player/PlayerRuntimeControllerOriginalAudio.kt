@@ -15,7 +15,11 @@ internal fun PlayerRuntimeController.tryAutoSelectOriginalAudioTrack(
     audioTracks: List<TrackInfo>
 ): Int? {
     if (isUserExplicitAudioSelection || audioTracks.isEmpty()) return null
-    if (persistedTrackPreference?.audio != null) return null
+    persistedTrackPreference?.audio?.let { saved ->
+        val savedIndex = findMatchingTrackIndex(audioTracks, saved)
+        val savedTrack = audioTracks.getOrNull(savedIndex)
+        if (savedTrack == null || savedTrack.isSupported) return null
+    }
     if (pendingEngineSwitchTrackPreference?.preference?.audio != null) return null
     if (!shouldUseOriginalAudioHeuristic(preferredAudioLanguageSetting)) return null
 
@@ -26,6 +30,7 @@ internal fun PlayerRuntimeController.tryAutoSelectOriginalAudioTrack(
             name = track.name,
             isCommentary = track.isCommentary,
             codec = track.codec,
+            isSupported = track.isSupported,
         )
     }
     val supported = supportedAudioCodecsFromDevice()

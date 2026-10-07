@@ -9,6 +9,7 @@ data class AudioTrackCandidate(
     val name: String,
     val isCommentary: Boolean,
     val codec: String? = null,
+    val isSupported: Boolean = true,
 )
 
 fun shouldUseOriginalAudioHeuristic(preferredAudioLanguage: String): Boolean {
@@ -91,7 +92,9 @@ fun noPlayableAudioTrack(
 ): Boolean {
     if (supportedAudioCodecs == null || tracks.isEmpty()) return false
     val pool = tracks.filter { !it.isCommentary }.ifEmpty { tracks }
-    return pool.all { audioTrackKnownIncompatible(it.codec, it.name, supportedAudioCodecs) }
+    return pool.all {
+        !it.isSupported || audioTrackKnownIncompatible(it.codec, it.name, supportedAudioCodecs)
+    }
 }
 
 fun pickPreferredAudioTrackIndex(
@@ -110,7 +113,7 @@ fun pickPreferredAudioTrackIndex(
         pool
     } else {
         pool.filter { !audioTrackKnownIncompatible(it.codec, it.name, supportedAudioCodecs) }
-    }
+    }.filter { it.isSupported }
     if (playable.isEmpty()) return null
 
     fun best(candidates: List<AudioTrackCandidate>): Int? =

@@ -1077,7 +1077,12 @@ internal fun PlayerRuntimeController.initializePlayer(
                         // Rebuffer telemetry: a rebuffer is STATE_BUFFERING entered
                         // AFTER the first frame (initial startup buffering is excluded).
                         // Accumulate time spent rebuffering; closed out on any non-buffering state.
+                        if (playbackState == Player.STATE_READY) {
+                            audioStallReadySeen = true
+                            audioStallPlateauCount = 0
+                        }
                         if (playbackState == Player.STATE_BUFFERING) {
+                            if (playWhenReady) armAudioDecoderStallCheck()
                             if (hasRenderedFirstFrame && rebufferStartedAtMs == 0L) {
                                 rebufferCount += 1
                                 rebufferStartedAtMs = SystemClock.elapsedRealtime()

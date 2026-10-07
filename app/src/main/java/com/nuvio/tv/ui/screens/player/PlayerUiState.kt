@@ -238,7 +238,8 @@ data class TrackInfo(
     val isForced: Boolean = false,
     val isSelected: Boolean = false,
     val sampleRate: Int? = null,
-    val isCommentary: Boolean = false
+    val isCommentary: Boolean = false,
+    val isSupported: Boolean = true,
 )
 
 data class NextEpisodeInfo(

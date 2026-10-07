@@ -127,7 +127,8 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
                             channelCount = format.channelCount.takeIf { it > 0 },
                             isSelected = isSelected,
                             sampleRate = format.sampleRate.takeIf { it > 0 },
-                            isCommentary = isAudioCommentaryTrack(displayName, format.roleFlags)
+                            isCommentary = isAudioCommentaryTrack(displayName, format.roleFlags),
+                            isSupported = trackGroup.isTrackSupported(i),
                         )
                     )
                 }
@@ -296,6 +297,14 @@ internal fun PlayerRuntimeController.updateAvailableTracks(tracks: Tracks) {
 
     maybeRestorePendingAudioSelectionAfterSubtitleRefresh(audioTracks)?.let { restoredIndex ->
         selectedAudioIndex = restoredIndex
+    }
+
+    if (rejectedAudioTrackIndices.isNotEmpty()) {
+        for (i in audioTracks.indices) {
+            if (audioTracks[i].index in rejectedAudioTrackIndices && audioTracks[i].isSupported) {
+                audioTracks[i] = audioTracks[i].copy(isSupported = false)
+            }
+        }
     }
 
     tryAutoSelectOriginalAudioTrack(audioTracks)?.let { autoIndex ->
@@ -961,9 +970,8 @@ internal fun PlayerRuntimeController.applyPersistedTrackPreference(
                             "target=${describeRememberedTrackForSwitchTrace(audioSelection)} " +
                             "matched=${audioTracks.getOrNull(index)?.let { describeTrackInfoForRestoreLog(it) }}"
                 )
-                if (!alreadySelected) {
+                if (!alreadySelected && selectAudioTrack(index, fromUser = false)) {
                     Log.d(PlayerRuntimeController.TAG, "TRACK_PREF restore: audio index=$index lang=${audioTracks[index].language} name=${audioTracks[index].name}")
-                    selectAudioTrack(index, fromUser = false)
                     _uiState.update { it.copy(selectedAudioTrackIndex = index) }
                 } else {
                     Log.d(PlayerRuntimeController.TAG, "TRACK_PREF restore: audio index=$index already selected, clearing")
