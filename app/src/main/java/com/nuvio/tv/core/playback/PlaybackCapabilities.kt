@@ -132,6 +132,12 @@ object PlaybackCapabilitiesProvider {
 
     private fun readPhysicalScreen(context: Context): PlaybackScreenDto? {
         val wm = context.getSystemService(WindowManager::class.java) ?: return null
+        val display = context.getSystemService(android.hardware.display.DisplayManager::class.java)
+            ?.getDisplay(android.view.Display.DEFAULT_DISPLAY)
+        val panel = choosePanelSize(
+            display?.supportedModes?.map { it.physicalWidth to it.physicalHeight }.orEmpty(),
+        )
+        if (panel != null) return panel
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             val bounds = wm.currentWindowMetrics.bounds
             return PlaybackScreenDto(bounds.width(), bounds.height()).takeIf {
@@ -139,10 +145,10 @@ object PlaybackCapabilitiesProvider {
             }
         }
         @Suppress("DEPRECATION")
-        val display = wm.defaultDisplay ?: return null
+        val legacyDisplay = wm.defaultDisplay ?: return null
         val metrics = android.util.DisplayMetrics()
         @Suppress("DEPRECATION")
-        display.getRealMetrics(metrics)
+        legacyDisplay.getRealMetrics(metrics)
         return PlaybackScreenDto(metrics.widthPixels, metrics.heightPixels).takeIf {
             it.width > 0 && it.height > 0
         }
@@ -235,6 +241,20 @@ internal object PlaybackFailureMemory {
             else -> null
         }
     }
+}
+
+/**
+ * Android TV often draws the UI a step below the panel: 4K sets report a 1920x1080 window,
+ * and 1080p sets a 1280x720 window. Stream requests need the panel, which is the largest
+ * display mode, not that framebuffer.
+ */
+internal fun choosePanelSize(modeSizes: List<Pair<Int, Int>>): PlaybackScreenDto? {
+    val best = modeSizes
+        .filter { (width, height) -> width > 0 && height > 0 }
+        .maxByOrNull { (width, height) -> width.toLong() * height.toLong() }
+        ?: return null
+    val (width, height) = best
+    return if (width >= height) PlaybackScreenDto(width, height) else PlaybackScreenDto(height, width)
 }
 
 internal fun isApachiyAddonBase(baseUrl: String): Boolean {

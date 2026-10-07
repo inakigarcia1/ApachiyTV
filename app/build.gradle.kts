@@ -158,7 +158,7 @@ android {
         applicationId = "com.apachiy.tv"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1056
+        versionCode = 1057
         versionName = "0.8.7-beta"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
@@ -330,10 +330,11 @@ android {
 
     splits {
         abi {
-            isEnable = !buildingAppBundle
+            val splitApks = !buildingAppBundle
+            isEnable = splitApks
             reset()
             include("armeabi-v7a", "arm64-v8a", "x86", "x86_64")
-            isUniversalApk = true
+            isUniversalApk = splitApks
         }
     }
 
