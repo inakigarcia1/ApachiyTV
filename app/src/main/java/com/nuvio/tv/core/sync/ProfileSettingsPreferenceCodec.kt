@@ -61,6 +61,7 @@ internal val profileSettingsIntKeys = setOf(
 
 internal val profileSettingsFloatKeys = setOf(
     "next_episode_threshold_percent_v2",
+    "next_episode_threshold_percent_v3",
     "next_episode_threshold_minutes_before_end_v2"
 )
 

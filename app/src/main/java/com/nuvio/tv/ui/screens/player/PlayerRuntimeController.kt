@@ -327,6 +327,8 @@ class PlayerRuntimeController(
     /** Cancels previous TEXT-track bounce jobs when subtitle delay is adjusted repeatedly. */
     internal var subtitleTimingRefreshJob: Job? = null
     internal var nextEpisodeAutoPlayJob: Job? = null
+    internal var nextEpisodePreloadJob: Job? = null
+    internal var preloadedNextEpisodeId: String? = null
     internal var debridResolveJob: Job? = null
     internal var stillWatchingPromptJob: Job? = null
     internal var startupLoadingReportJob: Job? = null
@@ -430,7 +432,7 @@ class PlayerRuntimeController(
     internal var streamAutoPlayNextEpisodeEnabledSetting: Boolean = false
     internal var streamAutoPlayPreferBingeGroupForNextEpisodeSetting: Boolean = false
     internal var nextEpisodeThresholdModeSetting: NextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE
-    internal var nextEpisodeThresholdPercentSetting: Float = 98f
+    internal var nextEpisodeThresholdPercentSetting: Float = PlayerNextEpisodeRules.THRESHOLD_PERCENT_DEFAULT
     internal var nextEpisodeThresholdMinutesBeforeEndSetting: Float = 2f
     internal var stillWatchingEnabledSetting: Boolean = false
     internal var stillWatchingEpisodeThresholdSetting: Int =

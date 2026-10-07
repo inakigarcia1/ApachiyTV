@@ -305,6 +305,9 @@ private fun PlayerRuntimeController.applyRecomputedNextEpisode(
 internal fun PlayerRuntimeController.resetPostPlayOverlayState(clearEpisode: Boolean = false) {
     nextEpisodeAutoPlayJob?.cancel()
     nextEpisodeAutoPlayJob = null
+    nextEpisodePreloadJob?.cancel()
+    nextEpisodePreloadJob = null
+    preloadedNextEpisodeId = null
     stillWatchingPromptJob?.cancel()
     stillWatchingPromptJob = null
     _uiState.update { state ->
@@ -333,9 +336,10 @@ internal fun PlayerRuntimeController.evaluatePostPlayOverlayVisibility(positionM
         }
         return
     }
+    val effectiveDuration = effectiveDurationEarly
+    maybePreloadNextEpisodeSources(positionMs, effectiveDuration)
     if (state.postPlayMode != null || state.postPlayDismissedForCurrentEpisode) return
 
-    val effectiveDuration = effectiveDurationEarly
     val shouldShow = PlayerNextEpisodeRules.shouldShowNextEpisodeCard(
         positionMs = positionMs,
         durationMs = effectiveDuration,
@@ -366,6 +370,33 @@ internal fun PlayerRuntimeController.evaluatePostPlayOverlayVisibility(positionM
         if (state.nextEpisode.hasAired && streamAutoPlayNextEpisodeEnabledSetting) {
             playNextEpisode()
         }
+    }
+}
+
+internal fun PlayerRuntimeController.maybePreloadNextEpisodeSources(positionMs: Long, durationMs: Long) {
+    val next = nextEpisodeVideo ?: return
+    if (_uiState.value.nextEpisode?.hasAired != true) return
+    if (preloadedNextEpisodeId == next.id) return
+    if (contentType.equals("cloud", ignoreCase = true)) return
+    val shouldPreload = PlayerNextEpisodeRules.shouldPreloadNextEpisodeSources(
+        positionMs = positionMs,
+        durationMs = durationMs,
+        skipIntervals = skipIntervals,
+        thresholdMode = nextEpisodeThresholdModeSetting,
+        thresholdPercent = nextEpisodeThresholdPercentSetting,
+        thresholdMinutesBeforeEnd = nextEpisodeThresholdMinutesBeforeEndSetting,
+    )
+    if (!shouldPreload) return
+    val type = contentType ?: return
+    preloadedNextEpisodeId = next.id
+    nextEpisodePreloadJob?.cancel()
+    nextEpisodePreloadJob = scope.launch {
+        streamRepository.getStreamsFromAllAddons(
+            type = type,
+            videoId = next.id,
+            season = next.season,
+            episode = next.episode,
+        ).collect { }
     }
 }
 

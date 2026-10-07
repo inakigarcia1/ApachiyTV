@@ -2,6 +2,7 @@
 
 package com.nuvio.tv.ui.screens.settings
 
+import com.nuvio.tv.ui.screens.player.PlayerNextEpisodeRules
 import com.nuvio.tv.ui.theme.NuvioTheme
 
 import android.view.KeyEvent
@@ -264,7 +265,7 @@ internal fun LazyListScope.autoPlaySettingsItems(
                     subtitle = stringResource(R.string.autoplay_threshold_pct_sub),
                     value = (playerSettings.nextEpisodeThresholdPercent * 2f).roundToInt(),
                     valueText = "${formatHalfStepValue(playerSettings.nextEpisodeThresholdPercent)}%",
-                    minValue = 194,
+                    minValue = (PlayerNextEpisodeRules.THRESHOLD_PERCENT_MIN * 2f).roundToInt(),
                     maxValue = 200,
                     step = 1,
                     onValueChange = { onSetNextEpisodeThresholdPercent(it / 2f) },

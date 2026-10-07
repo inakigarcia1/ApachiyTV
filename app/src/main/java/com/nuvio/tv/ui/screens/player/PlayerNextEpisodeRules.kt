@@ -1,6 +1,7 @@
 package com.nuvio.tv.ui.screens.player
 
 import com.nuvio.tv.data.local.NextEpisodeThresholdMode
+import kotlin.math.roundToInt
 import com.nuvio.tv.data.repository.SkipInterval
 import com.nuvio.tv.core.util.isEpisodeReleaseAired
 import com.nuvio.tv.core.util.parseEpisodeReleaseLocalDate
@@ -44,55 +45,77 @@ object PlayerNextEpisodeRules {
         thresholdPercent: Float,
         thresholdMinutesBeforeEnd: Float
     ): Boolean {
-        val outroSegments = skipIntervals.filter { it.type in OUTRO_SEGMENT_TYPES }
+        val promptAtMs = nextEpisodePromptPositionMs(
+            durationMs = durationMs,
+            skipIntervals = skipIntervals,
+            thresholdMode = thresholdMode,
+            thresholdPercent = thresholdPercent,
+            thresholdMinutesBeforeEnd = thresholdMinutesBeforeEnd,
+        ) ?: return false
+        return positionMs >= promptAtMs
+    }
 
+    fun shouldPreloadNextEpisodeSources(
+        positionMs: Long,
+        durationMs: Long,
+        skipIntervals: List<SkipInterval>,
+        thresholdMode: NextEpisodeThresholdMode,
+        thresholdPercent: Float,
+        thresholdMinutesBeforeEnd: Float
+    ): Boolean {
+        val promptAtMs = nextEpisodePromptPositionMs(
+            durationMs = durationMs,
+            skipIntervals = skipIntervals,
+            thresholdMode = thresholdMode,
+            thresholdPercent = thresholdPercent,
+            thresholdMinutesBeforeEnd = thresholdMinutesBeforeEnd,
+        ) ?: return false
+        return positionMs >= (promptAtMs - PRELOAD_LEAD_MS).coerceAtLeast(0L)
+    }
+
+    /**
+     * Playback position where the next-episode card appears.
+     * Credits that finish near the file end open the card at the credits start.
+     * Otherwise the card uses the configured percentage or minutes-before-end window.
+     */
+    fun nextEpisodePromptPositionMs(
+        durationMs: Long,
+        skipIntervals: List<SkipInterval>,
+        thresholdMode: NextEpisodeThresholdMode,
+        thresholdPercent: Float,
+        thresholdMinutesBeforeEnd: Float
+    ): Long? {
+        if (durationMs <= 0L) return null
+        val userThresholdMs = thresholdWindowFromEndMs(
+            durationMs = durationMs,
+            thresholdMode = thresholdMode,
+            thresholdPercent = thresholdPercent,
+            thresholdMinutesBeforeEnd = thresholdMinutesBeforeEnd,
+        )
+        val outroSegments = skipIntervals.filter { it.type in OUTRO_SEGMENT_TYPES }
         if (outroSegments.isNotEmpty()) {
-            if (durationMs <= 0L) return false
             val latestOutroEndMs = (outroSegments.maxOf { it.endTime } * 1_000.0).toLong()
             val postOutroGapMs = durationMs - latestOutroEndMs
-
-            // Calculate the user's configured threshold as milliseconds from end.
-            val userThresholdMs = when (thresholdMode) {
-                NextEpisodeThresholdMode.PERCENTAGE -> {
-                    val clampedPercent = thresholdPercent.coerceIn(97f, 100f)
-                    ((1.0 - clampedPercent / 100.0) * durationMs).toLong()
-                }
-                NextEpisodeThresholdMode.MINUTES_BEFORE_END -> {
-                    val clampedMinutes = thresholdMinutesBeforeEnd.coerceIn(0f, 3.5f)
-                    (clampedMinutes * 60_000f).toLong()
-                }
-            }
-
-            return if (postOutroGapMs > userThresholdMs) {
-                when (thresholdMode) {
-                    NextEpisodeThresholdMode.PERCENTAGE -> {
-                        val clampedPercent = thresholdPercent.coerceIn(97f, 100f)
-                        (positionMs.toDouble() / durationMs.toDouble()) >= (clampedPercent / 100.0)
-                    }
-                    NextEpisodeThresholdMode.MINUTES_BEFORE_END -> {
-                        val clampedMinutes = thresholdMinutesBeforeEnd.coerceIn(0f, 3.5f)
-                        val remainingMs = durationMs - positionMs
-                        remainingMs <= (clampedMinutes * 60_000f).toLong()
-                    }
-                }
-            } else {
-                // Outro ends close to the file end — fire at earliest outro start.
-                positionMs / 1_000.0 >= outroSegments.minOf { it.startTime }
+            if (postOutroGapMs <= userThresholdMs) {
+                return (outroSegments.minOf { it.startTime } * 1_000.0).toLong()
             }
         }
+        return (durationMs - userThresholdMs).coerceAtLeast(0L)
+    }
 
-        // Fallback to the settings threshold when no outro data exists.
-        if (durationMs <= 0L) return false
-        return when (thresholdMode) {
-            NextEpisodeThresholdMode.PERCENTAGE -> {
-                val clampedPercent = thresholdPercent.coerceIn(97f, 100f)
-                (positionMs.toDouble() / durationMs.toDouble()) >= (clampedPercent / 100.0)
-            }
-            NextEpisodeThresholdMode.MINUTES_BEFORE_END -> {
-                val clampedMinutes = thresholdMinutesBeforeEnd.coerceIn(0f, 3.5f)
-                val remainingMs = durationMs - positionMs
-                remainingMs <= (clampedMinutes * 60_000f).toLong()
-            }
+    private fun thresholdWindowFromEndMs(
+        durationMs: Long,
+        thresholdMode: NextEpisodeThresholdMode,
+        thresholdPercent: Float,
+        thresholdMinutesBeforeEnd: Float,
+    ): Long = when (thresholdMode) {
+        NextEpisodeThresholdMode.PERCENTAGE -> {
+            val steps = (thresholdPercent.coerceIn(THRESHOLD_PERCENT_MIN, THRESHOLD_PERCENT_MAX) * 2f).roundToInt()
+            durationMs * (200 - steps) / 200
+        }
+        NextEpisodeThresholdMode.MINUTES_BEFORE_END -> {
+            val clampedMinutes = thresholdMinutesBeforeEnd.coerceIn(0f, 3.5f)
+            (clampedMinutes * 60_000f).toLong()
         }
     }
 
@@ -105,6 +128,11 @@ object PlayerNextEpisodeRules {
     }
 
     val OUTRO_SEGMENT_TYPES = setOf("outro", "ed", "mixed-ed")
+
+    const val THRESHOLD_PERCENT_MIN = 85f
+    const val THRESHOLD_PERCENT_MAX = 100f
+    const val THRESHOLD_PERCENT_DEFAULT = 90f
+    const val PRELOAD_LEAD_MS = 15_000L
 
     const val POST_OUTRO_AUTOPLAY_GAP_MS = 5_000L
 

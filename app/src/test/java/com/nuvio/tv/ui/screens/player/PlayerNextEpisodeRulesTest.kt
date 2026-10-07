@@ -1,5 +1,7 @@
 package com.nuvio.tv.ui.screens.player
 
+import com.nuvio.tv.data.local.NextEpisodeThresholdMode
+import com.nuvio.tv.data.repository.SkipInterval
 import com.nuvio.tv.domain.model.Video
 import java.time.Clock
 import java.time.Instant
@@ -71,6 +73,71 @@ class PlayerNextEpisodeRulesTest {
         val videos = listOf(ep(null, 5, "e5"), ep(null, 6, "e6"))
         val next = PlayerNextEpisodeRules.resolveNextEpisode(videos, currentSeason = null, currentEpisode = 6)
         assertNull(next)
+    }
+
+    @Test
+    fun `without credits the card opens at 90 percent and sources preload 15 seconds earlier`() {
+        val durationMs = 40 * 60_000L
+        val promptAt = PlayerNextEpisodeRules.nextEpisodePromptPositionMs(
+            durationMs = durationMs,
+            skipIntervals = emptyList(),
+            thresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
+            thresholdPercent = PlayerNextEpisodeRules.THRESHOLD_PERCENT_DEFAULT,
+            thresholdMinutesBeforeEnd = 2f,
+        )
+        assertEquals(36 * 60_000L, promptAt)
+        val show = { positionMs: Long ->
+            PlayerNextEpisodeRules.shouldShowNextEpisodeCard(
+                positionMs = positionMs,
+                durationMs = durationMs,
+                skipIntervals = emptyList(),
+                thresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
+                thresholdPercent = 90f,
+                thresholdMinutesBeforeEnd = 2f,
+            )
+        }
+        val preload = { positionMs: Long ->
+            PlayerNextEpisodeRules.shouldPreloadNextEpisodeSources(
+                positionMs = positionMs,
+                durationMs = durationMs,
+                skipIntervals = emptyList(),
+                thresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
+                thresholdPercent = 90f,
+                thresholdMinutesBeforeEnd = 2f,
+            )
+        }
+        assertFalse(show(promptAt!! - 1))
+        assertTrue(show(promptAt))
+        assertFalse(preload(promptAt - PlayerNextEpisodeRules.PRELOAD_LEAD_MS - 1))
+        assertTrue(preload(promptAt - PlayerNextEpisodeRules.PRELOAD_LEAD_MS))
+    }
+
+    @Test
+    fun `credits that finish near the end open the card when they start`() {
+        val durationMs = 40 * 60_000L
+        val credits = listOf(SkipInterval(startTime = 37 * 60.0, endTime = 39 * 60.0 + 50, type = "outro", provider = "introdb"))
+        val promptAt = PlayerNextEpisodeRules.nextEpisodePromptPositionMs(
+            durationMs = durationMs,
+            skipIntervals = credits,
+            thresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
+            thresholdPercent = 90f,
+            thresholdMinutesBeforeEnd = 2f,
+        )
+        assertEquals(37 * 60_000L, promptAt)
+    }
+
+    @Test
+    fun `a long scene after the credits waits for the percentage`() {
+        val durationMs = 40 * 60_000L
+        val credits = listOf(SkipInterval(startTime = 30 * 60.0, endTime = 32 * 60.0, type = "ed", provider = "aniskip"))
+        val promptAt = PlayerNextEpisodeRules.nextEpisodePromptPositionMs(
+            durationMs = durationMs,
+            skipIntervals = credits,
+            thresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
+            thresholdPercent = 90f,
+            thresholdMinutesBeforeEnd = 2f,
+        )
+        assertEquals(36 * 60_000L, promptAt)
     }
 
     @Test

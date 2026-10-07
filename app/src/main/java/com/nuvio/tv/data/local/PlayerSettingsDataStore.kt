@@ -270,7 +270,7 @@ data class PlayerSettings(
     val stillWatchingEnabled: Boolean = false,
     val stillWatchingEpisodeThreshold: Int = DEFAULT_STILL_WATCHING_EPISODE_THRESHOLD,
     val nextEpisodeThresholdMode: NextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
-    val nextEpisodeThresholdPercent: Float = 99f,
+    val nextEpisodeThresholdPercent: Float = 90f,
     val nextEpisodeThresholdMinutesBeforeEnd: Float = 2f,
     val streamReuseLastLinkEnabled: Boolean = false,
     val streamReuseLastLinkCacheHours: Int = 24,
@@ -527,9 +527,8 @@ class PlayerSettingsDataStore @Inject constructor(
     private val stillWatchingEnabledKey = booleanPreferencesKey("still_watching_enabled")
     private val stillWatchingEpisodeThresholdKey = intPreferencesKey("still_watching_episode_threshold")
     private val nextEpisodeThresholdModeKey = stringPreferencesKey("next_episode_threshold_mode")
-    private val nextEpisodeThresholdPercentLegacyKey = intPreferencesKey("next_episode_threshold_percent")
     private val nextEpisodeThresholdMinutesBeforeEndLegacyKey = intPreferencesKey("next_episode_threshold_minutes_before_end")
-    private val nextEpisodeThresholdPercentKey = floatPreferencesKey("next_episode_threshold_percent_v2")
+    private val nextEpisodeThresholdPercentKey = floatPreferencesKey("next_episode_threshold_percent_v3")
     private val nextEpisodeThresholdMinutesBeforeEndKey = floatPreferencesKey("next_episode_threshold_minutes_before_end_v2")
     private val streamReuseLastLinkEnabledKey = booleanPreferencesKey("stream_reuse_last_link_enabled")
     private val streamReuseLastLinkCacheHoursKey = intPreferencesKey("stream_reuse_last_link_cache_hours")
@@ -895,10 +894,8 @@ class PlayerSettingsDataStore @Inject constructor(
                     runCatching { NextEpisodeThresholdMode.valueOf(it) }.getOrDefault(NextEpisodeThresholdMode.PERCENTAGE)
                 } ?: NextEpisodeThresholdMode.PERCENTAGE,
                 nextEpisodeThresholdPercent = normalizeHalfStep(
-                    value = prefs[nextEpisodeThresholdPercentKey]
-                        ?: prefs[nextEpisodeThresholdPercentLegacyKey]?.toFloat()
-                        ?: 99f,
-                    min = 97f,
+                    value = prefs[nextEpisodeThresholdPercentKey] ?: 90f,
+                    min = 85f,
                     max = 100f
                 ),
                 nextEpisodeThresholdMinutesBeforeEnd = normalizeHalfStep(
@@ -1286,7 +1283,7 @@ class PlayerSettingsDataStore @Inject constructor(
         store().edit { prefs ->
             prefs[nextEpisodeThresholdPercentKey] = normalizeHalfStep(
                 value = percent,
-                min = 97f,
+                min = 85f,
                 max = 100f
             )
         }
