@@ -46,7 +46,7 @@ if (-not (Test-Path $Apk)) {
 $installFailed = $false
 foreach ($serial in $targets) {
     Write-Host "adb install -> $serial"
-    & adb -s $serial install -r $Apk
+    & adb -s $serial install -r -d $Apk
     if ($LASTEXITCODE -ne 0) {
         $installFailed = $true
     }
