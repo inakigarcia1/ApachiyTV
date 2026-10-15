@@ -158,8 +158,8 @@ android {
         applicationId = "com.apachiy.tv"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1058
-        versionName = "0.8.7-beta"
+        versionCode = 1061
+        versionName = "0.8.8-beta"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")
@@ -212,12 +212,12 @@ android {
     productFlavors {
         create("full") {
             dimension = "distribution"
-            buildConfigField("boolean", "FEATURE_PLUGINS_ENABLED", "true")
+            buildConfigField("boolean", "FEATURE_PLUGINS_ENABLED", "false")
             buildConfigField("boolean", "FEATURE_IN_APP_UPDATES_ENABLED", "true")
-            buildConfigField("boolean", "FEATURE_IN_APP_TRAILERS_ENABLED", "true")
+            buildConfigField("boolean", "FEATURE_IN_APP_TRAILERS_ENABLED", "false")
             buildConfigField("boolean", "FEATURE_EXTERNAL_TRAILERS_ENABLED", "true")
-            buildConfigField("boolean", "FEATURE_EXTERNAL_PLAYBACK_KEEP_ALIVE_ENABLED", "true")
-            buildConfigField("boolean", "FEATURE_CUSTOM_SERVER_CONNECTIONS_ENABLED", "true")
+            buildConfigField("boolean", "FEATURE_EXTERNAL_PLAYBACK_KEEP_ALIVE_ENABLED", "false")
+            buildConfigField("boolean", "FEATURE_CUSTOM_SERVER_CONNECTIONS_ENABLED", "false")
         }
         create("playstore") {
             dimension = "distribution"
@@ -365,6 +365,15 @@ android {
     sourceSets {
         getByName("main") {
             jniLibs.srcDirs("src/main/jniLibs")
+        }
+        getByName("full") {
+            val sideloadSources = listOf("src/sideload/java", "src/storePlugins/java")
+            java.setSrcDirs(sideloadSources)
+            kotlin.setSrcDirs(sideloadSources)
+        }
+        getByName("playstore") {
+            java.srcDir("src/storePlugins/java")
+            kotlin.srcDir("src/storePlugins/java")
         }
     }
 
@@ -547,7 +556,6 @@ dependencies {
         "libs/lib-decoder-av1-release.aar",
         "libs/lib-decoder-mpegh-release.aar"
     ))
-    add("fullImplementation", files("libs/lib-decoder-iamf-release.aar"))
     if (useLocalFfmpegDecoder) {
         implementation(project(":ffmpeg-decoder-downmix"))
     } else {
@@ -566,24 +574,8 @@ dependencies {
 
     implementation(libs.gson)
 
-    add("fullImplementation", files("libs/quickjs-kt-android-1.0.5-nuvio.aar"))
-    add("fullImplementation", libs.jsoup)
-    add("fullImplementation", "com.fasterxml.jackson.core:jackson-databind:2.17.0")
-    add("fullImplementation", "com.fasterxml.jackson.module:jackson-module-kotlin:2.17.0")
-    add("fullImplementation", libs.nicehttp)
-    add("fullImplementation", libs.conscrypt.android)
-    add("fullImplementation", "com.github.recloudstream.cloudstream:library:${libs.versions.cloudstream.get()}") {
-        exclude(group = "org.mozilla", module = "rhino")
-        exclude(group = "com.github.AmarullisVFX", module = "newpipeextractor")
-        exclude(group = "com.github.AmaryllisVFX", module = "newpipeextractor")
-        exclude(group = "com.github.AmaryllisVFX.newpipeextractor")
-        exclude(group = "info.debatty", module = "java-string-similarity")
-    }
-
     // Markdown rendering
     implementation(libs.markdown.renderer.m3)
-
-    add("fullImplementation", libs.crypto.js)
     // QR code + local server for addon management
     implementation(libs.nanohttpd)
     implementation(libs.zxing.core)
@@ -603,8 +595,6 @@ dependencies {
     // Performance profiling
     implementation("androidx.metrics:metrics-performance:1.0.0-rc01")  // JankStats
     debugImplementation("androidx.compose.runtime:runtime-tracing")
-
-    add("fullImplementation", "org.webjars.npm:crypto-js:4.2.0")
 
     androidTestImplementation(platform(libs.androidx.compose.bom))
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
