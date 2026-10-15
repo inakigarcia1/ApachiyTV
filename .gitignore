@@ -14,7 +14,9 @@ app/libs/sherpa-onnx-*.aar.part
 /.idea/assetWizardSettings.xml
 /infra/supabase/.env
 /infra/supabase/.env.old
-/.cursor
+/.cursor/*
+!/.cursor/rules/
+!/.cursor/rules/**
 .DS_Store
 __pycache__/
 *.py[cod]
