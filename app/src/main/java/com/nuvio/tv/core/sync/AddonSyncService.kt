@@ -87,6 +87,34 @@ class AddonSyncService @Inject constructor(
         }
     }
 
+    suspend fun fetchRemoteAddons(): Result<List<SupabaseAddon>> = withContext(Dispatchers.IO) {
+        try {
+            val effectiveUserId = authManager.getEffectiveUserId(fallbackToOwnIdOnFailure = false)
+                ?: return@withContext Result.failure(
+                    IllegalStateException("Unable to resolve sync owner for addon sync")
+                )
+            val activeProfile = profileManager.activeProfile
+            val profileId = if (activeProfile != null && !activeProfile.isPrimary && activeProfile.usesPrimaryAddons) 1
+                else profileManager.activeProfileId.value
+            val remoteAddons = withJwtRefreshRetry {
+                postgrest.from("addons")
+                    .select { filter {
+                        eq("user_id", effectiveUserId)
+                        eq("profile_id", profileId)
+                    } }
+                    .decodeList<SupabaseAddon>()
+            }
+            Result.success(
+                remoteAddons
+                    .filterNot { AddonPreferences.isDeniedAddonUrl(it.url) }
+                    .sortedBy { it.sortOrder }
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to fetch remote addons", e)
+            Result.failure(e)
+        }
+    }
+
     suspend fun getRemoteAddonUrls(): Result<List<String>> = withContext(Dispatchers.IO) {
         try {
             val effectiveUserId = authManager.getEffectiveUserId(fallbackToOwnIdOnFailure = false)

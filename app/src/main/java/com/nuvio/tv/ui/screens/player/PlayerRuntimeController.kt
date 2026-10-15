@@ -601,6 +601,7 @@ class PlayerRuntimeController(
         observeTorrentSettings()
         observeStreamBadgeSettings()
         observeDeviceLocalAspectMode()
+        observeQuietAddonUpdates()
     }
 
     private fun observeTorrentSettings() {

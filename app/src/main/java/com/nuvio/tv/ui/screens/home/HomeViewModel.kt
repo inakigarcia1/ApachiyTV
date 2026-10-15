@@ -195,6 +195,7 @@ class HomeViewModel @Inject constructor(
     internal var activeCatalogLoadSignature: String? = null
     internal var catalogLoadGeneration: Long = 0L
     internal var catalogsLoadInProgress: Boolean = false
+    internal var preserveLoadedCatalogRows: Boolean = false
     internal data class TruncatedRowCacheEntry(
         val sourceRow: CatalogRow,
         val truncatedRow: CatalogRow
@@ -326,6 +327,7 @@ class HomeViewModel @Inject constructor(
             observeProgressSourceChanges()
             observeCollections()
             observeInstalledAddons()
+            observeQuietAddonRefresh()
 
             // Clear CW state when profile changes so items don't leak between profiles.
             var previousProfileId = profileManager.activeProfileId.value
@@ -715,6 +717,16 @@ class HomeViewModel @Inject constructor(
     private fun observeCollections() = observeCollectionsPipeline()
 
     private fun observeInstalledAddons() = observeInstalledAddonsPipeline()
+
+    private fun observeQuietAddonRefresh() {
+        viewModelScope.launch {
+            addonRepository.quietAddonUpdates.collect {
+                val addons = addonRepository.getInstalledAddons().first().enabledAddons()
+                if (addons.isEmpty() || !hasAnyCatalogRows()) return@collect
+                loadAllCatalogsPipeline(addons, preserveVisible = true)
+            }
+        }
+    }
 
     private suspend fun loadAllCatalogs(addons: List<Addon>, forceReload: Boolean = false) =
         loadAllCatalogsPipeline(addons, forceReload)

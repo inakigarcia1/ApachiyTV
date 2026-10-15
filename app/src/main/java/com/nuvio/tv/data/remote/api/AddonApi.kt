@@ -8,6 +8,7 @@ import com.nuvio.tv.data.remote.dto.SubtitleResponseDto
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.Headers
 import retrofit2.http.POST
 import retrofit2.http.Url
 import okhttp3.RequestBody
@@ -16,6 +17,10 @@ interface AddonApi {
 
     @GET
     suspend fun getManifest(@Url manifestUrl: String): Response<AddonManifestDto>
+
+    @Headers("Cache-Control: no-cache")
+    @GET
+    suspend fun getManifestFresh(@Url manifestUrl: String): Response<AddonManifestDto>
 
     @GET
     suspend fun getCatalog(@Url catalogUrl: String): Response<CatalogResponseDto>

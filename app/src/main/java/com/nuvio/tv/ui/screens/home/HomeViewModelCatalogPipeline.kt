@@ -181,11 +181,14 @@ internal fun HomeViewModel.observeInstalledAddonsPipeline() {
 
 internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
     addons: List<Addon>,
-    forceReload: Boolean = false
+    forceReload: Boolean = false,
+    preserveVisible: Boolean = false,
 ) {
+    if (preserveVisible && !hasAnyCatalogRows()) return
     val signature = buildHomeCatalogLoadSignature(addons)
     val hasActiveLoads = synchronized(activeCatalogLoadJobs) { activeCatalogLoadJobs.any { it.isActive } }
-    if (!forceReload &&
+    if (!preserveVisible &&
+        !forceReload &&
         signature == activeCatalogLoadSignature &&
         (hasActiveLoads || hasAnyCatalogRows())
     ) {
@@ -200,7 +203,10 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
 
     // On reload (not first load), keep existing UI data visible while new
     // catalogs load in the background to avoid a flash of empty content.
-    val isReload = _uiState.value.catalogRows.isNotEmpty() || _uiState.value.homeRows.isNotEmpty()
+    val isReload = preserveVisible ||
+        _uiState.value.catalogRows.isNotEmpty() ||
+        _uiState.value.homeRows.isNotEmpty()
+    preserveLoadedCatalogRows = preserveVisible
     if (!isReload) {
         _uiState.update { it.copy(isLoading = true, error = null, isNoAddons = false, installedAddonsCount = addons.size) }
         synchronized(catalogStateLock) {
@@ -210,6 +216,7 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
     } else {
         _uiState.update { it.copy(error = null, installedAddonsCount = addons.size) }
     }
+    if (!isReload) {
     posterStatusReconcileJob?.cancel()
     reconcilePosterStatusObserversPipeline(emptyList())
     _fullCatalogRows.value = emptyList()
@@ -230,11 +237,14 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
     lastHeroEnrichmentSignature = null
     lastHeroEnrichedItems = emptyList()
     heroItemOrder = emptyList()
+    }
 
     try {
         if (addons.isEmpty()) {
             catalogsLoadInProgress = false
-            _uiState.update { it.copy(isLoading = false, isNoAddons = true, error = null) }
+            if (!(isReload && hasAnyCatalogRows())) {
+                _uiState.update { it.copy(isLoading = false, isNoAddons = true, error = null) }
+            }
             return
         }
 
@@ -399,7 +409,9 @@ internal suspend fun HomeViewModel.loadAllCatalogsPipeline(
         throw e
     } catch (e: Exception) {
         catalogsLoadInProgress = false
-        _uiState.update { it.copy(isLoading = false, error = e.message) }
+        if (!hasAnyCatalogRows()) {
+            _uiState.update { it.copy(isLoading = false, error = e.message) }
+        }
     }
 }
 
@@ -479,6 +491,23 @@ internal fun HomeViewModel.loadCatalogPipeline(
                             type = catalog.apiType,
                             catalogId = catalog.id
                         )
+                        val existing = readCatalogRow(key)
+                        if (
+                            preserveLoadedCatalogRows &&
+                            result.data.items.isEmpty() &&
+                            existing != null &&
+                            existing.items.isNotEmpty()
+                        ) {
+                            if (!hasCountedCompletion) {
+                                pendingCatalogLoads = (pendingCatalogLoads - 1).coerceAtLeast(0)
+                                hasCountedCompletion = true
+                            }
+                            if (pendingCatalogLoads == 0) {
+                                catalogsLoadInProgress = false
+                                scheduleUpdateCatalogRows()
+                            }
+                            return@collect
+                        }
                         replaceCatalogRow(key, result.data)
                         // Remove placeholder descriptor now that real data is available
                         synchronized(catalogStateLock) {

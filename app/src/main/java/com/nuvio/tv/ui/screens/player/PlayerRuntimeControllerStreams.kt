@@ -150,6 +150,89 @@ internal fun PlayerRuntimeController.buildSourceRequestKey(type: String, videoId
     return "$type|$videoId|${season ?: -1}|${episode ?: -1}"
 }
 
+internal fun PlayerRuntimeController.observeQuietAddonUpdates() {
+    scope.launch {
+        addonRepository.quietAddonUpdates.collect { reloadVisibleStreamsQuietly() }
+    }
+}
+
+internal fun PlayerRuntimeController.reloadVisibleStreamsQuietly() {
+    val state = _uiState.value
+    if (state.sourceAllStreams.isEmpty() && state.episodeAllStreams.isEmpty()) return
+    scope.launch {
+        if (state.sourceAllStreams.isNotEmpty()) {
+            val type: String
+            val vid: String
+            val seasonArg: Int?
+            val episodeArg: Int?
+            if (contentType in listOf("series", "tv") && currentSeason != null && currentEpisode != null) {
+                type = contentType ?: return@launch
+                vid = currentVideoId ?: contentId ?: return@launch
+                seasonArg = currentSeason
+                episodeArg = currentEpisode
+            } else {
+                type = contentType ?: "movie"
+                vid = contentId ?: return@launch
+                seasonArg = null
+                episodeArg = null
+            }
+            val ready = collectQuietStreams(type, vid, seasonArg, episodeArg) ?: return@launch
+            if (_uiState.value.sourceAllStreams.isEmpty()) return@launch
+            val filter = _uiState.value.sourceSelectedAddonFilter
+            _uiState.update {
+                it.copy(
+                    isLoadingSourceStreams = false,
+                    sourceStreamsError = null,
+                    sourceAllStreams = ready,
+                    sourceFilteredStreams = if (filter == null) ready else ready.filter { stream -> stream.addonName == filter },
+                )
+            }
+        }
+        val episodeVideoId = _uiState.value.episodeStreamsForVideoId
+        if (_uiState.value.episodeAllStreams.isNotEmpty() && !episodeVideoId.isNullOrBlank()) {
+            val type = contentType ?: return@launch
+            val ready = collectQuietStreams(
+                type = type,
+                videoId = episodeVideoId,
+                season = _uiState.value.episodeStreamsSeason,
+                episode = _uiState.value.episodeStreamsEpisode,
+            ) ?: return@launch
+            if (_uiState.value.episodeAllStreams.isEmpty()) return@launch
+            val filter = _uiState.value.episodeSelectedAddonFilter
+            _uiState.update {
+                it.copy(
+                    isLoadingEpisodeStreams = false,
+                    episodeStreamsError = null,
+                    episodeAllStreams = ready,
+                    episodeFilteredStreams = if (filter == null) ready else ready.filter { stream -> stream.addonName == filter },
+                )
+            }
+        }
+    }
+}
+
+private suspend fun PlayerRuntimeController.collectQuietStreams(
+    type: String,
+    videoId: String,
+    season: Int?,
+    episode: Int?,
+): List<Stream>? {
+    var latest: List<Stream>? = null
+    streamRepository.getStreamsFromAllAddons(
+        type = type,
+        videoId = videoId,
+        season = season,
+        episode = episode,
+        forceRefresh = true,
+    ).collect { result ->
+        if (result is NetworkResult.Success) {
+            val streams = result.data.flatMap { it.streams }
+            if (streams.isNotEmpty()) latest = streams
+        }
+    }
+    return latest
+}
+
 internal fun PlayerRuntimeController.loadSourceStreams(forceRefresh: Boolean) {
     streamRepository.setLocalPluginSearchPaused(false)
     val type: String

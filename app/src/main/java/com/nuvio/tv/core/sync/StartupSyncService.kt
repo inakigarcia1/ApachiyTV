@@ -30,6 +30,7 @@ private const val FORCE_RESYNC_MIN_INTERVAL_MS = 30_000L
 private const val FULL_STARTUP_PULL_TTL_MS = 6 * 60 * 60 * 1000L
 private const val PERIODIC_WATCH_STATE_PULL_INTERVAL_MS = 120_000L
 private const val PERIODIC_LIBRARY_PULL_INTERVAL_MS = 240_000L
+private const val PERIODIC_ADDON_PULL_INTERVAL_MS = 15 * 60 * 1000L
 
 @Singleton
 class StartupSyncService @Inject constructor(
@@ -57,6 +58,8 @@ class StartupSyncService @Inject constructor(
     private var startupPullJob: Job? = null
     private var periodicWatchStatePullJob: Job? = null
     private var periodicLibraryPullJob: Job? = null
+    private var periodicAddonPullJob: Job? = null
+    private var initialAddonReconciliationSettled = false
     private var lastPulledKey: String? = null
     private var lastPulledIncludedProfileSettings: Boolean = false
     private var lastPulledAtMs: Long = 0L
@@ -88,6 +91,7 @@ class StartupSyncService @Inject constructor(
                         startupPullJob = null
                         addonRepository.hasCompletedInitialAddonReconciliation = true
                         addonRepository.isSyncingFromRemote = false
+                        initialAddonReconciliationSettled = false
                         lastPulledKey = null
                         lastPulledIncludedProfileSettings = false
                         lastPulledAtMs = 0L
@@ -131,6 +135,20 @@ class StartupSyncService @Inject constructor(
                 }
             }
         }
+        if (periodicAddonPullJob?.isActive != true) {
+            periodicAddonPullJob = scope.launch {
+                while (true) {
+                    delay(PERIODIC_ADDON_PULL_INTERVAL_MS)
+                    try {
+                        pullPeriodicAddons()
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Periodic addon pull failed", e)
+                    }
+                }
+            }
+        }
     }
 
     fun stopPeriodicSurfacePulls() {
@@ -138,6 +156,8 @@ class StartupSyncService @Inject constructor(
         periodicWatchStatePullJob = null
         periodicLibraryPullJob?.cancel()
         periodicLibraryPullJob = null
+        periodicAddonPullJob?.cancel()
+        periodicAddonPullJob = null
     }
 
     fun requestSyncNow(includeProfileSettings: Boolean = true) {
@@ -301,6 +321,12 @@ class StartupSyncService @Inject constructor(
         }
     }
 
+    private suspend fun pullPeriodicAddons() {
+        if (authManager.authState.value !is AuthState.FullAccount) return
+        Log.d(TAG, "Periodic quiet addon pull")
+        addonRepository.pullQuietly()
+    }
+
     private suspend fun pullPeriodicLibrary() {
         if (authManager.authState.value !is AuthState.FullAccount) return
 
@@ -348,7 +374,9 @@ class StartupSyncService @Inject constructor(
         }
 
         startupPullJob = scope.launch {
-            addonRepository.hasCompletedInitialAddonReconciliation = false
+            if (!initialAddonReconciliationSettled) {
+                addonRepository.hasCompletedInitialAddonReconciliation = false
+            }
             val maxAttempts = 3
             var syncCompleted = false
             for (attempt in 1..maxAttempts) {
@@ -564,7 +592,6 @@ class StartupSyncService @Inject constructor(
 
             val addonJob = async {
                 addonRepository.isSyncingFromRemote = true
-                addonRepository.hasCompletedInitialAddonReconciliation = false
                 try {
                     val remoteAddonUrls = addonSyncService.getRemoteAddonUrls().getOrElse { throw it }
                     addonRepository.reconcileWithRemoteAddonUrls(
@@ -577,6 +604,7 @@ class StartupSyncService @Inject constructor(
                 } finally {
                     addonRepository.isSyncingFromRemote = false
                     addonRepository.hasCompletedInitialAddonReconciliation = true
+                    initialAddonReconciliationSettled = true
                 }
             }
 

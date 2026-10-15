@@ -221,7 +221,48 @@ class StreamScreenViewModel @Inject constructor(
         }
     }
 
+    private var quietReloadJob: Job? = null
+
+    private fun reloadQuietly() {
+        if (_uiState.value.allStreams.isEmpty() || quietReloadJob?.isActive == true) return
+        quietReloadJob = viewModelScope.launch {
+            var latest: List<AddonStreams>? = null
+            streamRepository.getStreamsFromAllAddons(
+                type = contentType,
+                videoId = videoId,
+                season = season,
+                episode = episode,
+                forceRefresh = true,
+                runtimeMinutes = runtime,
+            ).collect { result ->
+                if (result is NetworkResult.Success && result.data.any { it.streams.isNotEmpty() }) {
+                    latest = result.data
+                }
+            }
+            val ready = latest ?: return@launch
+            if (_uiState.value.allStreams.isEmpty()) return@launch
+            val allStreams = ready.flatMap { it.streams }
+            if (allStreams.isEmpty()) return@launch
+            val filter = _uiState.value.selectedAddonFilter
+            updateUiStateIfChanged {
+                it.copy(
+                    isLoading = false,
+                    error = null,
+                    addonStreams = ready,
+                    allStreams = allStreams,
+                    filteredStreams = if (filter == null) allStreams else allStreams.filter { stream ->
+                        stream.addonName == filter
+                    },
+                    availableAddons = ready.map { group -> group.addonName },
+                )
+            }
+        }
+    }
+
     init {
+        viewModelScope.launch {
+            addonRepository.quietAddonUpdates.collect { reloadQuietly() }
+        }
         viewModelScope.launch {
             _uiState
                 .map { state -> state.directAutoPlayMessage to state.directAutoPlayProgress }

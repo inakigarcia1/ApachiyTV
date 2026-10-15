@@ -32,8 +32,15 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import com.nuvio.tv.core.auth.AuthManager
 import com.nuvio.tv.core.sync.AddonSyncService
+import com.nuvio.tv.core.sync.QuietAddonRow
+import com.nuvio.tv.core.sync.QuietManifestResult
+import com.nuvio.tv.core.sync.QuietRemoteAddon
+import com.nuvio.tv.core.sync.resolveQuietAddonRows
 import javax.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.sync.Mutex
 
 class AddonRepositoryImpl @Inject constructor(
     private val api: AddonApi,
@@ -54,6 +61,9 @@ class AddonRepositoryImpl @Inject constructor(
 
     private val syncScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var syncJob: Job? = null
+    private val quietPullMutex = Mutex()
+    private val _quietAddonUpdates = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
+    override val quietAddonUpdates = _quietAddonUpdates.asSharedFlow()
     var isSyncingFromRemote = false
     @Volatile
     override var hasCompletedInitialAddonReconciliation = true
@@ -226,14 +236,82 @@ class AddonRepositoryImpl @Inject constructor(
 
     override fun getInstalledAddons(): Flow<List<Addon>> = installedAddonsFlow
 
-    override suspend fun fetchAddon(baseUrl: String): NetworkResult<Addon> {
+    suspend fun pullQuietly() {
+        if (!quietPullMutex.tryLock()) return
+        try {
+            if (!authManager.isAuthenticated) return
+            val remote = addonSyncService.fetchRemoteAddons().getOrElse { error ->
+                Log.e(TAG, "Quiet addon pull failed", error)
+                return
+            }
+            if (remote.isEmpty()) {
+                Log.i(TAG, "Quiet addon pull got an empty list, keeping local addons")
+                return
+            }
+            val current = getInstalledAddons().first()
+            val manifestResults = mutableMapOf<String, QuietManifestResult>()
+            remote.forEach { row ->
+                val url = canonicalizeUrl(row.url)
+                when (val result = fetchAddon(url, forceRefresh = true)) {
+                    is NetworkResult.Success -> {
+                        manifestResults[url] = QuietManifestResult.Ready(result.data.quietManifestToken())
+                    }
+                    else -> manifestResults[url] = QuietManifestResult.Failed
+                }
+            }
+            val remoteRows = remote.map { row ->
+                QuietRemoteAddon(
+                    url = canonicalizeUrl(row.url),
+                    enabled = row.enabled,
+                    name = row.name,
+                )
+            }.distinctBy { it.url }
+            val next = resolveQuietAddonRows(
+                current = current.map { addon ->
+                    QuietAddonRow(
+                        url = canonicalizeUrl(addon.baseUrl),
+                        enabled = addon.enabled,
+                        name = addon.displayName.takeIf { it.isNotBlank() && it != addon.name },
+                        manifestToken = addon.quietManifestToken(),
+                    )
+                },
+                remote = remoteRows,
+                manifests = manifestResults,
+            )
+            val urls = remoteRows.map { it.url }
+            val localUrls = preferences.installedAddonUrls.first().map { canonicalizeUrl(it) }
+            if (localUrls != urls) {
+                preferences.setAddonOrder(urls)
+            }
+            preferences.setAddonEnabledStates(remoteRows.associate { it.url to it.enabled })
+            val names = remoteRows.mapNotNull { row ->
+                row.name?.takeIf { it.isNotBlank() }?.let { row.url to it }
+            }.toMap()
+            if (names.isNotEmpty()) {
+                preferences.setUserSetNames(names)
+            }
+            if (next != null) {
+                Log.i(TAG, "Quiet addon pull published ${next.size} addons")
+            }
+            _quietAddonUpdates.tryEmit(Unit)
+        } finally {
+            quietPullMutex.unlock()
+        }
+    }
+
+    override suspend fun fetchAddon(baseUrl: String): NetworkResult<Addon> =
+        fetchAddon(baseUrl, forceRefresh = false)
+
+    private suspend fun fetchAddon(baseUrl: String, forceRefresh: Boolean): NetworkResult<Addon> {
         val cleanBaseUrl = canonicalizeUrl(baseUrl)
         val queryStart = cleanBaseUrl.indexOf('?')
         val basePath = if (queryStart >= 0) cleanBaseUrl.substring(0, queryStart).trimEnd('/') else cleanBaseUrl
         val baseQuery = if (queryStart >= 0) cleanBaseUrl.substring(queryStart) else ""
         val manifestUrl = "$basePath/manifest.json$baseQuery"
 
-        return when (val result = safeApiCall(context) { api.getManifest(manifestUrl) }) {
+        return when (val result = safeApiCall(context) {
+            if (forceRefresh) api.getManifestFresh(manifestUrl) else api.getManifest(manifestUrl)
+        }) {
             is NetworkResult.Success -> {
                 val addon = result.data.toDomain(cleanBaseUrl)
                 if (putCachedManifestIfChanged(cleanBaseUrl, addon)) {
@@ -448,4 +526,6 @@ class AddonRepositoryImpl @Inject constructor(
             existing.stremioAddonsConfig != incoming.stremioAddonsConfig ||
             existing.manifestLanguage != incoming.manifestLanguage ||
             existing.configVersion != incoming.configVersion
+
+    private fun Addon.quietManifestToken(): String = copy(enabled = true, displayName = name).toString()
 }
