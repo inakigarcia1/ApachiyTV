@@ -907,11 +907,12 @@ private fun SearchSuggestionList(
                 modifier = Modifier
                     .fillMaxWidth()
                     .then(if (index == 0) Modifier.focusRequester(firstFocusRequester) else Modifier),
+                scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 1f),
                 colors = ButtonDefaults.colors(
                     containerColor = NuvioTheme.colors.BackgroundCard,
                     contentColor = NuvioTheme.colors.TextPrimary,
-                    focusedContainerColor = NuvioTheme.colors.FocusBackground,
-                    focusedContentColor = NuvioTheme.colors.Primary
+                    focusedContainerColor = NuvioTheme.colors.Secondary,
+                    focusedContentColor = NuvioTheme.colors.BackgroundCard
                 ),
                 shape = ButtonDefaults.shape(RoundedCornerShape(NuvioTheme.radii.md))
             ) {

@@ -254,7 +254,6 @@ class SearchViewModel @Inject constructor(
                 query = query,
                 error = null,
                 isSearching = false,
-                suggestions = emptyList(),
                 catalogRows = if (trimmedInput.length < MIN_SEARCH_QUERY_LENGTH) emptyList() else it.catalogRows
             )
         }
@@ -294,15 +293,11 @@ class SearchViewModel @Inject constructor(
             if (_uiState.value.query.trim() != query) return@launch
             val token = runCatching { supabaseAuth.currentAccessTokenOrNull() }.getOrNull()
                 ?.takeIf { it.isNotBlank() }
-            if (token == null) {
-                _uiState.update { it.copy(suggestions = emptyList()) }
-                return@launch
-            }
-            val suggestions = runCatching {
+                ?: return@launch
+            val response = runCatching {
                 apachiyDeviceApi.getSearchSuggestions(bearer = "Bearer $token", query = query)
-            }.getOrNull()
-                ?.takeIf { it.isSuccessful }
-                ?.body()
+            }.getOrNull()?.takeIf { it.isSuccessful } ?: return@launch
+            val suggestions = response.body()
                 ?.suggestions
                 .orEmpty()
                 .mapNotNull { item ->
