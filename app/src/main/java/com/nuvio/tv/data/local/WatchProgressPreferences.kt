@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.core.Preferences
 import com.nuvio.tv.core.profile.ProfileManager
 import com.google.gson.Gson
@@ -66,6 +67,7 @@ class WatchProgressPreferences @Inject constructor(
     private val lastSuccessfulPushMsKey = longPreferencesKey("last_successful_push_ms")
     private val deltaCursorKey = longPreferencesKey("watch_progress_delta_cursor")
     private val deltaInitializedKey = booleanPreferencesKey("watch_progress_delta_initialized")
+    private val pendingDeleteKeysKey = stringSetPreferencesKey("watch_progress_pending_delete_keys")
     private val storageMutex = Mutex()
     private val initializedProfiles = mutableSetOf<Int>()
     private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
@@ -119,6 +121,46 @@ class WatchProgressPreferences @Inject constructor(
             prefs[deltaInitializedKey] = initialized
         }
         Log.d(TAG, "setDeltaState: profile=$profileId cursor=${cursor.coerceAtLeast(0L)} initialized=$initialized")
+    }
+
+    suspend fun getPendingDeleteKeys(profileId: Int = profileManager.activeProfileId.value): Set<String> {
+        val prefs = metadataStore(profileId).data.first()
+        return prefs[pendingDeleteKeysKey].orEmpty()
+    }
+
+    suspend fun addPendingDeleteKeys(
+        keys: Collection<String>,
+        profileId: Int = profileManager.activeProfileId.value
+    ) {
+        val normalized = keys.map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+        if (normalized.isEmpty()) return
+        metadataStore(profileId).edit { prefs ->
+            prefs[pendingDeleteKeysKey] = prefs[pendingDeleteKeysKey].orEmpty() + normalized
+        }
+    }
+
+    suspend fun removePendingDeleteKeys(
+        keys: Collection<String>,
+        profileId: Int = profileManager.activeProfileId.value
+    ) {
+        if (keys.isEmpty()) return
+        metadataStore(profileId).edit { prefs ->
+            val remaining = prefs[pendingDeleteKeysKey].orEmpty() - keys.toSet()
+            if (remaining.isEmpty()) {
+                prefs.remove(pendingDeleteKeysKey)
+            } else {
+                prefs[pendingDeleteKeysKey] = remaining
+            }
+        }
+    }
+
+    private suspend fun clearPendingDeleteKeysIfPresent(
+        keys: Collection<String>,
+        profileId: Int
+    ) {
+        val pending = metadataStore(profileId).data.first()[pendingDeleteKeysKey].orEmpty()
+        if (pending.isEmpty() || pending.none { key -> key in keys }) return
+        removePendingDeleteKeys(keys, profileId)
     }
 
     /**
@@ -262,6 +304,7 @@ class WatchProgressPreferences @Inject constructor(
             ensureStorageLocked(profileId)
             val recent = readBucket(recentStore(profileId), profileId, true)
             val key = createKey(progress)
+            clearPendingDeleteKeysIfPresent(setOf(key, progress.contentId), profileId)
             if (key in recent) {
                 recentStore(profileId).edit { preferences ->
                     val map = parseProgressMap(preferences[watchProgressEntriesKey] ?: "{}").toMutableMap()
@@ -291,6 +334,10 @@ class WatchProgressPreferences @Inject constructor(
             val current = readBucketsLocked(profileId)
             val entries = mergeWatchProgressBuckets(current.recent, current.archive)
             upsertProgressEntries(entries, progressList)
+            val savedKeys = progressList.flatMap { progress ->
+                listOf(createKey(progress), progress.contentId)
+            }
+            clearPendingDeleteKeysIfPresent(savedKeys, profileId)
             writeBucketsLocked(profileId, current, splitWatchProgressEntries(entries))
         }
     }
@@ -454,6 +501,8 @@ class WatchProgressPreferences @Inject constructor(
             val current = readBucketsLocked(profileId)
             val local = mergeWatchProgressBuckets(current.recent, current.archive)
             Log.d("WatchProgressPrefs", "mergeRemoteEntries: ${local.size} existing local entries")
+            val pendingDeletes = getPendingDeleteKeys(profileId)
+            pendingDeletes.forEach(local::remove)
 
             // Remove local entries that no longer exist on remote - but protect
             // entries created after the last successful push (they haven't reached
@@ -481,6 +530,10 @@ class WatchProgressPreferences @Inject constructor(
             }
 
             for ((key, remote) in remoteEntries) {
+                if (key in pendingDeletes) {
+                    Log.d("WatchProgressPrefs", "  skipped key=$key (pending delete)")
+                    continue
+                }
                 val existing = local[key]
                 if (existing == null || remote.lastWatched > existing.lastWatched) {
                     local[key] = mergeDisplayMetadata(remote, existing)
@@ -518,12 +571,15 @@ class WatchProgressPreferences @Inject constructor(
             val current = readBucketsLocked(profileId)
             val local = mergeWatchProgressBuckets(current.recent, current.archive)
             beforeCount = local.size
+            val pendingDeletes = getPendingDeleteKeys(profileId)
+            pendingDeletes.forEach(local::remove)
 
             deletes.forEach { key ->
                 local.remove(key)
             }
 
             upserts.forEach { (key, remote) ->
+                if (key in pendingDeletes) return@forEach
                 val existing = local[key]
                 if (existing == null || remote.lastWatched > existing.lastWatched) {
                     local[key] = mergeDisplayMetadata(remote, existing)

@@ -725,6 +725,9 @@ class WatchProgressRepositoryImpl @Inject constructor(
     override suspend fun removeProgress(contentId: String, season: Int?, episode: Int?) {
         val profileId = profileManager.activeProfileId.value
         val remoteDeleteKeys = resolveRemoteDeleteKeys(contentId, season, episode, profileId = profileId)
+        if (remoteDeleteKeys.isNotEmpty()) {
+            watchProgressPreferences.addPendingDeleteKeys(remoteDeleteKeys, profileId)
+        }
         supervisorScope {
             connectedProgressProviders().map { provider ->
                 async {
@@ -736,9 +739,12 @@ class WatchProgressRepositoryImpl @Inject constructor(
                 }
             }.forEach { operation -> operation.await() }
         }
-        watchProgressPreferences.removeProgress(contentId, season, episode)
+        watchProgressPreferences.removeProgress(contentId, season, episode, profileId = profileId)
         if (authManager.isAuthenticated && remoteDeleteKeys.isNotEmpty()) {
-            watchProgressSyncService.deleteFromRemote(remoteDeleteKeys)
+            watchProgressSyncService.deleteFromRemote(remoteDeleteKeys, profileId)
+                .onSuccess {
+                    watchProgressPreferences.removePendingDeleteKeys(remoteDeleteKeys, profileId)
+                }
                 .onFailure { error ->
                     Log.w(TAG, "removeProgress remote delete failed; relying on push sync", error)
                 }
@@ -749,6 +755,9 @@ class WatchProgressRepositoryImpl @Inject constructor(
     override suspend fun removeFromHistory(contentId: String, videoId: String?, season: Int?, episode: Int?) {
         val profileId = profileManager.activeProfileId.value
         val remoteDeleteKeys = resolveRemoteDeleteKeys(contentId, season, episode, profileId = profileId)
+        if (remoteDeleteKeys.isNotEmpty()) {
+            watchProgressPreferences.addPendingDeleteKeys(remoteDeleteKeys, profileId)
+        }
         val media = buildTrackingMediaReference(
             contentType = if (season != null || episode != null) "series" else "movie",
             parentMetaId = contentId,
@@ -760,10 +769,13 @@ class WatchProgressRepositoryImpl @Inject constructor(
             provider.applyOptimisticRemoval(contentId, season, episode)
         }
         broadcastHistoryRemoval(profileId, listOf(media))
-        watchProgressPreferences.removeProgress(contentId, season, episode)
+        watchProgressPreferences.removeProgress(contentId, season, episode, profileId = profileId)
         watchedItemsPreferences.unmarkAsWatched(contentId, season, episode, profileId = profileId)
         if (authManager.isAuthenticated && remoteDeleteKeys.isNotEmpty()) {
-            watchProgressSyncService.deleteFromRemote(remoteDeleteKeys)
+            watchProgressSyncService.deleteFromRemote(remoteDeleteKeys, profileId)
+                .onSuccess {
+                    watchProgressPreferences.removePendingDeleteKeys(remoteDeleteKeys, profileId)
+                }
                 .onFailure { error ->
                     Log.w(TAG, "removeFromHistory remote delete failed; relying on push sync", error)
                 }
@@ -784,6 +796,10 @@ class WatchProgressRepositoryImpl @Inject constructor(
     ) {
         if (episodes.isEmpty()) return
         val profileId = profileManager.activeProfileId.value
+        val remoteDeleteKeys = episodes.map { (season, episode, _) ->
+            "${contentId}_s${season}e${episode}"
+        } + contentId
+        watchProgressPreferences.addPendingDeleteKeys(remoteDeleteKeys.distinct(), profileId)
         val episodePairs = episodes.map { (season, episode, _) -> season to episode }
         watchProgressPreferences.removeProgressBatch(contentId, episodePairs)
         watchedItemsPreferences.unmarkAsWatchedBatch(contentId, episodePairs, profileId = profileId)
@@ -802,11 +818,11 @@ class WatchProgressRepositoryImpl @Inject constructor(
             )
         }
         broadcastHistoryRemoval(profileId, media)
-        val remoteDeleteKeys = episodes.map { (season, episode, _) ->
-            "${contentId}_s${season}e${episode}"
-        } + contentId
         if (authManager.isAuthenticated) {
-            watchProgressSyncService.deleteFromRemote(remoteDeleteKeys.distinct())
+            watchProgressSyncService.deleteFromRemote(remoteDeleteKeys.distinct(), profileId)
+                .onSuccess {
+                    watchProgressPreferences.removePendingDeleteKeys(remoteDeleteKeys.distinct(), profileId)
+                }
                 .onFailure { error -> Log.w(TAG, "removeFromHistoryBatch remote delete failed", error) }
             watchedItemsSyncService.deleteFromRemoteBatch(contentId, episodePairs, profileId = profileId)
                 .onFailure { error ->

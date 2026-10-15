@@ -226,6 +226,20 @@ class WatchProgressPreferencesStorageTest {
     }
 
     @Test
+    fun `remote merge does not restore a pending delete`() = runTest {
+        val harness = harness(mapOf("item" to progress("item", lastWatched = 10L)))
+        harness.preferences.getAllRawEntries()
+        harness.preferences.addPendingDeleteKeys(setOf("item"))
+
+        harness.preferences.mergeRemoteEntries(
+            remoteEntries = mapOf("item" to progress("item", lastWatched = 50L)),
+            removeMissingRemoteEntries = false
+        )
+
+        assertFalse("item" in harness.preferences.getAllRawEntries())
+    }
+
+    @Test
     fun `empty remote replacement preserves local progress`() = runTest {
         val harness = harness(legacyEntries())
         harness.preferences.getAllRawEntries()

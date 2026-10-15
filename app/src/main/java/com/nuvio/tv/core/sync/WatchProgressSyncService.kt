@@ -354,6 +354,7 @@ class WatchProgressSyncService @Inject constructor(
         profileId: Int
     ): Result<WatchProgressRemoteSyncResult> {
         return try {
+            flushPendingDeletes(profileId)
             val deltaInitialized = watchProgressPreferences.isDeltaInitialized(profileId)
             val deltaCursor = watchProgressPreferences.getDeltaCursor(profileId)
             val localCount = watchProgressPreferences.getAllRawEntries(profileId).size
@@ -469,6 +470,7 @@ class WatchProgressSyncService @Inject constructor(
         profileId: Int,
         resetDeltaState: Boolean
     ): WatchProgressRemoteSyncResult {
+        flushPendingDeletes(profileId)
         val remoteEntries = pullFromRemote(profileId).getOrElse { throw it }
         val hadUnsyncedProgress = watchProgressPreferences.mergeRemoteEntries(
             remoteEntries.toMap(),
@@ -486,6 +488,18 @@ class WatchProgressSyncService @Inject constructor(
             usedSnapshot = true,
             preservedLocalItems = hadUnsyncedProgress
         )
+    }
+
+    private suspend fun flushPendingDeletes(profileId: Int) {
+        val keys = watchProgressPreferences.getPendingDeleteKeys(profileId)
+        if (keys.isEmpty()) return
+        deleteFromRemote(keys, profileId)
+            .onSuccess {
+                watchProgressPreferences.removePendingDeleteKeys(keys, profileId)
+            }
+            .onFailure { error ->
+                Log.w(TAG, "Pending watch progress delete retry failed for profile $profileId", error)
+            }
     }
 
     private fun canonicalizeForRemote(
