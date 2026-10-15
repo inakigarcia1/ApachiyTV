@@ -7,6 +7,7 @@ import com.nuvio.tv.R
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.SearchHistoryDataStore
+import com.nuvio.tv.data.remote.device.ApachiyDeviceApi
 import com.nuvio.tv.domain.model.Addon
 import com.nuvio.tv.domain.model.CatalogDescriptor
 import com.nuvio.tv.domain.model.CatalogRow
@@ -29,6 +30,8 @@ import com.nuvio.tv.domain.model.PLACEHOLDER_IMAGE_URL
 import com.nuvio.tv.domain.repository.CatalogRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -54,6 +57,8 @@ class SearchViewModel @Inject constructor(
     private val watchProgressRepository: com.nuvio.tv.domain.repository.WatchProgressRepository,
     private val watchedSeriesStateHolder: com.nuvio.tv.data.local.WatchedSeriesStateHolder,
     val posterOptions: com.nuvio.tv.ui.components.posteroptions.PosterOptionsController,
+    private val apachiyDeviceApi: ApachiyDeviceApi,
+    private val supabaseAuth: Auth,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -91,7 +96,7 @@ class SearchViewModel @Inject constructor(
     private companion object {
         const val DISCOVER_INITIAL_LIMIT = 100
         const val DISCOVER_SHOW_MORE_BATCH = 50
-        const val SUGGESTION_DEBOUNCE_MS = 150L
+        const val SUGGESTION_DEBOUNCE_MS = 300L
 
         /**
          * Live search fires while typing, but each run fans out to every enabled addon catalog, so
@@ -99,7 +104,6 @@ class SearchViewModel @Inject constructor(
          */
         const val LIVE_SEARCH_DEBOUNCE_MS = 350L
 
-        const val MAX_SUGGESTIONS = 8
         const val MAX_RECENT_SEARCHES = 8
     }
 
@@ -220,6 +224,7 @@ class SearchViewModel @Inject constructor(
     fun onEvent(event: SearchEvent) {
         when (event) {
             is SearchEvent.QueryChanged -> onQueryChanged(event.query)
+            is SearchEvent.SuggestionSelected -> onSuggestionSelected(event.title)
             SearchEvent.SubmitSearch -> submitSearch()
             SearchEvent.RememberSearchFromTextInput -> rememberSearchFromTextInput()
             SearchEvent.ClearRecentSearches -> clearRecentSearches()
@@ -249,7 +254,6 @@ class SearchViewModel @Inject constructor(
                 query = query,
                 error = null,
                 isSearching = false,
-                suggestions = emptyList(),
                 catalogRows = if (trimmedInput.length < MIN_SEARCH_QUERY_LENGTH) emptyList() else it.catalogRows
             )
         }
@@ -260,6 +264,15 @@ class SearchViewModel @Inject constructor(
             // Clearing the field must also retire the submitted query so discover/recents return.
             performSearch(query)
         }
+        fetchSuggestions(trimmed)
+    }
+
+    private fun onSuggestionSelected(title: String) {
+        val normalized = title.trim()
+        if (normalized.isEmpty()) return
+        suggestionJob?.cancel()
+        _uiState.update { it.copy(query = normalized, suggestions = emptyList()) }
+        performSearch(normalized, rememberToHistory = true)
     }
 
     private fun fetchSuggestions(query: String) {
@@ -270,70 +283,29 @@ class SearchViewModel @Inject constructor(
             return
         }
 
-        // Don't show suggestions if the query already matches the submitted search
-        if (query == _uiState.value.submittedQuery.trim() && _uiState.value.catalogRows.isNotEmpty()) {
+        if (query == _uiState.value.submittedQuery.trim()) {
             _uiState.update { it.copy(suggestions = emptyList()) }
             return
         }
 
         suggestionJob = viewModelScope.launch {
-            kotlinx.coroutines.delay(SUGGESTION_DEBOUNCE_MS)
-
-            val addons = try {
-                addonRepository.getInstalledAddons().first().enabledAddons()
-            } catch (_: Exception) {
-                return@launch
-            }
-
-            val allTargets = buildSearchTargets(addons)
-            val firstAddonId = allTargets.firstOrNull()?.first?.id
-            val searchTargets = if (firstAddonId != null) allTargets.filter { it.first.id == firstAddonId } else emptyList()
-            if (searchTargets.isEmpty()) {
-                _uiState.update { it.copy(suggestions = emptyList()) }
-                return@launch
-            }
-
-            val collectedNames = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
-            val queryLower = query.lowercase()
-            val suggestionJobs = searchTargets.map { (addon, catalog) ->
-                launch {
-                    try {
-                        catalogRepository.getCatalog(
-                            addonBaseUrl = addon.baseUrl,
-                            addonId = addon.id,
-                            addonName = addon.displayName,
-                            catalogId = catalog.id,
-                            catalogName = catalog.name,
-                            type = catalog.apiType,
-                            skip = 0,
-                            skipStep = 100,
-                            extraArgs = mapOf("search" to query),
-                            supportsSkip = false
-                        ).collect { result ->
-                            if (result is NetworkResult.Success && _uiState.value.query.trim() == query) {
-                                var added = false
-                                result.data.items.forEach { item ->
-                                    if (collectedNames.add(item.name)) added = true
-                                }
-                                // Push updated suggestions immediately as each addon responds
-                                if (added) {
-                                    val sorted = collectedNames
-                                        .sortedWith(
-                                            compareByDescending<String> { it.lowercase().startsWith(queryLower) }
-                                                .thenBy { it.lowercase() }
-                                        )
-                                        .take(MAX_SUGGESTIONS)
-                                    _uiState.update { it.copy(suggestions = sorted) }
-                                }
-                            }
-                        }
-                    } catch (_: Exception) {
-                        // Ignore per-catalog errors for suggestions
-                    }
+            delay(SUGGESTION_DEBOUNCE_MS)
+            if (_uiState.value.query.trim() != query) return@launch
+            val token = runCatching { supabaseAuth.currentAccessTokenOrNull() }.getOrNull()
+                ?.takeIf { it.isNotBlank() }
+                ?: return@launch
+            val response = runCatching {
+                apachiyDeviceApi.getSearchSuggestions(bearer = "Bearer $token", query = query)
+            }.getOrNull()?.takeIf { it.isSuccessful } ?: return@launch
+            val suggestions = response.body()
+                ?.suggestions
+                .orEmpty()
+                .mapNotNull { item ->
+                    val title = item.title.trim()
+                    if (title.isEmpty()) null else SearchSuggestion(title, item.year, item.type)
                 }
-            }
-
-            suggestionJobs.joinAll()
+            if (_uiState.value.query.trim() != query) return@launch
+            _uiState.update { it.copy(suggestions = suggestions) }
         }
     }
 

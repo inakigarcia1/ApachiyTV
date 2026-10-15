@@ -156,6 +156,8 @@ class SearchViewModelConcurrencyTest {
             watchProgressRepository = watchProgress,
             watchedSeriesStateHolder = watchedSeries,
             posterOptions = mockk<PosterOptionsController>(relaxed = true),
+            apachiyDeviceApi = mockk(relaxed = true),
+            supabaseAuth = mockk(relaxed = true),
             context = mockk<Context>(relaxed = true)
         )
     }

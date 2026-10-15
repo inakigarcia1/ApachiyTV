@@ -46,7 +46,14 @@ data class SearchUiState(
     val posterCardHeightDp: Int = 189,
     val posterCardCornerRadiusDp: Int = 12,
     val recentSearches: List<String> = emptyList(),
-    val suggestions: List<String> = emptyList()
+    val suggestions: List<SearchSuggestion> = emptyList()
+)
+
+@Immutable
+data class SearchSuggestion(
+    val title: String,
+    val year: String?,
+    val type: String,
 )
 
 @Immutable
