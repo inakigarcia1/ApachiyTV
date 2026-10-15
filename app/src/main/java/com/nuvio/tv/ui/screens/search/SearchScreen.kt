@@ -24,6 +24,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -89,6 +90,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import androidx.tv.material3.Border
 import androidx.tv.material3.Button
 import androidx.tv.material3.ButtonDefaults
 import androidx.tv.material3.ExperimentalTvMaterial3Api
@@ -908,6 +910,20 @@ private fun SearchSuggestionList(
                     .fillMaxWidth()
                     .then(if (index == 0) Modifier.focusRequester(firstFocusRequester) else Modifier),
                 scale = ButtonDefaults.scale(focusedScale = 1f, pressedScale = 1f),
+                border = ButtonDefaults.border(
+                    border = Border(
+                        border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border),
+                        shape = RoundedCornerShape(NuvioTheme.radii.md)
+                    ),
+                    focusedBorder = Border(
+                        border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Secondary),
+                        shape = RoundedCornerShape(NuvioTheme.radii.md)
+                    ),
+                    pressedBorder = Border(
+                        border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Secondary),
+                        shape = RoundedCornerShape(NuvioTheme.radii.md)
+                    )
+                ),
                 colors = ButtonDefaults.colors(
                     containerColor = NuvioTheme.colors.BackgroundCard,
                     contentColor = NuvioTheme.colors.TextPrimary,
