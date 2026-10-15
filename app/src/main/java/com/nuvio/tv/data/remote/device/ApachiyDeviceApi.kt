@@ -5,11 +5,13 @@ import com.nuvio.tv.data.remote.device.dto.DeviceRegistrationRequest
 import com.nuvio.tv.data.remote.device.dto.DeviceRegistrationResponse
 import com.nuvio.tv.data.remote.device.dto.DeviceSummaryDto
 import com.nuvio.tv.data.remote.device.dto.AccountMeResponse
+import com.nuvio.tv.data.remote.device.dto.SearchSuggestionsResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.Header
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 /**
  * REST contract for the Apachiy .NET API's `POST /v1/devices/register`
@@ -38,6 +40,13 @@ interface ApachiyDeviceApi {
         @Header("Authorization") bearer: String,
         @Header("X-Apachiy-Client") clientHeader: String = CLIENT_HEADER_VALUE
     ): Response<AccountMeResponse>
+
+    @GET("v1/search/suggestions")
+    suspend fun getSearchSuggestions(
+        @Header("Authorization") bearer: String,
+        @Query("q") query: String,
+        @Header("X-Apachiy-Client") clientHeader: String = CLIENT_HEADER_VALUE
+    ): Response<SearchSuggestionsResponse>
 
     companion object {
         const val CLIENT_HEADER_VALUE: String = "apachiy-tv/${BuildConfig.VERSION_NAME}"

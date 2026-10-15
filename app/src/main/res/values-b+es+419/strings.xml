@@ -1716,6 +1716,8 @@
 
     <string name="search_keyboard_hint">Presiona Listo en el teclado para buscar</string>
     <string name="search_placeholder">Buscar películas y series</string>
+    <string name="search_suggestion_movie">Película</string>
+    <string name="search_suggestion_series">Serie</string>
     <string name="search_start_title">Empezar a buscar</string>
     <string name="search_start_subtitle">Ingresa al menos 2 caracteres</string>
     <string name="search_start_subtitle_no_discover">Descubrir está desactivado. Ingresa al menos 2 caracteres</string>

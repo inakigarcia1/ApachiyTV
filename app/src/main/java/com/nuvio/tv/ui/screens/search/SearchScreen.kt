@@ -129,6 +129,7 @@ fun SearchScreen(
     val strVoiceUnavailable = stringResource(R.string.search_voice_unavailable)
     val voiceFocusRequester = remember { FocusRequester() }
     val searchFocusRequester = remember { FocusRequester() }
+    val suggestionFocusRequester = remember { FocusRequester() }
     val discoverFirstItemFocusRequester = remember { FocusRequester() }
     val recentClearHistoryFocusRequester = remember { FocusRequester() }
     var isSearchFieldFocused by remember { mutableStateOf(false) }
@@ -492,6 +493,7 @@ fun SearchScreen(
                 SearchInputField(
                     query = uiState.query,
                     canMoveToResults = canMoveToResults,
+                    suggestionFocusRequester = if (uiState.suggestions.isNotEmpty()) suggestionFocusRequester else null,
                     voiceFocusRequester = if (isVoiceSearchAvailable) voiceFocusRequester else null,
                     searchFocusRequester = searchFocusRequester,
                     onSearchFieldFocusChanged = { focused -> isSearchFieldFocused = focused },
@@ -515,6 +517,18 @@ fun SearchScreen(
                     clearHistoryFocusRequester = if (showRecentSearches) recentClearHistoryFocusRequester else null,
                     isScreenActive = isScreenActive
                 )
+            }
+
+            if (uiState.suggestions.isNotEmpty()) {
+                item(key = "search_suggestions") {
+                    SearchSuggestionList(
+                        suggestions = uiState.suggestions,
+                        firstFocusRequester = suggestionFocusRequester,
+                        onSelect = { title ->
+                            viewModel.onEvent(SearchEvent.SuggestionSelected(title))
+                        }
+                    )
+                }
             }
 
             if (isDiscoverMode) {
@@ -867,9 +881,55 @@ private fun RecentSearchesSection(
 }
 
 @Composable
+private fun SearchSuggestionList(
+    suggestions: List<SearchSuggestion>,
+    firstFocusRequester: FocusRequester,
+    onSelect: (String) -> Unit,
+) {
+    val movieLabel = stringResource(R.string.search_suggestion_movie)
+    val seriesLabel = stringResource(R.string.search_suggestion_series)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = NuvioTheme.spacing.xxxl),
+        verticalArrangement = Arrangement.spacedBy(NuvioTheme.spacing.xs),
+    ) {
+        suggestions.forEachIndexed { index, suggestion ->
+            val typeLabel = when (suggestion.type) {
+                "series" -> seriesLabel
+                "movie" -> movieLabel
+                else -> suggestion.type
+            }
+            val detail = listOfNotNull(suggestion.year?.takeIf { it.isNotBlank() }, typeLabel.takeIf { it.isNotBlank() })
+                .joinToString(" · ")
+            Button(
+                onClick = { onSelect(suggestion.title) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(if (index == 0) Modifier.focusRequester(firstFocusRequester) else Modifier),
+                colors = ButtonDefaults.colors(
+                    containerColor = NuvioTheme.colors.BackgroundCard,
+                    contentColor = NuvioTheme.colors.TextPrimary,
+                    focusedContainerColor = NuvioTheme.colors.FocusBackground,
+                    focusedContentColor = NuvioTheme.colors.Primary
+                ),
+                shape = ButtonDefaults.shape(RoundedCornerShape(NuvioTheme.radii.md))
+            ) {
+                Text(
+                    text = if (detail.isBlank()) suggestion.title else "${suggestion.title} · $detail",
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SearchInputField(
     query: String,
     canMoveToResults: Boolean,
+    suggestionFocusRequester: FocusRequester?,
     voiceFocusRequester: FocusRequester?,
     searchFocusRequester: FocusRequester,
     onSearchFieldFocusChanged: (Boolean) -> Unit,
@@ -1039,6 +1099,12 @@ private fun SearchInputField(
                         }
 
                         KeyEvent.KEYCODE_DPAD_DOWN -> {
+                            if (suggestionFocusRequester != null) {
+                                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
+                                    runCatching { suggestionFocusRequester.requestFocus() }
+                                }
+                                return@onPreviewKeyEvent true
+                            }
                             if (canMoveToResults) {
                                 if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
                                     onMoveToResults()

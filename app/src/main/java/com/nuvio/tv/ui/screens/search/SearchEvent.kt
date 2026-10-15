@@ -2,6 +2,7 @@ package com.nuvio.tv.ui.screens.search
 
 sealed interface SearchEvent {
     data class QueryChanged(val query: String) : SearchEvent
+    data class SuggestionSelected(val title: String) : SearchEvent
     data object SubmitSearch : SearchEvent
     /** Moving from the text input to the results confirms the current search (see #2928 review). */
     data object RememberSearchFromTextInput : SearchEvent
