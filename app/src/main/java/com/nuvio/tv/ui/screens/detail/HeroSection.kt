@@ -36,7 +36,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -314,17 +313,15 @@ fun HeroContentSection(
                         Spacer(modifier = Modifier.height(14.dp))
                     }
 
-                    // Series/movie description (not the episode one). Clamp it so the meta row
-                    // below stays on-screen (the hero is a fixed 540dp = full height on a 1080p
-                    // TV). When the synopsis is long enough to be truncated it becomes focusable;
-                    // pressing OK opens the full, scrollable text overlay.
+                    // Series/movie description (not the episode one). Keep a short preview in the
+                    // hero and offer Leer más when the text does not fit, same as mobile.
                     meta.description?.let { description ->
                         var descriptionFocused by remember { mutableStateOf(false) }
-                        var descriptionTruncated by rememberSaveable(description) { mutableStateOf(false) }
+                        var descriptionTruncated by remember(description) { mutableStateOf(false) }
                         val descriptionInteraction = remember { MutableInteractionSource() }
-                        // Inset of the focus highlight; offset back by the same amount so the text
-                        // stays left-aligned with the rest of the hero while the highlight gets
-                        // even padding on all sides.
+                        val showReadMore = descriptionTruncated ||
+                            description.length > 320 ||
+                            description.count { it == '\n' } > 3
                         val highlightInset = 12.dp
 
                         Column(
@@ -332,7 +329,7 @@ fun HeroContentSection(
                                 .fillMaxWidth(0.6f)
                                 .padding(bottom = NuvioTheme.spacing.md)
                                 .then(
-                                    if (descriptionTruncated) {
+                                    if (showReadMore) {
                                         Modifier
                                             .offset(x = -highlightInset)
                                             .onFocusChanged {
@@ -373,7 +370,7 @@ fun HeroContentSection(
                                 text = description,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = NuvioTheme.colors.TextPrimary,
-                                maxLines = 8,
+                                maxLines = if (showReadMore) 3 else 8,
                                 overflow = TextOverflow.Ellipsis,
                                 onTextLayout = { result ->
                                     if (result.hasVisualOverflow != descriptionTruncated) {
@@ -381,7 +378,7 @@ fun HeroContentSection(
                                     }
                                 }
                             )
-                            if (descriptionTruncated) {
+                            if (showReadMore) {
                                 Text(
                                     text = stringResource(R.string.hero_synopsis_read_more),
                                     style = MaterialTheme.typography.labelMedium,
