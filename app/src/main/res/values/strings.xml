@@ -1641,6 +1641,14 @@
 
     <string name="sources_title">Sources</string>
     <string name="sources_reload">Reload</string>
+    <string name="streams_order_help">About playback order</string>
+    <string name="streams_order_help_message">Playback options are ordered from the most compatible with your device to the least compatible. To understand each detail, go to https://apachiy.org/dashboard/settings.</string>
+    <string name="player_gesture_help">Gesture help</string>
+    <string name="player_gesture_tutorial_next">Next</string>
+    <string name="player_gesture_tutorial_exit">Exit</string>
+    <string name="player_gesture_tv_seek">With the controls hidden, Left and Right move forward or back.</string>
+    <string name="player_gesture_tv_pause">The center button pauses or resumes.</string>
+    <string name="player_gesture_tv_controls">Up or Down shows the controls.</string>
     <string name="sources_close">Close</string>
     <string name="sources_playing">Playing</string>
     <string name="sources_no_streams">No streams found</string>

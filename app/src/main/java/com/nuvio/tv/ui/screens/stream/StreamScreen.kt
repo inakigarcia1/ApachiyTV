@@ -76,7 +76,8 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import com.nuvio.tv.ui.util.localizeEpisodeTitle
+import com.nuvio.tv.ui.components.NuvioDialog
+import com.nuvio.tv.ui.screens.player.DialogButton
 import androidx.tv.material3.Border
 import androidx.tv.material3.Card
 import androidx.tv.material3.CardDefaults
@@ -785,17 +786,43 @@ private fun RightStreamSection(
             )
         }
 
-        // Refresh chip only
-        Box(modifier = Modifier.height(chipRowHeight)) {
-            AddonFilterChips(
-                isStillFetching = sourceChips.any { it.status == SourceChipStatus.LOADING },
-                onRefresh = {
-                    userMovedFromFirstResult = false
-                    firstResultFocusAssigned = false
-                    onRefresh()
-                },
-                focusRequester = refreshFocusRequester
-            )
+        var showOrderHelp by remember { mutableStateOf(false) }
+        val orderHelpCloseFocus = remember { FocusRequester() }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(chipRowHeight),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                AddonFilterChips(
+                    isStillFetching = sourceChips.any { it.status == SourceChipStatus.LOADING },
+                    onRefresh = {
+                        userMovedFromFirstResult = false
+                        firstResultFocusAssigned = false
+                        onRefresh()
+                    },
+                    focusRequester = refreshFocusRequester
+                )
+            }
+            OrderHelpFilterChip(onClick = { showOrderHelp = true })
+        }
+        if (showOrderHelp) {
+            LaunchedEffect(Unit) {
+                runCatching { orderHelpCloseFocus.requestFocus() }
+            }
+            NuvioDialog(
+                onDismiss = { showOrderHelp = false },
+                title = "",
+                subtitle = stringResource(R.string.streams_order_help_message),
+            ) {
+                DialogButton(
+                    text = stringResource(R.string.action_close),
+                    onClick = { showOrderHelp = false },
+                    isPrimary = true,
+                    modifier = Modifier.focusRequester(orderHelpCloseFocus),
+                )
+            }
         }
 
         Spacer(modifier = Modifier.height(NuvioTheme.spacing.lg))
@@ -852,6 +879,41 @@ private fun RightStreamSection(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun OrderHelpFilterChip(onClick: () -> Unit) {
+    var isFocused by remember { mutableStateOf(false) }
+    val contentColor = if (isFocused) NuvioTheme.colors.OnSecondary else NuvioTheme.colors.TextSecondary
+    FilterChip(
+        selected = false,
+        onClick = onClick,
+        modifier = Modifier.onFocusChanged { isFocused = it.isFocused },
+        colors = FilterChipDefaults.colors(
+            containerColor = NuvioTheme.colors.BackgroundCard,
+            focusedContainerColor = NuvioTheme.colors.Secondary,
+            contentColor = contentColor,
+            focusedContentColor = contentColor,
+        ),
+        border = FilterChipDefaults.border(
+            border = Border(
+                border = BorderStroke(NuvioTheme.spacing.hairline, NuvioTheme.colors.Border),
+                shape = RoundedCornerShape(20.dp),
+            ),
+            focusedBorder = Border(
+                border = BorderStroke(NuvioTheme.spacing.xxs, NuvioTheme.colors.FocusRing),
+                shape = RoundedCornerShape(20.dp),
+            ),
+        ),
+        shape = FilterChipDefaults.shape(shape = RoundedCornerShape(20.dp)),
+    ) {
+        Text(
+            text = "?",
+            style = MaterialTheme.typography.labelLarge,
+            color = contentColor,
+        )
     }
 }
 

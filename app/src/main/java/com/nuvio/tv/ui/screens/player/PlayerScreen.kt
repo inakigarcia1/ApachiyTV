@@ -27,6 +27,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -68,6 +69,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -165,6 +167,20 @@ fun PlayerScreen(
     var reportCodeVisible by remember { mutableStateOf(false) }
     var exitDispatched by remember { mutableStateOf(false) }
     var externalHandoffInProgress by remember { mutableStateOf(false) }
+    var showGestureTutorial by remember { mutableStateOf(false) }
+    var gestureTutorialChecked by remember { mutableStateOf(false) }
+    val gestureHelpFocusRequester = remember { FocusRequester() }
+    val gestureTutorialContext = LocalContext.current
+
+    LaunchedEffect(uiState.showLoadingOverlay, uiState.error) {
+        if (gestureTutorialChecked) return@LaunchedEffect
+        if (uiState.showLoadingOverlay || uiState.error != null) return@LaunchedEffect
+        gestureTutorialChecked = true
+        if (!PlayerGestureTutorialStore.hasSeen(gestureTutorialContext)) {
+            PlayerGestureTutorialStore.markSeen(gestureTutorialContext)
+            showGestureTutorial = true
+        }
+    }
 
     val exitPlayer: () -> Unit = exitPlayer@{
         if (exitDispatched) return@exitPlayer
@@ -1013,6 +1029,30 @@ fun PlayerScreen(
                 .zIndex(2.2f)
         )
 
+        if (uiState.showControls && uiState.error == null && !uiState.showLoadingOverlay) {
+            PlayerGestureHelpButton(
+                focusRequester = gestureHelpFocusRequester,
+                downFocusRequester = when {
+                    skipButtonActuallyVisible -> skipIntroFocusRequester
+                    uiState.postPlayMode is PostPlayMode.AutoPlay -> nextEpisodeFocusRequester
+                    else -> progressBarFocusRequester
+                },
+                onClick = { showGestureTutorial = true },
+            )
+        }
+        if (showGestureTutorial) {
+            PlayerGestureTutorialOverlay(
+                steps = listOf(
+                    stringResource(R.string.player_gesture_tv_seek),
+                    stringResource(R.string.player_gesture_tv_pause),
+                    stringResource(R.string.player_gesture_tv_controls),
+                ),
+                nextLabel = stringResource(R.string.player_gesture_tutorial_next),
+                exitLabel = stringResource(R.string.player_gesture_tutorial_exit),
+                onDismiss = { showGestureTutorial = false },
+            )
+        }
+
         val showClockOverlay = uiState.showControls &&
             uiState.osdClockEnabled &&
             uiState.error == null &&
@@ -1066,11 +1106,7 @@ fun PlayerScreen(
                 progressBarFocusRequester = progressBarFocusRequester,
                 streamInfoFocusRequester = streamInfoFocusRequester,
                 reportCodeVisible = reportCodeVisible,
-                progressBarUpFocusRequester = when {
-                    skipButtonActuallyVisible -> skipIntroFocusRequester
-                    uiState.postPlayMode is PostPlayMode.AutoPlay -> nextEpisodeFocusRequester
-                    else -> null
-                },
+                progressBarUpFocusRequester = gestureHelpFocusRequester,
                 onPlayPause = { viewModel.onEvent(PlayerEvent.OnPlayPause) },
                 onPlayNextEpisode = { viewModel.onEvent(PlayerEvent.OnPlayNextEpisode) },
                 onSeekForward = { viewModel.onEvent(PlayerEvent.OnSeekForward) },
@@ -3156,6 +3192,95 @@ private fun SpeedItem(
                     tint = NuvioTheme.colors.Secondary,
                     modifier = Modifier.size(NuvioTheme.spacing.xl)
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun BoxScope.PlayerGestureHelpButton(
+    focusRequester: FocusRequester,
+    downFocusRequester: FocusRequester,
+    onClick: () -> Unit,
+) {
+    var focused by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier
+            .align(Alignment.TopStart)
+            .padding(start = 28.dp, top = NuvioTheme.spacing.xl)
+            .zIndex(2.4f)
+            .size(48.dp)
+            .clip(CircleShape)
+            .background(if (focused) NuvioTheme.colors.Secondary else Color.Black.copy(alpha = 0.35f))
+            .focusRequester(focusRequester)
+            .focusProperties { down = downFocusRequester }
+            .onFocusChanged { focused = it.isFocused }
+            .focusable()
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "?",
+            color = Color.White,
+            style = MaterialTheme.typography.titleLarge,
+        )
+    }
+}
+
+@OptIn(ExperimentalTvMaterial3Api::class)
+@Composable
+private fun PlayerGestureTutorialOverlay(
+    steps: List<String>,
+    nextLabel: String,
+    exitLabel: String,
+    onDismiss: () -> Unit,
+) {
+    var step by remember { mutableIntStateOf(0) }
+    val safeStep = step.coerceIn(0, steps.lastIndex.coerceAtLeast(0))
+    val exitFocus = remember { FocusRequester() }
+    val nextFocus = remember { FocusRequester() }
+    LaunchedEffect(safeStep) {
+        runCatching {
+            if (safeStep < steps.lastIndex) nextFocus.requestFocus() else exitFocus.requestFocus()
+        }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.55f))
+            .zIndex(4f)
+            .clickable(onClick = {}),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(32.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.Black.copy(alpha = 0.82f))
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = steps.getOrElse(safeStep) { "" },
+                color = Color.White,
+                style = MaterialTheme.typography.titleLarge,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                DialogButton(
+                    text = exitLabel,
+                    onClick = onDismiss,
+                    isPrimary = false,
+                    modifier = Modifier.focusRequester(exitFocus),
+                )
+                if (safeStep < steps.lastIndex) {
+                    DialogButton(
+                        text = nextLabel,
+                        onClick = { step = safeStep + 1 },
+                        isPrimary = true,
+                        modifier = Modifier.focusRequester(nextFocus),
+                    )
+                }
             }
         }
     }

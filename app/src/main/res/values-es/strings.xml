@@ -639,6 +639,14 @@
     <!-- StreamSourcesSidePanel -->
     <string name="sources_title">Fuentes</string>
     <string name="sources_reload">Recargar</string>
+    <string name="streams_order_help">Sobre el orden de reproducción</string>
+    <string name="streams_order_help_message">Las opciones de reproducción están ordenadas de la más compatible con tu dispositivo a la menos compatible. Para entender cada dato, entrá a https://apachiy.org/dashboard/settings.</string>
+    <string name="player_gesture_help">Ayuda de gestos</string>
+    <string name="player_gesture_tutorial_next">Siguiente</string>
+    <string name="player_gesture_tutorial_exit">Salir</string>
+    <string name="player_gesture_tv_seek">Con los controles ocultos, izquierda y derecha adelantan o atrasan.</string>
+    <string name="player_gesture_tv_pause">El botón del centro pausa o sigue.</string>
+    <string name="player_gesture_tv_controls">Arriba o abajo muestran los controles.</string>
     <string name="sources_close">Cerrar</string>
     <string name="sources_playing">Reproduciendo</string>
     <string name="sources_no_streams">No se encontraron transmisiones</string>
