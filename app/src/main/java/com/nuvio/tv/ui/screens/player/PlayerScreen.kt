@@ -2411,31 +2411,41 @@ private fun ProgressBar(
                     false
                 }
             }
-            .clip(RoundedCornerShape(3.dp))
-            .background(
-                if (isFocused) Color.White.copy(alpha = 0.45f)
-                else Color.White.copy(alpha = 0.3f)
-            )
     ) {
         val trackWidth = maxWidth
-
-        // Buffered-ahead overlay: the theme accent, faded so it reads under the played
-        // fill and on light themes.
-        if (animatedBufferedProgress > 0f) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .clip(RoundedCornerShape(3.dp))
+                .background(
+                    if (isFocused) Color.White.copy(alpha = 0.45f)
+                    else Color.White.copy(alpha = 0.3f)
+                )
+        ) {
+            if (animatedBufferedProgress > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .width(trackWidth * animatedBufferedProgress)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(NuvioTheme.colors.Secondary.copy(alpha = 0.35f))
+                )
+            }
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(trackWidth * animatedBufferedProgress)
+                    .width(trackWidth * animatedProgress)
                     .clip(RoundedCornerShape(3.dp))
-                    .background(NuvioTheme.colors.Secondary.copy(alpha = 0.35f))
+                    .background(NuvioTheme.colors.Secondary)
             )
         }
-        // Played fill.
         Box(
             modifier = Modifier
-                .fillMaxHeight()
-                .width(trackWidth * animatedProgress)
-                .clip(RoundedCornerShape(3.dp))
+                .align(Alignment.CenterStart)
+                .offset(x = trackWidth * animatedProgress - 4.dp)
+                .width(8.dp)
+                .height(14.dp)
+                .clip(RoundedCornerShape(4.dp))
                 .background(NuvioTheme.colors.Secondary)
         )
     }
