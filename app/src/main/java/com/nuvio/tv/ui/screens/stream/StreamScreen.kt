@@ -46,6 +46,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.text.BasicText
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
@@ -72,6 +74,13 @@ import android.view.KeyEvent
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.text.LinkAnnotation
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextLinkStyles
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.withLink
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import androidx.compose.ui.platform.LocalContext
@@ -788,6 +797,7 @@ private fun RightStreamSection(
 
         var showOrderHelp by remember { mutableStateOf(false) }
         val orderHelpCloseFocus = remember { FocusRequester() }
+        val orderHelpLinkFocus = remember { FocusRequester() }
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -814,13 +824,19 @@ private fun RightStreamSection(
             NuvioDialog(
                 onDismiss = { showOrderHelp = false },
                 title = "",
-                subtitle = stringResource(R.string.streams_order_help_message),
             ) {
+                StreamsOrderHelpMessage(
+                    modifier = Modifier
+                        .focusRequester(orderHelpLinkFocus)
+                        .focusProperties { down = orderHelpCloseFocus },
+                )
                 DialogButton(
                     text = stringResource(R.string.action_close),
                     onClick = { showOrderHelp = false },
                     isPrimary = true,
-                    modifier = Modifier.focusRequester(orderHelpCloseFocus),
+                    modifier = Modifier
+                        .focusRequester(orderHelpCloseFocus)
+                        .focusProperties { up = orderHelpLinkFocus },
                 )
             }
         }
@@ -1442,4 +1458,55 @@ internal fun PlayerChoiceDialog(
             }
         }
     }
+}
+
+private const val STREAMS_ORDER_HELP_URL = "https://apachiy.org/dashboard/settings"
+
+@Composable
+private fun StreamsOrderHelpMessage(modifier: Modifier = Modifier) {
+    val message = stringResource(R.string.streams_order_help_message)
+    val context = LocalContext.current
+    val urlStart = message.indexOf(STREAMS_ORDER_HELP_URL)
+    val openSettings = {
+        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(STREAMS_ORDER_HELP_URL)))
+    }
+    val text = if (urlStart < 0) {
+        androidx.compose.ui.text.AnnotatedString(message)
+    } else {
+        buildAnnotatedString {
+            append(message.substring(0, urlStart))
+            withLink(
+                LinkAnnotation.Clickable(
+                    tag = STREAMS_ORDER_HELP_URL,
+                    styles = TextLinkStyles(
+                        SpanStyle(
+                            color = Color(0xFFE8A91C),
+                            textDecoration = TextDecoration.Underline,
+                        ),
+                    ),
+                    linkInteractionListener = { openSettings() },
+                ),
+            ) {
+                append(STREAMS_ORDER_HELP_URL)
+            }
+            append(message.substring(urlStart + STREAMS_ORDER_HELP_URL.length))
+        }
+    }
+    BasicText(
+        text = text,
+        style = MaterialTheme.typography.bodyMedium.copy(color = NuvioTheme.colors.TextSecondary),
+        modifier = modifier
+            .focusable()
+            .onPreviewKeyEvent { event ->
+                val native = event.nativeKeyEvent
+                val select = native.keyCode == KeyEvent.KEYCODE_DPAD_CENTER ||
+                    native.keyCode == KeyEvent.KEYCODE_ENTER
+                if (select && native.action == KeyEvent.ACTION_UP) {
+                    openSettings()
+                    true
+                } else {
+                    false
+                }
+            },
+    )
 }
