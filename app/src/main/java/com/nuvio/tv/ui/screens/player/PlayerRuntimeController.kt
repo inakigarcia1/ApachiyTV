@@ -440,6 +440,7 @@ class PlayerRuntimeController(
     internal var nextEpisodeThresholdModeSetting: NextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE
     internal var nextEpisodeThresholdPercentSetting: Float = PlayerNextEpisodeRules.THRESHOLD_PERCENT_DEFAULT
     internal var nextEpisodeThresholdMinutesBeforeEndSetting: Float = 2f
+    internal var nextEpisodeThresholdCustomizedSetting: Boolean = false
     internal var stillWatchingEnabledSetting: Boolean = false
     internal var stillWatchingEpisodeThresholdSetting: Int =
         PlayerSettings.DEFAULT_STILL_WATCHING_EPISODE_THRESHOLD

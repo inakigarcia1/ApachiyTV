@@ -72,6 +72,7 @@ fun PostPlayOverlay(
     progressBarFocusRequester: FocusRequester?,
     leftFocusRequester: FocusRequester?,
     onPlayNext: () -> Unit,
+    onDismissNextEpisode: () -> Unit,
     onContinueStillWatching: () -> Unit,
     onDismissStillWatching: () -> Unit,
     modifier: Modifier = Modifier,
@@ -80,6 +81,7 @@ fun PostPlayOverlay(
     val isAutoPlayPlayable = (mode as? PostPlayMode.AutoPlay)?.nextEpisode?.hasAired == true
 
     var placedFocused by remember(isAutoPlay, controlsVisible) { mutableStateOf(false) }
+    val closeFocusRequester = remember { FocusRequester() }
 
     val transition = updateTransition(targetState = mode, label = "PostPlayMode")
 
@@ -124,8 +126,9 @@ fun PostPlayOverlay(
                     }
                 }
                 .then(
-                    if (progressBarFocusRequester != null || leftFocusRequester != null) {
+                    if (isAutoPlay || progressBarFocusRequester != null || leftFocusRequester != null) {
                         Modifier.focusProperties {
+                            if (isAutoPlay) right = closeFocusRequester
                             progressBarFocusRequester?.let { down = it }
                             leftFocusRequester?.let { left = it }
                         }
@@ -142,7 +145,12 @@ fun PostPlayOverlay(
                 contentKey = { it?.let { current -> current::class } },
             ) { current ->
                 when (current) {
-                    is PostPlayMode.AutoPlay -> AutoPlayBody(mode = current)
+                    is PostPlayMode.AutoPlay -> AutoPlayBody(
+                        mode = current,
+                        onDismiss = onDismissNextEpisode,
+                        closeFocusRequester = closeFocusRequester,
+                        cardFocusRequester = nextEpisodeFocusRequester,
+                    )
                     is PostPlayMode.StillWatching -> StillWatchingBody(
                         mode = current,
                         onContinue = onContinueStillWatching,
@@ -156,7 +164,12 @@ fun PostPlayOverlay(
 }
 
 @Composable
-private fun AutoPlayBody(mode: PostPlayMode.AutoPlay) {
+private fun AutoPlayBody(
+    mode: PostPlayMode.AutoPlay,
+    onDismiss: () -> Unit,
+    closeFocusRequester: FocusRequester,
+    cardFocusRequester: FocusRequester,
+) {
     val nextEpisode = mode.nextEpisode
     val isPlayable = nextEpisode.hasAired
     Row(
@@ -225,6 +238,36 @@ private fun AutoPlayBody(mode: PostPlayMode.AutoPlay) {
                 color = if (isPlayable) Color.White else Color.White.copy(alpha = 0.72f),
                 fontSize = 12.sp,
                 modifier = Modifier.padding(start = 3.dp),
+            )
+        }
+        Card(
+            onClick = onDismiss,
+            shape = CardDefaults.shape(shape = CircleShape),
+            colors = CardDefaults.colors(
+                containerColor = Color.Transparent,
+                focusedContainerColor = Color.White.copy(alpha = 0.15f),
+            ),
+            border = CardDefaults.border(
+                border = Border(
+                    border = BorderStroke(NuvioTheme.spacing.hairline, Color.White.copy(alpha = 0.2f)),
+                    shape = CircleShape,
+                ),
+                focusedBorder = Border(
+                    border = BorderStroke(NuvioTheme.spacing.xxs, NuvioTheme.colors.FocusRing),
+                    shape = CircleShape,
+                ),
+            ),
+            scale = CardDefaults.scale(focusedScale = 1f),
+            modifier = Modifier
+                .padding(start = 6.dp)
+                .focusRequester(closeFocusRequester)
+                .focusProperties { left = cardFocusRequester },
+        ) {
+            Icon(
+                imageVector = Icons.Default.Close,
+                contentDescription = stringResource(R.string.action_close),
+                tint = Color.White.copy(alpha = 0.8f),
+                modifier = Modifier.padding(8.dp).size(16.dp),
             )
         }
     }

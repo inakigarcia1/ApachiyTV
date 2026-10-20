@@ -272,6 +272,7 @@ data class PlayerSettings(
     val nextEpisodeThresholdMode: NextEpisodeThresholdMode = NextEpisodeThresholdMode.PERCENTAGE,
     val nextEpisodeThresholdPercent: Float = 90f,
     val nextEpisodeThresholdMinutesBeforeEnd: Float = 2f,
+    val nextEpisodeThresholdCustomized: Boolean = false,
     val streamReuseLastLinkEnabled: Boolean = false,
     val streamReuseLastLinkCacheHours: Int = 24,
     val externalPlayerForwardSubtitles: Boolean = false,
@@ -905,6 +906,10 @@ class PlayerSettingsDataStore @Inject constructor(
                     min = 0f,
                     max = 3.5f
                 ),
+                nextEpisodeThresholdCustomized = prefs[nextEpisodeThresholdModeKey] != null ||
+                    prefs[nextEpisodeThresholdPercentKey] != null ||
+                    prefs[nextEpisodeThresholdMinutesBeforeEndKey] != null ||
+                    prefs[nextEpisodeThresholdMinutesBeforeEndLegacyKey] != null,
                 streamReuseLastLinkEnabled = prefs[streamReuseLastLinkEnabledKey] ?: false,
                 streamReuseLastLinkCacheHours = (prefs[streamReuseLastLinkCacheHoursKey] ?: 24).coerceIn(1, 168),
                 externalPlayerForwardSubtitles = prefs[externalPlayerForwardSubtitlesKey] ?: false,

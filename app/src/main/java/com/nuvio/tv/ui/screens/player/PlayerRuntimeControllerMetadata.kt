@@ -338,16 +338,33 @@ internal fun PlayerRuntimeController.evaluatePostPlayOverlayVisibility(positionM
     }
     val effectiveDuration = effectiveDurationEarly
     maybePreloadNextEpisodeSources(positionMs, effectiveDuration)
-    if (state.postPlayMode != null || state.postPlayDismissedForCurrentEpisode) return
-
-    val shouldShow = PlayerNextEpisodeRules.shouldShowNextEpisodeCard(
-        positionMs = positionMs,
+    val useAdaptiveLead = !nextEpisodeThresholdCustomizedSetting
+    val anime = PlayerNextEpisodeRules.isAnimePlayback(
+        contentType = contentType,
+        ids = listOf(currentVideoId, contentId),
+        genres = metaGenres,
+        country = metaCountry,
+    )
+    val promptAtMs = PlayerNextEpisodeRules.nextEpisodePromptPositionMs(
         durationMs = effectiveDuration,
         skipIntervals = skipIntervals,
         thresholdMode = nextEpisodeThresholdModeSetting,
         thresholdPercent = nextEpisodeThresholdPercentSetting,
-        thresholdMinutesBeforeEnd = nextEpisodeThresholdMinutesBeforeEndSetting
+        thresholdMinutesBeforeEnd = nextEpisodeThresholdMinutesBeforeEndSetting,
+        useAdaptiveLead = useAdaptiveLead,
+        anime = anime,
     )
+    if (
+        promptAtMs != null &&
+        positionMs < promptAtMs &&
+        state.postPlayDismissedForCurrentEpisode
+    ) {
+        _uiState.update { it.copy(postPlayDismissedForCurrentEpisode = false) }
+    }
+    val refreshed = _uiState.value
+    if (refreshed.postPlayMode != null || refreshed.postPlayDismissedForCurrentEpisode) return
+
+    val shouldShow = promptAtMs != null && positionMs >= promptAtMs
 
     if (!shouldShow) return
 
@@ -378,6 +395,13 @@ internal fun PlayerRuntimeController.maybePreloadNextEpisodeSources(positionMs: 
     if (_uiState.value.nextEpisode?.hasAired != true) return
     if (preloadedNextEpisodeId == next.id) return
     if (contentType.equals("cloud", ignoreCase = true)) return
+    val useAdaptiveLead = !nextEpisodeThresholdCustomizedSetting
+    val anime = PlayerNextEpisodeRules.isAnimePlayback(
+        contentType = contentType,
+        ids = listOf(currentVideoId, contentId),
+        genres = metaGenres,
+        country = metaCountry,
+    )
     val shouldPreload = PlayerNextEpisodeRules.shouldPreloadNextEpisodeSources(
         positionMs = positionMs,
         durationMs = durationMs,
@@ -385,6 +409,8 @@ internal fun PlayerRuntimeController.maybePreloadNextEpisodeSources(positionMs: 
         thresholdMode = nextEpisodeThresholdModeSetting,
         thresholdPercent = nextEpisodeThresholdPercentSetting,
         thresholdMinutesBeforeEnd = nextEpisodeThresholdMinutesBeforeEndSetting,
+        useAdaptiveLead = useAdaptiveLead,
+        anime = anime,
     )
     if (!shouldPreload) return
     val type = contentType ?: return

@@ -43,7 +43,9 @@ object PlayerNextEpisodeRules {
         skipIntervals: List<SkipInterval>,
         thresholdMode: NextEpisodeThresholdMode,
         thresholdPercent: Float,
-        thresholdMinutesBeforeEnd: Float
+        thresholdMinutesBeforeEnd: Float,
+        useAdaptiveLead: Boolean = false,
+        anime: Boolean = false,
     ): Boolean {
         val promptAtMs = nextEpisodePromptPositionMs(
             durationMs = durationMs,
@@ -51,6 +53,8 @@ object PlayerNextEpisodeRules {
             thresholdMode = thresholdMode,
             thresholdPercent = thresholdPercent,
             thresholdMinutesBeforeEnd = thresholdMinutesBeforeEnd,
+            useAdaptiveLead = useAdaptiveLead,
+            anime = anime,
         ) ?: return false
         return positionMs >= promptAtMs
     }
@@ -61,7 +65,9 @@ object PlayerNextEpisodeRules {
         skipIntervals: List<SkipInterval>,
         thresholdMode: NextEpisodeThresholdMode,
         thresholdPercent: Float,
-        thresholdMinutesBeforeEnd: Float
+        thresholdMinutesBeforeEnd: Float,
+        useAdaptiveLead: Boolean = false,
+        anime: Boolean = false,
     ): Boolean {
         val promptAtMs = nextEpisodePromptPositionMs(
             durationMs = durationMs,
@@ -69,6 +75,8 @@ object PlayerNextEpisodeRules {
             thresholdMode = thresholdMode,
             thresholdPercent = thresholdPercent,
             thresholdMinutesBeforeEnd = thresholdMinutesBeforeEnd,
+            useAdaptiveLead = useAdaptiveLead,
+            anime = anime,
         ) ?: return false
         return positionMs >= (promptAtMs - PRELOAD_LEAD_MS).coerceAtLeast(0L)
     }
@@ -76,14 +84,17 @@ object PlayerNextEpisodeRules {
     /**
      * Playback position where the next-episode card appears.
      * Credits that finish near the file end open the card at the credits start.
-     * Otherwise the card uses the configured percentage or minutes-before-end window.
+     * Otherwise the card uses the duration table, unless a saved percentage or
+     * minutes-before-end setting replaces it.
      */
     fun nextEpisodePromptPositionMs(
         durationMs: Long,
         skipIntervals: List<SkipInterval>,
         thresholdMode: NextEpisodeThresholdMode,
         thresholdPercent: Float,
-        thresholdMinutesBeforeEnd: Float
+        thresholdMinutesBeforeEnd: Float,
+        useAdaptiveLead: Boolean = false,
+        anime: Boolean = false,
     ): Long? {
         if (durationMs <= 0L) return null
         val userThresholdMs = thresholdWindowFromEndMs(
@@ -91,6 +102,8 @@ object PlayerNextEpisodeRules {
             thresholdMode = thresholdMode,
             thresholdPercent = thresholdPercent,
             thresholdMinutesBeforeEnd = thresholdMinutesBeforeEnd,
+            useAdaptiveLead = useAdaptiveLead,
+            anime = anime,
         )
         val outroSegments = skipIntervals.filter { it.type in OUTRO_SEGMENT_TYPES }
         if (outroSegments.isNotEmpty()) {
@@ -108,16 +121,71 @@ object PlayerNextEpisodeRules {
         thresholdMode: NextEpisodeThresholdMode,
         thresholdPercent: Float,
         thresholdMinutesBeforeEnd: Float,
-    ): Long = when (thresholdMode) {
-        NextEpisodeThresholdMode.PERCENTAGE -> {
-            val steps = (thresholdPercent.coerceIn(THRESHOLD_PERCENT_MIN, THRESHOLD_PERCENT_MAX) * 2f).roundToInt()
-            durationMs * (200 - steps) / 200
-        }
-        NextEpisodeThresholdMode.MINUTES_BEFORE_END -> {
-            val clampedMinutes = thresholdMinutesBeforeEnd.coerceIn(0f, 3.5f)
-            (clampedMinutes * 60_000f).toLong()
+        useAdaptiveLead: Boolean,
+        anime: Boolean,
+    ): Long {
+        if (useAdaptiveLead) return adaptiveLeadMs(durationMs, anime)
+        return when (thresholdMode) {
+            NextEpisodeThresholdMode.PERCENTAGE -> {
+                val steps = (thresholdPercent.coerceIn(THRESHOLD_PERCENT_MIN, THRESHOLD_PERCENT_MAX) * 2f).roundToInt()
+                durationMs * (200 - steps) / 200
+            }
+            NextEpisodeThresholdMode.MINUTES_BEFORE_END -> {
+                val clampedMinutes = thresholdMinutesBeforeEnd.coerceIn(0f, 3.5f)
+                (clampedMinutes * 60_000f).toLong()
+            }
         }
     }
+
+    fun adaptiveLeadMs(durationMs: Long, anime: Boolean): Long {
+        if (durationMs <= 0L) return 0L
+        val minutes = durationMs / 60_000.0
+        val row = when {
+            minutes >= 120.0 -> ADAPTIVE_LEAD_ROWS.last()
+            minutes <= 20.0 -> ADAPTIVE_LEAD_ROWS.first()
+            else -> ADAPTIVE_LEAD_ROWS.minWith(
+                compareBy<Pair<Int, Pair<Int, Int>>> { kotlin.math.abs(it.first - minutes) }
+                    .thenBy { it.first },
+            )
+        }
+        val seconds = if (anime) row.second.second else row.second.first
+        return seconds * 1_000L
+    }
+
+    fun isAnimePlayback(
+        contentType: String?,
+        ids: List<String?>,
+        genres: List<String>,
+        country: String?,
+    ): Boolean {
+        if (contentType.equals("anime", ignoreCase = true)) return true
+        if (ids.any { id ->
+                val value = id?.trim().orEmpty()
+                value.startsWith("kitsu:", ignoreCase = true) ||
+                    value.startsWith("mal:", ignoreCase = true) ||
+                    value.startsWith("anilist:", ignoreCase = true)
+            }
+        ) return true
+        if (genres.any { it.equals("anime", ignoreCase = true) }) return true
+        return genres.any { it.equals("animation", ignoreCase = true) } &&
+            country?.contains("Japan", ignoreCase = true) == true
+    }
+
+    private val ADAPTIVE_LEAD_ROWS = listOf(
+        20 to (12 to 75),
+        23 to (12 to 75),
+        25 to (15 to 75),
+        30 to (18 to 75),
+        35 to (25 to 75),
+        40 to (30 to 75),
+        45 to (45 to 90),
+        50 to (60 to 90),
+        55 to (75 to 90),
+        60 to (105 to 105),
+        90 to (120 to 120),
+        105 to (135 to 135),
+        120 to (150 to 150),
+    )
 
     fun parseEpisodeReleaseDate(raw: String?): LocalDate? {
         return parseEpisodeReleaseLocalDate(raw)
