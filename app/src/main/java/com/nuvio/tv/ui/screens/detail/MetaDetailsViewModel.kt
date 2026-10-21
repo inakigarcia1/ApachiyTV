@@ -8,6 +8,7 @@ import com.nuvio.tv.core.player.StreamAutoPlayPolicy
 import com.nuvio.tv.core.profile.ProfileManager
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.tmdb.TmdbMetadataService
+import com.nuvio.tv.core.tmdb.chooseSynopsis
 import com.nuvio.tv.core.tmdb.TmdbService
 import com.nuvio.tv.data.local.LayoutPreferenceDataStore
 import com.nuvio.tv.data.local.PlayerSettingsDataStore
@@ -1414,7 +1415,7 @@ class MetaDetailsViewModel @Inject constructor(
         if (enrichment != null && settings.useBasicInfo) {
             updated = updated.copy(
                 name = enrichment.localizedTitle ?: updated.name,
-                description = enrichment.description ?: updated.description
+                description = chooseSynopsis(enrichment.description, updated.description)
             )
             if (enrichment.genres.isNotEmpty()) {
                 updated = updated.copy(genres = enrichment.genres)
@@ -1491,7 +1492,7 @@ class MetaDetailsViewModel @Inject constructor(
                     val ep = key?.let { episodeMap[it] }
                     video.copy(
                         title = if (settings.useEpisodes) ep?.title ?: video.title else video.title,
-                        overview = if (settings.useEpisodes) ep?.overview ?: video.overview else video.overview,
+                        overview = if (settings.useEpisodes) chooseSynopsis(ep?.overview, video.overview) else video.overview,
                         released = selectEpisodeReleaseValue(
                             addonReleased = video.released,
                             tmdbAirDate = ep?.airDate,

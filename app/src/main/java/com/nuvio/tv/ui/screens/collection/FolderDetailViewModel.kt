@@ -8,6 +8,7 @@ import com.nuvio.tv.R
 import com.nuvio.tv.core.build.AppFeaturePolicy
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.tmdb.TmdbCollectionSourceResolver
+import com.nuvio.tv.core.tmdb.chooseSynopsis
 import com.nuvio.tv.core.util.hasNoReleaseInfo
 import com.nuvio.tv.core.util.isUnreleased
 import com.nuvio.tv.core.trakt.TraktPublicListSourceResolver
@@ -1178,7 +1179,7 @@ class FolderDetailViewModel @Inject constructor(
                         val isModern = _uiState.value.homeLayout == HomeLayout.MODERN
                         result = result.copy(
                             name = if (isModern) finalEnrichment.localizedTitle ?: result.name else result.name,
-                            description = finalEnrichment.description ?: result.description,
+                            description = chooseSynopsis(finalEnrichment.description, result.description),
                             genres = if (finalEnrichment.genres.isNotEmpty()) finalEnrichment.genres else result.genres
                         )
                     }
@@ -1441,7 +1442,7 @@ class FolderDetailViewModel @Inject constructor(
                                     val isModern = _uiState.value.homeLayout == HomeLayout.MODERN
                                     result = result.copy(
                                         name = if (isModern) enrichment.localizedTitle ?: result.name else result.name,
-                                        description = enrichment.description ?: result.description,
+                                        description = chooseSynopsis(enrichment.description, result.description),
                                         genres = if (enrichment.genres.isNotEmpty()) enrichment.genres else result.genres
                                     )
                                 }

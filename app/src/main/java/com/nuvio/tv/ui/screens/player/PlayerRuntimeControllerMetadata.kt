@@ -2,6 +2,7 @@ package com.nuvio.tv.ui.screens.player
 
 import com.nuvio.tv.R
 import com.nuvio.tv.core.network.NetworkResult
+import com.nuvio.tv.core.tmdb.chooseSynopsis
 import com.nuvio.tv.data.local.AutoSkipSegmentType
 import com.nuvio.tv.data.repository.SkipInterval
 import com.nuvio.tv.domain.model.ContentType
@@ -145,7 +146,9 @@ private suspend fun PlayerRuntimeController.enrichDescriptionFromTmdb(id: String
 
     val tmdbDescription = episodeEnrichment?.overview ?: enrichment.description
     if (settings.useBasicInfo && !tmdbDescription.isNullOrBlank()) {
-        _uiState.update { it.copy(description = tmdbDescription) }
+        _uiState.update { state ->
+            state.copy(description = chooseSynopsis(tmdbDescription, state.description))
+        }
     }
 
     // Enrich title from TMDB (localized).

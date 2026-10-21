@@ -6,6 +6,7 @@ import com.nuvio.tv.LocaleCache
 import com.nuvio.tv.core.build.AppFeaturePolicy
 import com.nuvio.tv.core.network.NetworkResult
 import com.nuvio.tv.core.tmdb.TmdbEnrichment
+import com.nuvio.tv.core.tmdb.chooseSynopsis
 import com.nuvio.tv.domain.model.FocusedPosterTrailerPlaybackTarget
 import com.nuvio.tv.domain.model.HomeLayout
 import com.nuvio.tv.domain.model.Meta
@@ -680,7 +681,7 @@ private fun HomeViewModel.updateCatalogItemWithTmdb(itemId: String, enrichment: 
         if (currentTmdbSettings.useBasicInfo) {
             merged = merged.copy(
                 name = if (isModernLayout) enrichment.localizedTitle ?: merged.name else merged.name,
-                description = enrichment.description ?: merged.description,
+                description = chooseSynopsis(enrichment.description, merged.description),
                 genres = if (enrichment.genres.isNotEmpty()) enrichment.genres else merged.genres
             )
         }
@@ -904,7 +905,7 @@ internal suspend fun HomeViewModel.enrichHeroItemsPipeline(
                         if (settings.useBasicInfo) {
                             enriched = enriched.copy(
                                 name = enrichment.localizedTitle ?: enriched.name,
-                                description = enrichment.description ?: enriched.description,
+                                description = chooseSynopsis(enrichment.description, enriched.description),
                                 genres = if (enrichment.genres.isNotEmpty()) enrichment.genres else enriched.genres,
                                 imdbRating = mdbImdbRating?.toFloat() ?: enriched.imdbRating
                             )
