@@ -959,14 +959,14 @@ class PlayerSettingsDataStore @Inject constructor(
                         prefs[subtitleSecondaryLanguageKey]?.let(::normalizeSelectableLanguageCode) == SUBTITLE_LANGUAGE_FORCED,
                     showOnlyPreferredLanguages = prefs[subtitleShowOnlyPreferredLanguagesKey] ?: false,
                     stripSdh = prefs[subtitleStripSdhKey] ?: false,
-                    size = prefs[subtitleSizeKey] ?: 100,
-                    verticalOffset = prefs[subtitleVerticalOffsetKey] ?: 5,
-                    bold = prefs[subtitleBoldKey] ?: false,
-                    textColor = prefs[subtitleTextColorKey] ?: Color.White.toArgb(),
-                    backgroundColor = prefs[subtitleBackgroundColorKey] ?: Color.Transparent.toArgb(),
-                    outlineEnabled = prefs[subtitleOutlineEnabledKey] ?: true,
-                    outlineColor = prefs[subtitleOutlineColorKey] ?: Color.Black.toArgb(),
-                    outlineWidth = prefs[subtitleOutlineWidthKey] ?: 2
+                    size = prefs.intOrNull(subtitleSizeKey) ?: 100,
+                    verticalOffset = prefs.intOrNull(subtitleVerticalOffsetKey) ?: 5,
+                    bold = prefs.booleanOrNull(subtitleBoldKey) ?: false,
+                    textColor = prefs.intOrNull(subtitleTextColorKey) ?: Color.White.toArgb(),
+                    backgroundColor = prefs.intOrNull(subtitleBackgroundColorKey) ?: Color.Transparent.toArgb(),
+                    outlineEnabled = prefs.booleanOrNull(subtitleOutlineEnabledKey) ?: true,
+                    outlineColor = prefs.intOrNull(subtitleOutlineColorKey) ?: Color.Black.toArgb(),
+                    outlineWidth = prefs.intOrNull(subtitleOutlineWidthKey) ?: 2
                 ),
                 bufferSettings = BufferSettings(
                     minBufferMs = prefs[minBufferMsKey] ?: BufferSettings.DEFAULT_MIN_BUFFER_MS,

@@ -1347,10 +1347,17 @@ private fun StepperButton(
             .size(40.dp)
             .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier)
             .onPreviewKeyEvent { event ->
-                when (event.nativeKeyEvent.keyCode) {
+                val native = event.nativeKeyEvent
+                if (isSubtitleConfirmKey(native.keyCode)) {
+                    if (native.action == android.view.KeyEvent.ACTION_DOWN && native.repeatCount == 0) {
+                        onClick()
+                    }
+                    return@onPreviewKeyEvent true
+                }
+                when (native.keyCode) {
                     moveLeftKey -> {
                         val moveLeft = onMoveLeft ?: return@onPreviewKeyEvent false
-                        when (event.nativeKeyEvent.action) {
+                        when (native.action) {
                             android.view.KeyEvent.ACTION_DOWN -> {
                                 moveLeft()
                                 true
@@ -1571,6 +1578,12 @@ private fun overlayCardBorder() = CardDefaults.border(
         shape = RoundedCornerShape(NuvioTheme.radii.md)
     )
 )
+
+private fun isSubtitleConfirmKey(keyCode: Int): Boolean {
+    return keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+        keyCode == android.view.KeyEvent.KEYCODE_ENTER ||
+        keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
+}
 
 private object StyleFocusKey {
     const val FontSizeDecrease = "font_size_decrease"

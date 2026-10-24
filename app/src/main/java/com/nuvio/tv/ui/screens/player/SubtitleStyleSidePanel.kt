@@ -36,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -360,7 +361,19 @@ private fun SubtitleStyleStepperButton(
 ) {
     IconButton(
         onClick = onClick,
-        modifier = modifier.size(NuvioTheme.spacing.xxl),
+        modifier = modifier
+            .size(NuvioTheme.spacing.xxl)
+            .onPreviewKeyEvent { event ->
+                val native = event.nativeKeyEvent
+                val confirm = native.keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+                    native.keyCode == android.view.KeyEvent.KEYCODE_ENTER ||
+                    native.keyCode == android.view.KeyEvent.KEYCODE_NUMPAD_ENTER
+                if (!confirm) return@onPreviewKeyEvent false
+                if (native.action == android.view.KeyEvent.ACTION_DOWN && native.repeatCount == 0) {
+                    onClick()
+                }
+                true
+            },
         colors = IconButtonDefaults.colors(
             containerColor = Color.White.copy(alpha = 0.16f),
             focusedContainerColor = Color.White.copy(alpha = 0.28f),

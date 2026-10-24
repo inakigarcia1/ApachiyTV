@@ -13,7 +13,10 @@ internal fun coerceToInt(raw: Any?): Int? = when (raw) {
     is Float -> raw.toInt()
     is Double -> raw.toInt()
     is Boolean -> if (raw) 1 else 0
-    is String -> raw.trim().toIntOrNull() ?: raw.trim().toDoubleOrNull()?.toInt()
+    // ARGB colors can arrive as unsigned text ("4294967295"); toLong().toInt() keeps the bits.
+    is String -> raw.trim().toIntOrNull()
+        ?: raw.trim().toLongOrNull()?.toInt()
+        ?: raw.trim().toDoubleOrNull()?.toInt()
     else -> null
 }
 

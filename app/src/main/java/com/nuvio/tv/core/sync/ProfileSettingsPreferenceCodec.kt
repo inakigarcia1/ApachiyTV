@@ -80,7 +80,9 @@ internal fun applyEncodedPreference(
             val parsed = primitive?.contentOrNull ?: return
             when {
                 keyName in profileSettingsIntKeys -> {
-                    val asInt = parsed.toIntOrNull() ?: parsed.toDoubleOrNull()?.toInt()
+                    val asInt = parsed.toIntOrNull()
+                        ?: parsed.toLongOrNull()?.toInt()
+                        ?: parsed.toDoubleOrNull()?.toInt()
                     if (asInt != null) {
                         mutablePrefs[intPreferencesKey(keyName)] = asInt
                     } else {
