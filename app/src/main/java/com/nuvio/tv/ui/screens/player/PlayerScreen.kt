@@ -257,7 +257,9 @@ fun PlayerScreen(
 
     val handleBackPress = handleBackPress@{
         if (externalHandoffInProgress) return@handleBackPress
-        if (shouldConfirmNextEpisodeOnEnd) {
+        if (showGestureTutorial) {
+            showGestureTutorial = false
+        } else if (shouldConfirmNextEpisodeOnEnd) {
             returnToDetailsFromEndPrompt()
         } else if (uiState.error != null) {
             exitPlayerFromError()
@@ -434,8 +436,9 @@ fun PlayerScreen(
         uiState.showSubtitleOverlay,
         uiState.showSpeedDialog,
         shouldConfirmNextEpisodeOnEnd,
+        showGestureTutorial,
     ) {
-        if (shouldConfirmNextEpisodeOnEnd) return@LaunchedEffect
+        if (shouldConfirmNextEpisodeOnEnd || showGestureTutorial) return@LaunchedEffect
         if (uiState.showControls && !uiState.showEpisodesPanel && !uiState.showSourcesPanel &&
             !uiState.showAudioOverlay && !uiState.showSubtitleOverlay &&
             !uiState.showSubtitleStylePanel && !uiState.showSubtitleDelayOverlay &&
@@ -651,6 +654,7 @@ fun PlayerScreen(
                         uiState.showSubtitleStylePanel || uiState.showSpeedDialog ||
                         uiState.showSubtitleDelayOverlay || uiState.showSubtitleTimingDialog ||
                         uiState.showMoreDialog ||
+                        showGestureTutorial ||
                         shouldConfirmNextEpisodeOnEnd ||
                         uiState.postPlayMode is PostPlayMode.StillWatching
                 if (panelOrDialogOpen) return@onKeyEvent false
@@ -3252,9 +3256,13 @@ private fun PlayerGestureTutorialOverlay(
     val safeStep = step.coerceIn(0, steps.lastIndex.coerceAtLeast(0))
     val exitFocus = remember { FocusRequester() }
     val nextFocus = remember { FocusRequester() }
+    val hasNext = safeStep < steps.lastIndex
     LaunchedEffect(safeStep) {
-        runCatching {
-            if (safeStep < steps.lastIndex) nextFocus.requestFocus() else exitFocus.requestFocus()
+        repeat(5) {
+            if (runCatching { if (hasNext) nextFocus.requestFocus() else exitFocus.requestFocus() }.isSuccess) {
+                return@LaunchedEffect
+            }
+            delay(50)
         }
     }
     Box(
@@ -3262,6 +3270,16 @@ private fun PlayerGestureTutorialOverlay(
             .fillMaxSize()
             .background(Color.Black.copy(alpha = 0.55f))
             .zIndex(4f)
+            .onKeyEvent { keyEvent ->
+                // Keys the buttons don't use stop here so they never reach the player or move focus behind the popup.
+                if (keyEvent.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
+                    when (keyEvent.nativeKeyEvent.keyCode) {
+                        KeyEvent.KEYCODE_DPAD_LEFT -> runCatching { exitFocus.requestFocus() }
+                        KeyEvent.KEYCODE_DPAD_RIGHT -> if (hasNext) runCatching { nextFocus.requestFocus() }
+                    }
+                }
+                true
+            }
             .clickable(onClick = {}),
         contentAlignment = Alignment.Center,
     ) {
