@@ -1,0 +1,27 @@
+---
+description: Play Store bundles are always playstore + release
+alwaysApply: true
+---
+
+Cuando Iñaki pida generar bundles de Play Store (AAB) de TV, siempre es:
+
+- **Edición:** `release` (nunca `debug`)
+- **Flavor:** `playstore` (nunca `full` ni sideload)
+- **Backend:** **cloud** (producción: `api.apachiy.org`, Supabase cloud, etc.). **Jamás** infra local.
+
+No uses `assembleFull*`, `bundleFull*`, ni variantes debug para esa tarea.
+
+Los bundles **siempre** van contra cloud. Iñaki no pide bundles apuntando a localhost, `127.0.0.1`, `10.0.2.2`, `local.dev.properties`, ni `APACHIY_USE_LOCAL_DEV`. No uses `-Papachiy.useLocalDev=true` ni scripts `run-*-local*`. Quitá `APACHIY_USE_LOCAL_DEV` del entorno antes de compilar. Config = `local.properties` (cloud), no el overlay de dev local.
+
+Subí `versionCode` en `app/build.gradle.kts` antes de compilar. Luego:
+
+```text
+:app:bundlePlaystoreRelease
+-Papachiy.useLocalDev=false
+```
+
+Cloud = `local.properties`, sin `APACHIY_USE_LOCAL_DEV`. En PowerShell, los `-P` van entre comillas.
+
+Salida: `app/build/outputs/bundle/playstoreRelease/app-playstore-release.aab`
+
+**Mobile:** repo `Apachiy-DesktopMobile`, misma convención release + playstore (`:androidApp:bundlePlaystoreRelease`).

@@ -1,0 +1,12 @@
+---
+description: Where the Apachiy apps live
+alwaysApply: true
+---
+
+Apachiy TV es este repo (`Apachiy-NuvioFork`).
+
+Apachiy Desktop y mobile son un solo repo: `D:\Proyectos\Apachiy-Repos\Apachiy-DesktopMobile`, incluidos sus worktrees (por ejemplo `Apachiy-DesktopMobile-audiosync`). No hay otro repo de mobile.
+
+No uses `Apachiy-Mobile` ni `NuvioTVAutoSync`. `Apachiy-Mobile` no existe: no lo abras, no lo edites y no generes bundles ahí. Los cambios de mobile van en `composeApp`, `androidApp` e `iosApp` de DesktopMobile.
+
+Si un cambio es para desktop, mobile y TV, aplicalo en DesktopMobile y en este repo de TV.
