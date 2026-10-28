@@ -247,7 +247,7 @@ internal object AutomaticSubtitleSync {
                     .filter { it.url.isNotBlank() && it.url != selectedSubtitleUrl }
                     .filter { candidate ->
                         language.isNullOrBlank() ||
-                            PlayerSubtitleUtils.matchesLanguageCode(
+                            PlayerSubtitleUtils.sharesBaseLanguage(
                                 candidate.language,
                                 language,
                             )
@@ -389,7 +389,7 @@ internal object AutomaticSubtitleSync {
                     .filter { it.url.isNotBlank() && it.url != selectedSubtitleUrl }
                     .filter { candidate ->
                         language.isNullOrBlank() ||
-                            PlayerSubtitleUtils.matchesLanguageCode(
+                            PlayerSubtitleUtils.sharesBaseLanguage(
                                 candidate.language,
                                 language,
                             )

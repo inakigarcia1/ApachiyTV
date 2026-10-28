@@ -324,7 +324,7 @@ private suspend fun fetchOpenSubtitleCandidates(
         val item = array.optJSONObject(index) ?: return@mapNotNull null
         val subtitleUrl = item.optString("url").takeIf { it.isNotBlank() } ?: return@mapNotNull null
         val lang = item.optString("lang")
-        if (!PlayerSubtitleUtils.matchesLanguageCode(lang, language)) return@mapNotNull null
+        if (!PlayerSubtitleUtils.sharesBaseLanguage(lang, language)) return@mapNotNull null
         AutoSyncSubtitleCandidate(url = subtitleUrl, language = lang, name = "OpenSubtitles")
     }.distinctBy { it.url }.take(MAX_EXTRA_CANDIDATES)
 }

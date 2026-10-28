@@ -158,8 +158,8 @@ android {
         applicationId = "com.apachiy.tv"
         minSdk = 24
         targetSdk = 36
-        versionCode = 1066
-        versionName = "0.8.11-beta"
+        versionCode = 1067
+        versionName = "0.8.12-beta"
 
         buildConfigField("String", "PARENTAL_GUIDE_API_URL", "\"${localProperties.getProperty("PARENTAL_GUIDE_API_URL", "")}\"")
         buildConfigField("String", "INTRODB_API_URL", "\"${localProperties.getProperty("INTRODB_API_URL", "")}\"")
