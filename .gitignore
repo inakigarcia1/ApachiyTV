@@ -36,7 +36,6 @@ apachiy.jks
 keystore/
 release.keystore.properties
 secrets/
-CLAUDE.md
 build_and_install.sh
 android-tv-samples
 JustPlayer
