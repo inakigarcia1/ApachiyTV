@@ -10,6 +10,10 @@ import com.nuvio.tv.data.local.InternalPlayerEngine
 import com.nuvio.tv.domain.model.Subtitle
 import com.nuvio.tv.domain.model.WatchProgress
 import com.nuvio.tv.domain.model.enabledAddons
+import com.nuvio.tv.ui.screens.player.autosync.OPEN_SUBTITLES_FIRST_BUDGET_MS
+import com.nuvio.tv.ui.screens.player.autosync.StartupSubtitleRoute
+import com.nuvio.tv.ui.screens.player.autosync.decideStartupSubtitleRoute
+import com.nuvio.tv.ui.screens.player.autosync.effectiveAutoSyncEnabled
 import com.nuvio.tv.ui.screens.player.embedded.EmbeddedSubtitleExtractor
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
@@ -136,7 +140,7 @@ internal fun PlayerRuntimeController.fetchAddonSubtitlesIfTracksScanned() {
     fetchAddonSubtitles()
 }
 
-internal fun PlayerRuntimeController.fetchAddonSubtitles() {
+internal fun PlayerRuntimeController.fetchAddonSubtitles(allowOpenSubtitlesFirst: Boolean = true) {
     if (!hasScannedTextTracksOnce) return
     if (PlayerSubtitleUtils.hasEmbeddedSpanishTrack(_uiState.value.subtitleTracks)) {
         clearAddonSubtitlesForEmbeddedSpanish()
@@ -170,50 +174,88 @@ internal fun PlayerRuntimeController.fetchAddonSubtitles() {
             return@launch
         }
 
-        _uiState.update { it.copy(isLoadingAddonSubtitles = true, addonSubtitlesError = null) }
-
-        try {
-            val subtitles = fetchAddonSubtitlesNow(
-                reference = extract?.reference,
-                onSubtitlesEmitted = { currentList ->
-                    val visibleSubtitles = filterToVisibleAddonSubtitles(currentList)
-                    _uiState.update { it.copy(addonSubtitles = visibleSubtitles) }
-                }
-            )
-            val visibleSubtitles = filterToVisibleAddonSubtitles(subtitles)
-            Log.d(PlayerRuntimeController.TAG, "fetchAddonSubtitles done: ${subtitles.size} subs, visible=${visibleSubtitles.size}, persistedPref=${persistedTrackPreference?.subtitle?.javaClass?.simpleName}")
-            _uiState.update {
-                it.copy(
-                    addonSubtitles = visibleSubtitles,
-                    isLoadingAddonSubtitles = false
-                )
+        com.nuvio.tv.ui.screens.player.autosync.AutoSyncPreferences.ensureLoaded(context)
+        val style = _uiState.value.subtitleStyle
+        val prefersSpanish = PlayerSubtitleUtils.matchesLanguageCode(style.preferredLanguage, "es")
+        val autoSyncAvailable = allowOpenSubtitlesFirst &&
+            effectiveAutoSyncEnabled(
+                developerSettingsVisible = com.nuvio.tv.BuildConfig.IS_DEBUG_BUILD,
+                storedEnabled = com.nuvio.tv.ui.screens.player.autosync.AutoSyncPreferences.enabled.value,
+            ) &&
+            (
+                currentStreamUrl.startsWith("http://", ignoreCase = true) ||
+                    currentStreamUrl.startsWith("https://", ignoreCase = true)
+                ) &&
+            (isUsingMpvEngine() || _exoPlayer != null) &&
+            !isUserExplicitSubtitleSelection &&
+            pendingRestoredAddonSubtitle == null &&
+            !subtitleDisabledByPersistedPreference &&
+            prefersSpanish
+        val noEmbeddedTextTracks = tracksAtFetchStart.isEmpty()
+        val route = decideStartupSubtitleRoute(
+            hasEmbeddedSpanish = false,
+            autoSyncAvailable = autoSyncAvailable,
+            noEmbeddedTextTracks = noEmbeddedTextTracks,
+        )
+        if (route == StartupSubtitleRoute.OPEN_SUBTITLES_FIRST) {
+            _uiState.update { it.copy(isLoadingAddonSubtitles = true, addonSubtitlesError = null) }
+            val ok = runOpenSubtitlesFirstAutoSync()
+            if (ok) {
+                markSubtitlePipelineDone()
+                return@launch
             }
-            val pendingAddon = pendingRestoredAddonSubtitle
-            if (pendingAddon != null) {
-                val match = visibleSubtitles.firstOrNull { it.id == pendingAddon.id }
-                    ?: visibleSubtitles.firstOrNull { PlayerSubtitleUtils.matchesLanguageCode(it.lang, pendingAddon.lang) }
-                if (match != null) {
-                    autoSubtitleSelected = true
-                    selectAddonSubtitle(match)
-                    _uiState.update { it.copy(selectedAddonSubtitle = match, selectedSubtitleTrackIndex = -1) }
-                    return@launch
-                }
-            }
-            applyPersistedTrackPreference(
-                audioTracks = _uiState.value.audioTracks,
-                subtitleTracks = _uiState.value.subtitleTracks
-            )
-            tryAutoSelectPreferredSubtitleFromAvailableTracks()
-        } catch (e: Exception) {
-            _uiState.update {
-                it.copy(
-                    isLoadingAddonSubtitles = false,
-                    addonSubtitlesError = e.message
-                )
-            }
-        } finally {
-            markSubtitlePipelineDone()
         }
+
+        fetchCommunitySubtitlesNow(extract)
+    }
+}
+
+private suspend fun PlayerRuntimeController.fetchCommunitySubtitlesNow(
+    extract: com.nuvio.tv.ui.screens.player.embedded.EmbeddedExtractResult?,
+) {
+    _uiState.update { it.copy(isLoadingAddonSubtitles = true, addonSubtitlesError = null) }
+
+    try {
+        val subtitles = fetchAddonSubtitlesNow(
+            reference = extract?.reference,
+            onSubtitlesEmitted = { currentList ->
+                val visibleSubtitles = filterToVisibleAddonSubtitles(currentList)
+                _uiState.update { it.copy(addonSubtitles = visibleSubtitles) }
+            }
+        )
+        val visibleSubtitles = filterToVisibleAddonSubtitles(subtitles)
+        Log.d(PlayerRuntimeController.TAG, "fetchAddonSubtitles done: ${subtitles.size} subs, visible=${visibleSubtitles.size}, persistedPref=${persistedTrackPreference?.subtitle?.javaClass?.simpleName}")
+        _uiState.update {
+            it.copy(
+                addonSubtitles = visibleSubtitles,
+                isLoadingAddonSubtitles = false
+            )
+        }
+        val pendingAddon = pendingRestoredAddonSubtitle
+        if (pendingAddon != null) {
+            val match = visibleSubtitles.firstOrNull { it.id == pendingAddon.id }
+                ?: visibleSubtitles.firstOrNull { PlayerSubtitleUtils.matchesLanguageCode(it.lang, pendingAddon.lang) }
+            if (match != null) {
+                autoSubtitleSelected = true
+                selectAddonSubtitle(match)
+                _uiState.update { it.copy(selectedAddonSubtitle = match, selectedSubtitleTrackIndex = -1) }
+                return
+            }
+        }
+        applyPersistedTrackPreference(
+            audioTracks = _uiState.value.audioTracks,
+            subtitleTracks = _uiState.value.subtitleTracks
+        )
+        tryAutoSelectPreferredSubtitleFromAvailableTracks()
+    } catch (e: Exception) {
+        _uiState.update {
+            it.copy(
+                isLoadingAddonSubtitles = false,
+                addonSubtitlesError = e.message
+            )
+        }
+    } finally {
+        markSubtitlePipelineDone()
     }
 }
 
@@ -496,7 +538,7 @@ internal fun PlayerRuntimeController.observeSubtitleSettings() {
                         )
                     }
                 } else if (_uiState.value.addonSubtitles.isNotEmpty() || _uiState.value.selectedAddonSubtitle != null) {
-                    fetchAddonSubtitles()
+                    fetchAddonSubtitles(allowOpenSubtitlesFirst = false)
                 }
             }
 

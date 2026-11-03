@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.media3.common.C
 import com.nuvio.tv.BuildConfig
 import com.nuvio.tv.domain.model.Subtitle
+import com.nuvio.tv.ui.screens.player.autosync.OPEN_SUBTITLES_FIRST_BUDGET_MS
 import com.nuvio.tv.ui.screens.player.autosync.AutoSyncPreferences
 import com.nuvio.tv.ui.screens.player.autosync.AutoSyncResolvedTimeline
 import com.nuvio.tv.ui.screens.player.autosync.AutomaticSubtitleSync
@@ -21,6 +22,7 @@ import com.nuvio.tv.ui.screens.player.autosync.renderRetimedSrt
 import com.nuvio.tv.ui.screens.player.autosync.replaceAutoSyncSidecarSubtitle
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.withTimeoutOrNull
 import java.io.File
 import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.math.abs
@@ -371,4 +373,124 @@ private fun formatAutoSyncOffset(offsetMs: Double): String {
     val roundedMs = offsetMs.roundToInt()
     val sign = if (roundedMs > 0) "+" else ""
     return "$sign${roundedMs}ms"
+}
+
+internal suspend fun PlayerRuntimeController.runOpenSubtitlesFirstAutoSync(): Boolean {
+    val type = contentType?.takeIf { it.isNotBlank() } ?: return false
+    val id = (videoId ?: currentVideoId)?.takeIf { it.isNotBlank() } ?: return false
+    val candidates = fetchOpenSubtitleCandidates(type, id, SPANISH_SYNC_LANGUAGE)
+    if (candidates.isEmpty()) return false
+
+    val sourceUrlAtStart = currentStreamUrl
+    val sourceHeadersAtStart = currentHeaders.toMap()
+    var noSubtitleTracks = false
+    val resolved = withTimeoutOrNull(OPEN_SUBTITLES_FIRST_BUDGET_MS) {
+        AutomaticSubtitleSync.findTimelineRetime(
+            sourceKey = sourceUrlAtStart,
+            sourceHeaders = sourceHeadersAtStart,
+            selectedSubtitleUrl = candidates.first().url,
+            selectedSubtitleHeaders = emptyMap(),
+            preferredLanguage = SPANISH_SYNC_LANGUAGE,
+            alternativeSubtitles = candidates.drop(1),
+            onNoSubtitleTracks = { noSubtitleTracks = true },
+        )
+    } ?: return false
+
+    if (currentStreamUrl != sourceUrlAtStart) return true
+    if (isUserExplicitSubtitleSelection) return true
+
+    val subtitle = Subtitle(
+        id = "opensubtitles:${resolved.subtitleUrl.hashCode()}",
+        url = resolved.subtitleUrl,
+        lang = "es",
+        addonName = "OpenSubtitles",
+        addonLogo = null,
+    )
+
+    if (isUsingMpvEngine()) {
+        val body = resolved.subtitleBody
+            ?: AutomaticSubtitleSync.downloadSubtitleBody(
+                url = resolved.subtitleUrl,
+                headers = emptyMap(),
+            )
+        val withinToleranceMs = withinAutoSyncToleranceMs(candidates.first().url, resolved)
+        val file = File(context.cacheDir, "autosync-${resolved.subtitleUrl.hashCode()}.srt")
+        val fileBody = if (withinToleranceMs != null) {
+            body
+        } else {
+            val cues = PlayerSubtitleCueParser.parseFromText(body, resolved.subtitleUrl)
+            renderRetimedSrt(cues, resolved.timeline)
+        }
+        file.writeText(fileBody)
+        val added = mpvView?.addAndSelectExternalSubtitle(
+            url = file.absolutePath,
+            title = buildAddonSubtitleTrackId(subtitle),
+            language = PlayerSubtitleUtils.normalizeLanguageCode(subtitle.lang),
+            flags = "select",
+        ) == true
+        if (!added) return false
+        _uiState.update {
+            it.copy(
+                addonSubtitles = listOf(subtitle),
+                selectedAddonSubtitle = subtitle,
+                selectedSubtitleTrackIndex = -1,
+                isLoadingAddonSubtitles = false,
+            )
+        }
+        autoSubtitleSelected = true
+        setSubtitleDelayMs(targetMs = 0, showOverlay = false)
+        showAutoSyncNotice(
+            if (withinToleranceMs != null) {
+                withinToleranceToast(withinToleranceMs)
+            } else {
+                buildAutoSyncSuccessToast(
+                    replacedSubtitle = resolved.subtitleUrl != candidates.first().url,
+                    scale = resolved.timeline.alignmentScale,
+                    interceptMs = resolved.timeline.alignmentInterceptMs,
+                )
+            },
+        )
+        return true
+    }
+
+    val player = _exoPlayer ?: return false
+    if (!canAttachAddonSubtitleViaSidecar(subtitle)) return false
+    player.trackSelectionParameters = player.trackSelectionParameters
+        .buildUpon()
+        .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, true)
+        .build()
+    val started = startSidecarAddonSubtitle(
+        subtitle = subtitle,
+        rawBodyLoader = resolved.subtitleBody?.let { body ->
+            suspend { body }
+        },
+    )
+    if (!started) return false
+    val applied = applyAutoSyncSidecarTimeline(
+        sidecar = this,
+        url = subtitle.url,
+        timeline = resolved.timeline,
+    )
+    if (!applied) {
+        stopSidecarAddonSubtitle(clearView = true)
+        return false
+    }
+    _uiState.update {
+        it.copy(
+            addonSubtitles = listOf(subtitle),
+            selectedAddonSubtitle = subtitle,
+            selectedSubtitleTrackIndex = -1,
+            isLoadingAddonSubtitles = false,
+        )
+    }
+    autoSubtitleSelected = true
+    setSubtitleDelayMs(targetMs = 0, showOverlay = false)
+    showAutoSyncNotice(
+        buildAutoSyncSuccessToast(
+            replacedSubtitle = resolved.subtitleUrl != candidates.first().url,
+            scale = resolved.timeline.alignmentScale,
+            interceptMs = resolved.timeline.alignmentInterceptMs,
+        ),
+    )
+    return true
 }
